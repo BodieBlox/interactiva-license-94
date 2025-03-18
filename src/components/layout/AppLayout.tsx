@@ -67,7 +67,8 @@ export const AppLayout = ({
     }
   }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname]);
 
-  if (isLoading) {
+  // Only show loader if authentication is in progress AND we need auth for this page
+  if (isLoading && (requireAuth || requireAdmin || requireLicense)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>

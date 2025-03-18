@@ -1,9 +1,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { ref, get, set, update } from 'firebase/database';
 import { User } from '../utils/types';
-import { auth, db } from '../utils/firebase';
+import { auth, database } from '../utils/firebase';
 import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
@@ -27,15 +27,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       if (firebaseUser) {
         try {
-          // Get the user data from Firestore
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          // Get the user data from Realtime Database
+          const userRef = ref(database, `users/${firebaseUser.uid}`);
+          const userSnapshot = await get(userRef);
           
-          if (userDoc.exists()) {
-            // User exists in Firestore, use that data
-            setUser(userDoc.data() as User);
+          if (userSnapshot.exists()) {
+            // User exists in Database, use that data
+            setUser(userSnapshot.val() as User);
           } else {
-            // User exists in Auth but not in Firestore, create a new user document
+            // User exists in Auth but not in Database, create a new user document
             const newUser: User = {
               id: firebaseUser.uid,
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               licenseActive: false
             };
             
-            await setDoc(userDocRef, newUser);
+            await set(userRef, newUser);
             setUser(newUser);
           }
         } catch (error) {
@@ -58,11 +58,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             description: `Failed to load user data: ${(error as Error).message}`,
             variant: "destructive"
           });
+        } finally {
+          setIsLoading(false);
         }
       } else {
         setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -108,13 +110,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       // Check if the license key exists and is not activated
-      const licenseQuery = await getDoc(doc(db, 'licenses', licenseKey));
+      const licenseRef = ref(database, `licenses/${licenseKey}`);
+      const licenseSnapshot = await get(licenseRef);
       
-      if (!licenseQuery.exists()) {
+      if (!licenseSnapshot.exists()) {
         // For the demo, allow a special key to always work
         if (licenseKey === 'FREE-1234-5678-9ABC') {
           // Create the license if it doesn't exist
-          await setDoc(doc(db, 'licenses', licenseKey), {
+          await set(licenseRef, {
             id: licenseKey,
             key: licenseKey,
             isActive: true,
@@ -130,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             licenseKey: licenseKey
           };
           
-          await updateDoc(doc(db, 'users', user.id), updatedUser);
+          await update(ref(database, `users/${user.id}`), updatedUser);
           
           setUser(updatedUser);
           return;
@@ -139,14 +142,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Invalid license key');
       }
       
-      const license = licenseQuery.data();
+      const license = licenseSnapshot.val();
       
       if (license.isActive && license.userId !== user.id) {
         throw new Error('License key is already activated by another user');
       }
       
       // Update the license
-      await updateDoc(doc(db, 'licenses', licenseKey), {
+      await update(licenseRef, {
         isActive: true,
         userId: user.id,
         activatedAt: new Date().toISOString()
@@ -159,7 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         licenseKey: licenseKey
       };
       
-      await updateDoc(doc(db, 'users', user.id), updatedUser);
+      await update(ref(database, `users/${user.id}`), updatedUser);
       
       setUser(updatedUser);
     } catch (error) {
