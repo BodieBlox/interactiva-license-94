@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
+// OpenAI API key - this should ideally be stored securely server-side
+const OPENAI_API_KEY = "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";
+
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { user } = useAuth();
@@ -84,39 +87,69 @@ export const ChatInterface = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages]);
 
-  const startPollingForResponse = async (currentChatId: string, messageCount: number) => {
-    if (isPolling) return;
-    
-    setIsPolling(true);
-    
-    // Clear any existing interval first
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+  // Generate AI response
+  const generateAIResponse = async (chatId: string, userMessage: string) => {
+    try {
+      // Call OpenAI API to generate a response
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('OpenAI API error:', await response.text());
+        throw new Error(`OpenAI API returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const aiMessage = data.choices[0].message.content;
+      
+      // Add AI response to the chat
+      await addMessageToChat(chatId, {
+        content: aiMessage,
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      });
+      
+      // Fetch the updated chat to update the UI
+      const updatedChat = await getChatById(chatId);
+      if (updatedChat) {
+        setChat(updatedChat);
+      }
+      
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      // Add a generic response in case of error
+      await addMessageToChat(chatId, {
+        content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      });
+      
+      // Fetch the updated chat to update the UI
+      const updatedChat = await getChatById(chatId);
+      if (updatedChat) {
+        setChat(updatedChat);
+      }
+      
+      toast({
+        title: "Error",
+        description: "Failed to generate AI response",
+        variant: "destructive"
+      });
     }
-    
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const updatedChat = await getChatById(currentChatId);
-        if (updatedChat && updatedChat.messages && updatedChat.messages.length > messageCount) {
-          setChat(updatedChat);
-          clearInterval(pollingIntervalRef.current as NodeJS.Timeout);
-          setIsPolling(false);
-        }
-      } catch (error) {
-        console.error('Error polling for chat updates:', error);
-        // Stop polling on error
-        clearInterval(pollingIntervalRef.current as NodeJS.Timeout);
-        setIsPolling(false);
-      }
-    }, 1000);
-    
-    // Safety timeout to avoid infinite polling
-    setTimeout(() => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        setIsPolling(false);
-      }
-    }, 30000);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -132,9 +165,7 @@ export const ChatInterface = () => {
       // Clear the input field immediately
       setMessage('');
       
-      const currentMessageCount = chat.messages?.length || 0;
-      
-      // Send the message
+      // Send the user message
       const sentMessage = await sendMessage(chat.id, messageContent);
       
       // Update local state
@@ -150,8 +181,8 @@ export const ChatInterface = () => {
         };
       });
       
-      // Start polling for AI response with the current message count
-      startPollingForResponse(chat.id, currentMessageCount + 1);
+      // Generate AI response directly, without polling
+      await generateAIResponse(chat.id, messageContent);
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -213,7 +244,7 @@ export const ChatInterface = () => {
             </p>
           </div>
         ) : (
-          chat?.messages.map((msg: ChatMessage) => (
+          chat?.messages?.map((msg: ChatMessage) => (
             <div 
               key={msg.id} 
               className={`flex gap-3 transition-all duration-300 ease-apple animate-scale-in ${

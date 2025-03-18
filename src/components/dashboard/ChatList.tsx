@@ -21,31 +21,35 @@ export const ChatList = ({ chats }: ChatListProps) => {
 
   return (
     <ul className="space-y-3">
-      {chats.map((chat) => (
-        <li key={chat.id}>
-          <Link
-            to={`/chat/${chat.id}`}
-            className="block p-4 rounded-lg hover:bg-secondary transition-apple"
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-primary" />
+      {chats.map((chat) => {
+        const messageCount = chat.messages?.length || 0;
+        
+        return (
+          <li key={chat.id}>
+            <Link
+              to={`/chat/${chat.id}`}
+              className="block p-4 rounded-lg hover:bg-secondary transition-apple"
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">{chat.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {messageCount} message{messageCount !== 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium">{chat.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {chat.messages && chat.messages.length ? `${chat.messages.length} message${chat.messages.length !== 1 ? 's' : ''}` : '0 messages'}
-                  </p>
-                </div>
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(chat.updatedAt), { addSuffix: true })}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(chat.updatedAt), { addSuffix: true })}
-              </span>
-            </div>
-          </Link>
-        </li>
-      ))}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 };

@@ -4,9 +4,18 @@ import { Chat, User, ChatMessage } from '@/utils/types';
 import { getUsers, getUserChats, getChatById, getAllChats } from '@/utils/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare, UserCircle, Bot } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MessageSquare, UserCircle, Bot, Trash2, Users, Database } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
 
 export const ChatViewer = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -15,6 +24,9 @@ export const ChatViewer = () => {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
+  const [viewMode, setViewMode] = useState<'user' | 'all'>('user');
+  const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -36,10 +48,38 @@ export const ChatViewer = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (viewMode === 'all') {
+      fetchAllChats();
+    }
+  }, [viewMode]);
+
+  const fetchAllChats = async () => {
+    setSelectedUserId('');
+    setSelectedChat(null);
+    setIsLoadingChats(true);
+    
+    try {
+      const chats = await getAllChats();
+      setUserChats(chats);
+    } catch (error) {
+      console.error('Error fetching all chats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load all conversations",
+        variant: "destructive"
+      });
+      setUserChats([]);
+    } finally {
+      setIsLoadingChats(false);
+    }
+  };
+
   const handleUserSelect = async (userId: string) => {
     setSelectedUserId(userId);
     setSelectedChat(null);
     setIsLoadingChats(true);
+    setViewMode('user');
     
     try {
       // Fetch real chats for the selected user
@@ -81,6 +121,58 @@ export const ChatViewer = () => {
     }
   };
 
+  const openDeleteChatDialog = (chat: Chat) => {
+    setChatToDelete(chat);
+    setDeleteChatDialogOpen(true);
+  };
+
+  const handleDeleteChat = async () => {
+    if (!chatToDelete) return;
+
+    try {
+      // Call API to delete chat
+      await deleteChatFromAPI(chatToDelete.id);
+      
+      // Update UI
+      setUserChats(prev => prev.filter(chat => chat.id !== chatToDelete.id));
+      
+      if (selectedChat?.id === chatToDelete.id) {
+        setSelectedChat(null);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Chat deleted successfully"
+      });
+      
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteChatDialogOpen(false);
+      setChatToDelete(null);
+    }
+  };
+
+  // Function to delete chat from API
+  const deleteChatFromAPI = async (chatId: string) => {
+    // Add this function to your API file
+    // This is a mock implementation
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete chat');
+    }
+    
+    return true;
+  };
+
   const renderMessageContent = (content: string) => {
     return content.split('\n').map((line, i) => (
       <span key={i}>
@@ -100,22 +192,43 @@ export const ChatViewer = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <Select value={selectedUserId} onValueChange={handleUserSelect}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a user to view chats" />
-          </SelectTrigger>
-          <SelectContent>
-            {users.map(user => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.username} ({user.email})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="mb-6 flex flex-col md:flex-row gap-3 md:items-center justify-between">
+        <div className="flex-1">
+          <Select value={selectedUserId} onValueChange={handleUserSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a user to view chats" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map(user => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.username} ({user.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex gap-2">
+          <Button 
+            variant={viewMode === 'user' ? "default" : "outline"} 
+            onClick={() => setViewMode('user')}
+            className="flex items-center gap-1"
+          >
+            <Users className="h-4 w-4" />
+            <span>User Chats</span>
+          </Button>
+          <Button 
+            variant={viewMode === 'all' ? "default" : "outline"} 
+            onClick={() => setViewMode('all')}
+            className="flex items-center gap-1"
+          >
+            <Database className="h-4 w-4" />
+            <span>All Chats</span>
+          </Button>
+        </div>
       </div>
 
-      {selectedUserId && (
+      {(selectedUserId || viewMode === 'all') && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
             <h3 className="text-lg font-medium mb-4">Conversations</h3>
@@ -132,34 +245,46 @@ export const ChatViewer = () => {
               </Card>
             ) : (
               <div className="space-y-3">
-                {userChats.map(chat => (
-                  <Card 
-                    key={chat.id} 
-                    className={`glass-panel border-0 cursor-pointer transition-apple ${
-                      selectedChat?.id === chat.id ? 'bg-secondary/50 shadow-lg' : 'hover:bg-secondary/30'
-                    }`}
-                    onClick={() => handleChatSelect(chat)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 w-8 h-8 rounded-full flex items-center justify-center">
-                          <MessageSquare className="h-4 w-4 text-primary" />
+                {userChats.map(chat => {
+                  const messageCount = chat.messages?.length || 0;
+                  
+                  return (
+                    <Card 
+                      key={chat.id} 
+                      className={`glass-panel border-0 cursor-pointer transition-apple ${
+                        selectedChat?.id === chat.id ? 'bg-secondary/50 shadow-lg' : 'hover:bg-secondary/30'
+                      }`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="bg-primary/10 w-8 h-8 rounded-full flex items-center justify-center"
+                            onClick={() => handleChatSelect(chat)}
+                          >
+                            <MessageSquare className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1" onClick={() => handleChatSelect(chat)}>
+                            <h4 className="font-medium">{chat.title}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {messageCount} message{messageCount !== 1 ? 's' : ''}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(chat.updatedAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => openDeleteChatDialog(chat)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div>
-                          <h4 className="font-medium">{chat.title}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {chat.messages && chat.messages.length ? 
-                              `${chat.messages.length} message${chat.messages.length !== 1 ? 's' : ''}` : 
-                              '0 messages'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(chat.updatedAt), { addSuffix: true })}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -219,6 +344,26 @@ export const ChatViewer = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Chat Dialog */}
+      <Dialog open={deleteChatDialogOpen} onOpenChange={setDeleteChatDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this chat? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteChatDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteChat}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
