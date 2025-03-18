@@ -4,6 +4,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { toast } from '@/components/ui/use-toast';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -18,10 +28,12 @@ export const AppLayout = ({
   requireAdmin = false,
   requireLicense = false
 }: AppLayoutProps) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showWarning, setShowWarning] = useState(false);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
 
   useEffect(() => {
     // Only run redirects if we're not loading
@@ -57,17 +69,38 @@ export const AppLayout = ({
       return;
     }
 
+    // Handle suspended users - they can't access the system
+    if (user && user.status === 'suspended') {
+      setShowSuspendedDialog(true);
+      return;
+    }
+
+    // Handle warned users - they can access the system but see a warning
+    if (user && user.status === 'warned') {
+      setShowWarningDialog(true);
+    }
+
     // If we're on login page and already authenticated, redirect to dashboard
     if (location.pathname === '/login' && user) {
       navigate('/dashboard');
       return;
     }
 
-    // Show warning notification if the user has a warning or is suspended
-    if (user && (user.status === 'warned' || user.status === 'suspended')) {
+    // Show warning notification if the user has a warning
+    if (user && user.status === 'warned') {
       setShowWarning(true);
     }
   }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname]);
+
+  const handleWarningContinue = () => {
+    setShowWarningDialog(false);
+  };
+
+  const handleSuspendedLogout = () => {
+    setShowSuspendedDialog(false);
+    logout();
+    navigate('/login');
+  };
 
   // Only show loader if authentication is in progress AND we need auth for this page
   if (isLoading && (requireAuth || requireAdmin || requireLicense)) {
@@ -80,15 +113,58 @@ export const AppLayout = ({
 
   return (
     <>
+      {/* Warning Banner */}
       {showWarning && user?.warningMessage && (
         <NotificationBanner 
-          type={user.status === 'warned' ? 'warning' : 'error'} 
+          type="warning" 
           message={user.warningMessage}
           onClose={() => setShowWarning(false)}
         />
       )}
+      
+      {/* Warning Dialog for warned users */}
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent className="glass-panel border-0">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <span>Account Warning</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              {user?.warningMessage || "Your account has received a warning from an administrator."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleWarningContinue} className="bg-amber-500 hover:bg-amber-600">
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Suspended Dialog for suspended users */}
+      <AlertDialog open={showSuspendedDialog} onOpenChange={setShowSuspendedDialog}>
+        <AlertDialogContent className="glass-panel border-0">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-red-500" />
+              <span>Account Suspended</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              {user?.warningMessage || "Your account has been suspended by an administrator."}
+              <p className="mt-2">Please contact support for assistance.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleSuspendedLogout} className="bg-red-500 hover:bg-red-600">
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       <div className="min-h-screen">
-        {children}
+        {!showSuspendedDialog && children}
       </div>
     </>
   );

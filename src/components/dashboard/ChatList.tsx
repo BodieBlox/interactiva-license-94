@@ -22,7 +22,9 @@ export const ChatList = ({ chats }: ChatListProps) => {
   return (
     <ul className="space-y-3">
       {chats.map((chat) => {
-        const messageCount = chat.messages?.length || 0;
+        // Ensure messages is an array and get its length
+        const messages = chat.messages || [];
+        const messageCount = Array.isArray(messages) ? messages.length : 0;
         
         return (
           <li key={chat.id}>

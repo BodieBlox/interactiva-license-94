@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -21,11 +20,6 @@ export const ChatInterface = () => {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  
-  // Track if we're already polling for AI responses
-  const [isPolling, setIsPolling] = useState(false);
-  // Ref to hold polling interval
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchChat = async () => {
@@ -73,13 +67,6 @@ export const ChatInterface = () => {
     };
 
     fetchChat();
-    
-    return () => {
-      // Cleanup polling interval when component unmounts
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
   }, [chatId, user, navigate]);
 
   useEffect(() => {
@@ -88,8 +75,32 @@ export const ChatInterface = () => {
   }, [chat?.messages]);
 
   // Generate AI response
-  const generateAIResponse = async (chatId: string, userMessage: string) => {
+  const generateAIResponse = async (userMessageContent: string) => {
+    if (!chat) return;
+    
     try {
+      // First, add a placeholder message to show AI is typing
+      const loadingMessageId = `loading_${Date.now()}`;
+      setChat((prevChat) => {
+        if (!prevChat) return null;
+        
+        const updatedMessages = [
+          ...(prevChat.messages || []),
+          {
+            id: loadingMessageId,
+            content: "Thinking...",
+            role: 'assistant',
+            timestamp: new Date().toISOString(),
+            isLoading: true
+          } as any
+        ];
+        
+        return {
+          ...prevChat,
+          messages: updatedMessages
+        };
+      });
+      
       // Call OpenAI API to generate a response
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -101,7 +112,7 @@ export const ChatInterface = () => {
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: 'You are a helpful assistant.' },
-            { role: 'user', content: userMessage }
+            { role: 'user', content: userMessageContent }
           ],
           temperature: 0.7,
           max_tokens: 500
@@ -117,29 +128,58 @@ export const ChatInterface = () => {
       const aiMessage = data.choices[0].message.content;
       
       // Add AI response to the chat
-      await addMessageToChat(chatId, {
+      const aiResponseMessage = await addMessageToChat(chat.id, {
         content: aiMessage,
         role: 'assistant',
         timestamp: new Date().toISOString()
       });
       
-      // Fetch the updated chat to update the UI
-      const updatedChat = await getChatById(chatId);
+      // Remove the loading message and add the real AI response
+      setChat((prevChat) => {
+        if (!prevChat) return null;
+        
+        const updatedMessages = prevChat.messages ? 
+          prevChat.messages.filter(msg => msg.id !== loadingMessageId) : [];
+        
+        if (aiResponseMessage) {
+          updatedMessages.push(aiResponseMessage);
+        }
+        
+        return {
+          ...prevChat,
+          messages: updatedMessages,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      
+      // Fetch the updated chat to update the UI with correct data from server
+      const updatedChat = await getChatById(chat.id);
       if (updatedChat) {
         setChat(updatedChat);
       }
       
     } catch (error) {
       console.error('Error generating AI response:', error);
+      
+      // Remove the loading message first
+      setChat((prevChat) => {
+        if (!prevChat) return null;
+        
+        return {
+          ...prevChat,
+          messages: prevChat.messages ? prevChat.messages.filter(msg => !('isLoading' in msg)) : []
+        };
+      });
+      
       // Add a generic response in case of error
-      await addMessageToChat(chatId, {
+      await addMessageToChat(chat.id, {
         content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
         role: 'assistant',
         timestamp: new Date().toISOString()
       });
       
       // Fetch the updated chat to update the UI
-      const updatedChat = await getChatById(chatId);
+      const updatedChat = await getChatById(chat.id);
       if (updatedChat) {
         setChat(updatedChat);
       }
@@ -160,29 +200,20 @@ export const ChatInterface = () => {
     setIsSending(true);
     try {
       // Use the message content from state
-      const messageContent = message;
+      const messageContent = message.trim();
       
       // Clear the input field immediately
       setMessage('');
       
       // Send the user message
-      const sentMessage = await sendMessage(chat.id, messageContent);
+      await sendMessage(chat.id, messageContent);
       
-      // Update local state
-      setChat((prevChat) => {
-        if (!prevChat) return null;
-        
-        const updatedMessages = prevChat.messages ? [...prevChat.messages, sentMessage] : [sentMessage];
-        
-        return {
-          ...prevChat,
-          messages: updatedMessages,
-          updatedAt: new Date().toISOString()
-        };
-      });
+      // Fetch the updated chat with messages
+      const updatedChat = await getChatById(chat.id);
+      setChat(updatedChat);
       
-      // Generate AI response directly, without polling
-      await generateAIResponse(chat.id, messageContent);
+      // Generate AI response
+      await generateAIResponse(messageContent);
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -261,9 +292,16 @@ export const ChatInterface = () => {
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-secondary text-secondary-foreground'
-                }`}
+                } ${(msg as any).isLoading ? 'opacity-70' : ''}`}
               >
-                {renderMessageContent(msg.content)}
+                {(msg as any).isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full border-2 border-t-current border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    <span>Thinking...</span>
+                  </div>
+                ) : (
+                  renderMessageContent(msg.content)
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
