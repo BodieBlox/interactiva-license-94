@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
 import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense } from '@/utils/api';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, KeyOff, ClipboardX } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, Key, ClipboardX } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,7 +44,6 @@ export const UserManagement = () => {
   }, []);
 
   useEffect(() => {
-    // Filter users based on search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const filtered = users.filter(user => 
@@ -93,7 +91,6 @@ export const UserManagement = () => {
           const message = actionType !== 'activate' ? warningMessage.trim() : undefined;
           const updatedUser = await updateUserStatus(selectedUser.id, status, message);
           
-          // Update the local state
           setUsers(prevUsers => prevUsers.map(user => 
             user.id === updatedUser.id ? updatedUser : user
           ));
@@ -118,7 +115,6 @@ export const UserManagement = () => {
           if (selectedUser.licenseKey) {
             await suspendLicense(selectedUser.licenseKey);
             
-            // Update the local state
             const updatedUser = { ...selectedUser, licenseActive: false };
             setUsers(prevUsers => prevUsers.map(user => 
               user.id === updatedUser.id ? updatedUser : user
@@ -142,7 +138,6 @@ export const UserManagement = () => {
           if (selectedUser.licenseKey) {
             await revokeLicense(selectedUser.licenseKey);
             
-            // Update the local state
             const updatedUser = { ...selectedUser, licenseActive: false, licenseKey: undefined };
             setUsers(prevUsers => prevUsers.map(user => 
               user.id === updatedUser.id ? updatedUser : user
@@ -301,7 +296,7 @@ export const UserManagement = () => {
                                 onClick={() => handleOpenDialog(user, 'suspendLicense')}
                                 className="flex items-center gap-1 text-purple-500 border-purple-200 hover:bg-purple-50 animate-fade-in"
                               >
-                                <KeyOff className="h-3.5 w-3.5" />
+                                <Key className="h-3.5 w-3.5" />
                                 <span>Suspend License</span>
                               </Button>
                               
@@ -344,7 +339,7 @@ export const UserManagement = () => {
                 <MessageSquareX className="h-5 w-5 text-amber-500" />
               )}
               {actionType === 'suspendLicense' && (
-                <KeyOff className="h-5 w-5 text-purple-500" />
+                <Key className="h-5 w-5 text-purple-500" />
               )}
               {actionType === 'revokeLicense' && (
                 <ClipboardX className="h-5 w-5 text-indigo-500" />

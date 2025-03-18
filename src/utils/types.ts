@@ -17,6 +17,7 @@ export interface License {
   userId?: string;
   createdAt: string;
   activatedAt?: string;
+  suspendedAt?: string;
 }
 
 export interface ChatMessage {
