@@ -1,243 +1,311 @@
 
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { User, License, Chat, ChatMessage } from './types';
+import { db } from './firebase';
+import OpenAI from 'openai';
 
-// Mock API for demo purposes
-// In a real app, these would be actual API calls to your backend
-
-// Mock database
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'user',
-    email: 'user@example.com',
-    role: 'user',
-    status: 'active',
-    licenseActive: false
-  },
-  {
-    id: '2',
-    username: 'admin',
-    email: 'admin@example.com',
-    role: 'admin',
-    status: 'active',
-    licenseActive: true,
-    licenseKey: 'ADMIN-1234-5678-9ABC'
-  },
-  {
-    id: '3',
-    username: 'warned_user',
-    email: 'warned@example.com',
-    role: 'user',
-    status: 'warned',
-    licenseActive: true,
-    licenseKey: 'USER-WARN-5678-9ABC',
-    warningMessage: 'This is a warning for inappropriate usage of the AI system.'
-  },
-  {
-    id: '4',
-    username: 'suspended_user',
-    email: 'suspended@example.com',
-    role: 'user',
-    status: 'suspended',
-    licenseActive: true,
-    licenseKey: 'USER-SUSP-5678-9ABC',
-    warningMessage: 'Your account has been suspended due to violation of our terms of service.'
-  }
-];
-
-const mockLicenses: License[] = [
-  {
-    id: '1',
-    key: 'ADMIN-1234-5678-9ABC',
-    isActive: true,
-    userId: '2',
-    createdAt: '2023-01-01T00:00:00Z',
-    activatedAt: '2023-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    key: 'USER-WARN-5678-9ABC',
-    isActive: true,
-    userId: '3',
-    createdAt: '2023-01-02T00:00:00Z',
-    activatedAt: '2023-01-02T00:00:00Z'
-  },
-  {
-    id: '3',
-    key: 'USER-SUSP-5678-9ABC',
-    isActive: true,
-    userId: '4',
-    createdAt: '2023-01-03T00:00:00Z',
-    activatedAt: '2023-01-03T00:00:00Z'
-  },
-  {
-    id: '4',
-    key: 'FREE-1234-5678-9ABC',
-    isActive: false,
-    createdAt: '2023-01-04T00:00:00Z'
-  }
-];
-
-const mockChats: Chat[] = [
-  {
-    id: '1',
-    title: 'Getting started with AI',
-    userId: '1',
-    createdAt: '2023-01-15T00:00:00Z',
-    updatedAt: '2023-01-15T00:10:00Z',
-    messages: [
-      {
-        id: '1',
-        content: 'Hello, I\'m new to this system. Can you help me?',
-        role: 'user',
-        timestamp: '2023-01-15T00:00:00Z'
-      },
-      {
-        id: '2',
-        content: 'Hello! Welcome to the AI system. I\'d be happy to help you get started. What would you like to know?',
-        role: 'assistant',
-        timestamp: '2023-01-15T00:00:30Z'
-      }
-    ]
-  }
-];
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: "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",
+  dangerouslyAllowBrowser: true // Only for client-side usage
+});
 
 // Authentication methods
 export const loginUser = async (email: string, password: string): Promise<User> => {
-  // In a real app, this would verify credentials against your backend
-  const user = mockUsers.find(u => u.email === email);
-  
-  if (!user) {
-    return Promise.reject(new Error('Invalid email or password'));
-  }
-  
-  // For demo, we're pretending that any password works
-  return Promise.resolve(user);
+  // This is now handled in AuthContext using Firebase auth
+  // This function is kept for compatibility
+  return Promise.reject(new Error('This function is deprecated. Use AuthContext.login instead.'));
 };
 
 export const activateLicense = async (userId: string, licenseKey: string): Promise<User> => {
-  const license = mockLicenses.find(l => l.key === licenseKey && !l.isActive);
-  
-  if (!license) {
-    return Promise.reject(new Error('Invalid or already activated license key'));
-  }
-  
-  const user = mockUsers.find(u => u.id === userId);
-  if (!user) {
-    return Promise.reject(new Error('User not found'));
-  }
-  
-  // Update license and user
-  license.isActive = true;
-  license.userId = userId;
-  license.activatedAt = new Date().toISOString();
-  
-  user.licenseActive = true;
-  user.licenseKey = licenseKey;
-  
-  return Promise.resolve(user);
+  // This is now handled in AuthContext
+  // This function is kept for compatibility
+  return Promise.reject(new Error('This function is deprecated. Use AuthContext.activateUserLicense instead.'));
 };
 
 // Admin API methods
 export const getUsers = async (): Promise<User[]> => {
-  return Promise.resolve(mockUsers);
+  try {
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    return usersSnapshot.docs.map((doc) => doc.data() as User);
+  } catch (error) {
+    console.error('Error getting users:', error);
+    return Promise.reject(error);
+  }
 };
 
 export const updateUserStatus = async (userId: string, status: User['status'], warningMessage?: string): Promise<User> => {
-  const user = mockUsers.find(u => u.id === userId);
-  
-  if (!user) {
-    return Promise.reject(new Error('User not found'));
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      return Promise.reject(new Error('User not found'));
+    }
+    
+    const userData = userDoc.data() as User;
+    const updatedUser = {
+      ...userData,
+      status,
+      ...(warningMessage && { warningMessage })
+    };
+    
+    await updateDoc(userRef, updatedUser);
+    
+    return updatedUser;
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    return Promise.reject(error);
   }
-  
-  user.status = status;
-  if (warningMessage) {
-    user.warningMessage = warningMessage;
-  }
-  
-  return Promise.resolve(user);
 };
 
 export const generateLicense = async (): Promise<License> => {
-  // Generate a random license key
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let key = '';
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
+  try {
+    // Generate a random license key
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let key = '';
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      if (i < 3) key += '-';
     }
-    if (i < 3) key += '-';
+    
+    const newLicense: License = {
+      id: key, // Use the key as the ID
+      key,
+      isActive: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    // Add the license to Firestore
+    await setDoc(doc(db, 'licenses', key), newLicense);
+    
+    return newLicense;
+  } catch (error) {
+    console.error('Error generating license:', error);
+    return Promise.reject(error);
   }
-  
-  const newLicense: License = {
-    id: (mockLicenses.length + 1).toString(),
-    key,
-    isActive: false,
-    createdAt: new Date().toISOString()
-  };
-  
-  mockLicenses.push(newLicense);
-  
-  return Promise.resolve(newLicense);
 };
 
 export const getLicenses = async (): Promise<License[]> => {
-  return Promise.resolve(mockLicenses);
+  try {
+    const licensesSnapshot = await getDocs(collection(db, 'licenses'));
+    return licensesSnapshot.docs.map((doc) => doc.data() as License);
+  } catch (error) {
+    console.error('Error getting licenses:', error);
+    return Promise.reject(error);
+  }
 };
 
 // Chat API methods
 export const getUserChats = async (userId: string): Promise<Chat[]> => {
-  return Promise.resolve(mockChats.filter(c => c.userId === userId));
+  try {
+    const chatQuery = query(
+      collection(db, 'chats'),
+      where('userId', '==', userId),
+      orderBy('updatedAt', 'desc')
+    );
+    
+    const chatsSnapshot = await getDocs(chatQuery);
+    const chats: Chat[] = [];
+    
+    for (const chatDoc of chatsSnapshot.docs) {
+      const chatData = chatDoc.data();
+      
+      // Get messages for this chat
+      const messagesQuery = query(
+        collection(db, 'chats', chatDoc.id, 'messages'),
+        orderBy('timestamp', 'asc')
+      );
+      
+      const messagesSnapshot = await getDocs(messagesQuery);
+      const messages = messagesSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          content: data.content,
+          role: data.role,
+          timestamp: data.timestamp.toDate().toISOString()
+        } as ChatMessage;
+      });
+      
+      chats.push({
+        id: chatDoc.id,
+        title: chatData.title,
+        userId: chatData.userId,
+        createdAt: chatData.createdAt.toDate().toISOString(),
+        updatedAt: chatData.updatedAt.toDate().toISOString(),
+        messages
+      });
+    }
+    
+    return chats;
+  } catch (error) {
+    console.error('Error getting user chats:', error);
+    return Promise.reject(error);
+  }
 };
 
 export const getChatById = async (chatId: string): Promise<Chat | null> => {
-  const chat = mockChats.find(c => c.id === chatId);
-  return Promise.resolve(chat || null);
+  try {
+    const chatDoc = await getDoc(doc(db, 'chats', chatId));
+    
+    if (!chatDoc.exists()) {
+      return null;
+    }
+    
+    const chatData = chatDoc.data();
+    
+    // Get messages for this chat
+    const messagesQuery = query(
+      collection(db, 'chats', chatId, 'messages'),
+      orderBy('timestamp', 'asc')
+    );
+    
+    const messagesSnapshot = await getDocs(messagesQuery);
+    const messages = messagesSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        content: data.content,
+        role: data.role,
+        timestamp: data.timestamp.toDate().toISOString()
+      } as ChatMessage;
+    });
+    
+    return {
+      id: chatDoc.id,
+      title: chatData.title,
+      userId: chatData.userId,
+      createdAt: chatData.createdAt.toDate().toISOString(),
+      updatedAt: chatData.updatedAt.toDate().toISOString(),
+      messages
+    };
+  } catch (error) {
+    console.error('Error getting chat by ID:', error);
+    return Promise.reject(error);
+  }
 };
 
 export const createChat = async (userId: string, title: string): Promise<Chat> => {
-  const newChat: Chat = {
-    id: (mockChats.length + 1).toString(),
-    title,
-    userId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    messages: []
-  };
-  
-  mockChats.push(newChat);
-  
-  return Promise.resolve(newChat);
+  try {
+    const chatRef = await addDoc(collection(db, 'chats'), {
+      title,
+      userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    
+    const newChat: Chat = {
+      id: chatRef.id,
+      title,
+      userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: []
+    };
+    
+    return newChat;
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    return Promise.reject(error);
+  }
 };
 
 export const sendMessage = async (chatId: string, content: string): Promise<ChatMessage> => {
-  const chat = mockChats.find(c => c.id === chatId);
-  
-  if (!chat) {
-    return Promise.reject(new Error('Chat not found'));
-  }
-  
-  const userMessage: ChatMessage = {
-    id: (chat.messages.length + 1).toString(),
-    content,
-    role: 'user',
-    timestamp: new Date().toISOString()
-  };
-  
-  chat.messages.push(userMessage);
-  chat.updatedAt = new Date().toISOString();
-  
-  // In a real app, this would make a call to OpenAI API
-  setTimeout(() => {
-    const aiResponse: ChatMessage = {
-      id: (chat.messages.length + 1).toString(),
-      content: `This is a simulated AI response to: "${content}"`,
-      role: 'assistant',
+  try {
+    // Get the chat to ensure it exists
+    const chatDoc = await getDoc(doc(db, 'chats', chatId));
+    
+    if (!chatDoc.exists()) {
+      return Promise.reject(new Error('Chat not found'));
+    }
+    
+    // Add the user message
+    const userMessageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      content,
+      role: 'user',
+      timestamp: serverTimestamp()
+    });
+    
+    // Update the chat's updatedAt timestamp
+    await updateDoc(doc(db, 'chats', chatId), {
+      updatedAt: serverTimestamp()
+    });
+    
+    // Create and return the user message
+    const userMessage: ChatMessage = {
+      id: userMessageRef.id,
+      content,
+      role: 'user',
       timestamp: new Date().toISOString()
     };
-    chat.messages.push(aiResponse);
-    chat.updatedAt = new Date().toISOString();
-  }, 1000);
-  
-  return Promise.resolve(userMessage);
+    
+    // Generate AI response asynchronously
+    generateAiResponse(chatId, content);
+    
+    return userMessage;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return Promise.reject(error);
+  }
+};
+
+// Helper function to generate AI response
+const generateAiResponse = async (chatId: string, userMessage: string) => {
+  try {
+    // Get previous messages for context
+    const messagesQuery = query(
+      collection(db, 'chats', chatId, 'messages'),
+      orderBy('timestamp', 'asc')
+    );
+    
+    const messagesSnapshot = await getDocs(messagesQuery);
+    const messages = messagesSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        role: data.role,
+        content: data.content
+      };
+    });
+    
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        ...messages
+      ]
+    });
+    
+    const aiResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+    
+    // Add the AI response to the chat
+    await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      content: aiResponse,
+      role: 'assistant',
+      timestamp: serverTimestamp()
+    });
+    
+    // Update the chat's updatedAt timestamp
+    await updateDoc(doc(db, 'chats', chatId), {
+      updatedAt: serverTimestamp()
+    });
+    
+  } catch (error) {
+    console.error('Error generating AI response:', error);
+    
+    // Add an error message
+    await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      content: "Sorry, I encountered an error while generating a response. Please try again.",
+      role: 'assistant',
+      timestamp: serverTimestamp()
+    });
+    
+    // Update the chat's updatedAt timestamp
+    await updateDoc(doc(db, 'chats', chatId), {
+      updatedAt: serverTimestamp()
+    });
+  }
 };

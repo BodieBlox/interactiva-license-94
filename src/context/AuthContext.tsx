@@ -1,7 +1,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { User } from '../utils/types';
-import { loginUser, activateLicense } from '../utils/api';
+import { auth, db } from '../utils/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -20,31 +22,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for stored user in localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setIsLoading(true);
+      if (firebaseUser) {
+        try {
+          // Get the user data from Firestore
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          
+          if (userDoc.exists()) {
+            // User exists in Firestore, use that data
+            setUser(userDoc.data() as User);
+          } else {
+            // User exists in Auth but not in Firestore, create a new user document
+            const newUser: User = {
+              id: firebaseUser.uid,
+              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email || '',
+              role: 'user',
+              status: 'active',
+              licenseActive: false
+            };
+            
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+            setUser(newUser);
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setError(`Error fetching user data: ${(error as Error).message}`);
+        }
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const loggedInUser = await loginUser(email, password);
-      setUser(loggedInUser);
-      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      await signInWithEmailAndPassword(auth, email, password);
+      // User state will be updated by the onAuthStateChanged listener
     } catch (error) {
+      console.error('Login error:', error);
       setError((error as Error).message);
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      // User state will be updated by the onAuthStateChanged listener
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError((error as Error).message);
+    }
   };
 
   const activateUserLicense = async (licenseKey: string) => {
@@ -53,10 +88,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const updatedUser = await activateLicense(user.id, licenseKey);
+      // Check if the license key exists and is not activated
+      const licenseQuery = await getDoc(doc(db, 'licenses', licenseKey));
+      
+      if (!licenseQuery.exists()) {
+        throw new Error('Invalid license key');
+      }
+      
+      const license = licenseQuery.data();
+      
+      if (license.isActive && license.userId !== user.id) {
+        throw new Error('License key is already activated by another user');
+      }
+      
+      // Update the license
+      await updateDoc(doc(db, 'licenses', licenseKey), {
+        isActive: true,
+        userId: user.id,
+        activatedAt: new Date().toISOString()
+      });
+      
+      // Update the user
+      const updatedUser = {
+        ...user,
+        licenseActive: true,
+        licenseKey: licenseKey
+      };
+      
+      await updateDoc(doc(db, 'users', user.id), updatedUser);
+      
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
+      console.error('License activation error:', error);
       setError((error as Error).message);
     } finally {
       setIsLoading(false);

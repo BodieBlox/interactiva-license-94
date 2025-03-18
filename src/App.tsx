@@ -13,6 +13,8 @@ import { DashboardContent } from "./components/dashboard/Dashboard";
 import { ChatInterface } from "./components/dashboard/ChatInterface";
 import { LicenseGenerator } from "./components/admin/LicenseGenerator";
 import { UserManagement } from "./components/admin/UserManagement";
+import { AdminPanel } from "./components/admin/AdminPanel";
+import { AppLayout } from "./components/layout/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -27,10 +29,31 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginForm />} />
             <Route path="/activate" element={<LicenseActivation />} />
-            <Route path="/dashboard" element={<DashboardContent />} />
-            <Route path="/chat/:chatId" element={<ChatInterface chatId="new" />} />
-            <Route path="/admin" element={<UserManagement />} />
-            <Route path="/admin/licenses" element={<LicenseGenerator />} />
+            <Route path="/dashboard" element={
+              <AppLayout requireAuth={true} requireLicense={true}>
+                <DashboardContent />
+              </AppLayout>
+            } />
+            <Route path="/chat/:chatId" element={
+              <AppLayout requireAuth={true} requireLicense={true}>
+                <ChatInterface chatId="new" />
+              </AppLayout>
+            } />
+            <Route path="/admin" element={
+              <AppLayout requireAuth={true} requireAdmin={true}>
+                <AdminPanel />
+              </AppLayout>
+            } />
+            <Route path="/admin/licenses" element={
+              <AppLayout requireAuth={true} requireAdmin={true}>
+                <LicenseGenerator />
+              </AppLayout>
+            } />
+            <Route path="/admin/users" element={
+              <AppLayout requireAuth={true} requireAdmin={true}>
+                <UserManagement />
+              </AppLayout>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

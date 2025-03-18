@@ -26,7 +26,7 @@ const Index = () => {
                   <span>Sign In</span>
                 </Button>
               </Link>
-              <Link to="/admin/login">
+              <Link to="/admin">
                 <Button size="lg" variant="outline" className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
                   <span>Admin Access</span>
