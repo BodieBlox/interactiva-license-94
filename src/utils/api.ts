@@ -1,3 +1,4 @@
+
 import { get, ref, set, push, update, remove } from "firebase/database";
 import { database } from "./firebase";
 import { Chat, ChatMessage, User, License } from "./types";
@@ -41,7 +42,7 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'warne
   }
   
   const user = userSnapshot.val() as User;
-  const updates: {status: string, warningMessage?: string} = { status };
+  const updates: {status: 'active' | 'warned' | 'suspended', warningMessage?: string} = { status };
   
   if (warningMessage) {
     updates.warningMessage = warningMessage;

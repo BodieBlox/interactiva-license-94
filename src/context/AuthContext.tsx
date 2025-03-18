@@ -1,10 +1,11 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
 import { User } from '../utils/types';
 import { auth, database } from '../utils/firebase';
 import { toast } from '@/components/ui/use-toast';
+import { getUserByEmail } from '@/utils/api';
 
 interface AuthContextType {
   user: User | null;
@@ -27,13 +28,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       if (firebaseUser) {
         try {
-          // Get the user data from Realtime Database
-          const userRef = ref(database, `users/${firebaseUser.uid}`);
-          const userSnapshot = await get(userRef);
+          // Get the user data from Realtime Database by email
+          const userFromDB = await getUserByEmail(firebaseUser.email || '');
           
-          if (userSnapshot.exists()) {
+          if (userFromDB) {
             // User exists in Database, use that data
-            setUser(userSnapshot.val() as User);
+            setUser(userFromDB);
           } else {
             // User exists in Auth but not in Database, create a new user document
             const newUser: User = {
@@ -45,7 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               licenseActive: false
             };
             
-            await set(userRef, newUser);
+            // Save user in the database with their uid as the key
+            await set(ref(database, `users/${firebaseUser.uid}`), newUser);
             setUser(newUser);
           }
         } catch (error) {
