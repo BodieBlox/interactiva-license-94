@@ -97,7 +97,7 @@ export const ChatInterface = () => {
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const updatedChat = await getChatById(currentChatId);
-        if (updatedChat && updatedChat.messages.length > messageCount) {
+        if (updatedChat && updatedChat.messages && updatedChat.messages.length > messageCount) {
           setChat(updatedChat);
           clearInterval(pollingIntervalRef.current as NodeJS.Timeout);
           setIsPolling(false);
@@ -132,7 +132,7 @@ export const ChatInterface = () => {
       // Clear the input field immediately
       setMessage('');
       
-      const currentMessageCount = chat.messages.length;
+      const currentMessageCount = chat.messages?.length || 0;
       
       // Send the message
       const sentMessage = await sendMessage(chat.id, messageContent);
@@ -141,9 +141,11 @@ export const ChatInterface = () => {
       setChat((prevChat) => {
         if (!prevChat) return null;
         
+        const updatedMessages = prevChat.messages ? [...prevChat.messages, sentMessage] : [sentMessage];
+        
         return {
           ...prevChat,
-          messages: [...prevChat.messages, sentMessage],
+          messages: updatedMessages,
           updatedAt: new Date().toISOString()
         };
       });
@@ -181,6 +183,8 @@ export const ChatInterface = () => {
     );
   }
 
+  const hasMessages = chat?.messages && chat.messages.length > 0;
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -200,7 +204,7 @@ export const ChatInterface = () => {
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {chat?.messages.length === 0 ? (
+        {!hasMessages ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Bot className="h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-medium">How can I help you today?</h2>
