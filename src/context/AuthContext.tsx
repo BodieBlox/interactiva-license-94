@@ -110,14 +110,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Check if the license key exists and is not activated
+      // Look up the license directly by key
       const licenseRef = ref(database, `licenses/${licenseKey}`);
       const licenseSnapshot = await get(licenseRef);
       
       if (!licenseSnapshot.exists()) {
         // For the demo, allow a special key to always work
         if (licenseKey === 'FREE-1234-5678-9ABC') {
-          // Create the license if it doesn't exist
+          // Create the license with key as ID if it doesn't exist
           await set(licenseRef, {
             id: licenseKey,
             key: licenseKey,

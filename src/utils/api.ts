@@ -1,4 +1,3 @@
-
 import { get, ref, set, push, update, remove } from "firebase/database";
 import { database } from "./firebase";
 import { Chat, ChatMessage, User, License } from "./types";
@@ -170,21 +169,20 @@ export const generateLicense = async (): Promise<License> => {
 };
 
 export const createLicense = async (): Promise<License> => {
-  const licensesRef = ref(database, 'licenses');
-  const newLicenseRef = push(licensesRef);
-  const licenseId = newLicenseRef.key as string;
-  
   // Generate a random license key
   const licenseKey = generateLicenseKey();
   
+  // Use the license key as the ID in the database path
+  const licenseRef = ref(database, `licenses/${licenseKey}`);
+  
   const newLicense: License = {
-    id: licenseId,
+    id: licenseKey,
     key: licenseKey,
     isActive: false,
     createdAt: new Date().toISOString()
   };
   
-  await set(newLicenseRef, newLicense);
+  await set(licenseRef, newLicense);
   return newLicense;
 };
 
