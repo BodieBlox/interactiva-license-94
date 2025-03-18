@@ -35,7 +35,7 @@ export const ChatList = ({ chats }: ChatListProps) => {
                 <div>
                   <h3 className="font-medium">{chat.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {chat.messages.length} message{chat.messages.length !== 1 ? 's' : ''}
+                    {chat.messages && chat.messages.length ? `${chat.messages.length} message${chat.messages.length !== 1 ? 's' : ''}` : '0 messages'}
                   </p>
                 </div>
               </div>
