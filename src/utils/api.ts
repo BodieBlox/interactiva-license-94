@@ -169,10 +169,8 @@ export const generateLicense = async (): Promise<License> => {
 };
 
 export const createLicense = async (): Promise<License> => {
-  // Generate a random license key
   const licenseKey = generateLicenseKey();
   
-  // Use the license key as the ID in the database path
   const licenseRef = ref(database, `licenses/${licenseKey}`);
   
   const newLicense: License = {
@@ -189,6 +187,88 @@ export const createLicense = async (): Promise<License> => {
 export const deleteLicense = async (licenseId: string): Promise<void> => {
   const licenseRef = ref(database, `licenses/${licenseId}`);
   await remove(licenseRef);
+};
+
+// New functions for license management
+export const suspendLicense = async (licenseId: string): Promise<License> => {
+  const licenseRef = ref(database, `licenses/${licenseId}`);
+  const licenseSnapshot = await get(licenseRef);
+  
+  if (!licenseSnapshot.exists()) {
+    throw new Error('License not found');
+  }
+  
+  const license = licenseSnapshot.val() as License;
+  
+  if (!license.userId) {
+    throw new Error('License is not activated');
+  }
+  
+  await update(licenseRef, {
+    isActive: false,
+    suspendedAt: new Date().toISOString()
+  });
+  
+  const userRef = ref(database, `users/${license.userId}`);
+  await update(userRef, {
+    licenseActive: false
+  });
+  
+  return {
+    ...license,
+    isActive: false,
+    suspendedAt: new Date().toISOString()
+  };
+};
+
+export const revokeLicense = async (licenseId: string): Promise<void> => {
+  const licenseRef = ref(database, `licenses/${licenseId}`);
+  const licenseSnapshot = await get(licenseRef);
+  
+  if (!licenseSnapshot.exists()) {
+    throw new Error('License not found');
+  }
+  
+  const license = licenseSnapshot.val() as License;
+  
+  if (license.userId) {
+    const userRef = ref(database, `users/${license.userId}`);
+    await update(userRef, {
+      licenseActive: false,
+      licenseKey: null
+    });
+    
+    await update(licenseRef, {
+      isActive: false,
+      userId: null,
+      activatedAt: null,
+      suspendedAt: null
+    });
+  }
+};
+
+export const clearUserChatHistory = async (userId: string): Promise<void> => {
+  const chatsRef = ref(database, 'chats');
+  const snapshot = await get(chatsRef);
+  
+  if (snapshot.exists()) {
+    const chats = snapshot.val();
+    const promises: Promise<void>[] = [];
+    
+    Object.entries(chats).forEach(([chatId, chat]) => {
+      if ((chat as Chat).userId === userId) {
+        const chatRef = ref(database, `chats/${chatId}`);
+        promises.push(remove(chatRef));
+      }
+    });
+    
+    await Promise.all(promises);
+  }
+};
+
+export const deleteChat = async (chatId: string): Promise<void> => {
+  const chatRef = ref(database, `chats/${chatId}`);
+  await remove(chatRef);
 };
 
 // Helpers
