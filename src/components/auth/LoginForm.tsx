@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,18 @@ import { toast } from '@/components/ui/use-toast';
 export const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle redirection when user logs in
+  useEffect(() => {
+    if (user) {
+      // Check if we should redirect to a specific page (from state)
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +38,7 @@ export const LoginForm = () => {
     
     try {
       await login(email, password);
-      // Success will redirect in AppLayout
+      // Redirection happens in useEffect above
     } catch (error) {
       console.error('Login error:', error);
     }

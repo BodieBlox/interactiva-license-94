@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { toast } from '@/components/ui/use-toast';
@@ -20,9 +20,11 @@ export const AppLayout = ({
 }: AppLayoutProps) => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
+    // Only run redirects if we're not loading
     if (isLoading) return;
 
     if (requireAuth && !user) {
@@ -53,11 +55,17 @@ export const AppLayout = ({
       return;
     }
 
+    // If we're on login page and already authenticated, redirect to dashboard
+    if (location.pathname === '/login' && user) {
+      navigate('/dashboard');
+      return;
+    }
+
     // Show warning notification if the user has a warning or is suspended
     if (user && (user.status === 'warned' || user.status === 'suspended')) {
       setShowWarning(true);
     }
-  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate]);
+  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname]);
 
   if (isLoading) {
     return (

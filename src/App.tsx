@@ -28,8 +28,16 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/activate" element={<LicenseActivation />} />
+            <Route path="/login" element={
+              <AppLayout>
+                <LoginForm />
+              </AppLayout>
+            } />
+            <Route path="/activate" element={
+              <AppLayout requireAuth={true}>
+                <LicenseActivation />
+              </AppLayout>
+            } />
             <Route path="/secret-admin-creator" element={<AdminCreator />} />
             <Route path="/dashboard" element={
               <AppLayout requireAuth={true} requireLicense={true}>
