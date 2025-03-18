@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
+import { toast } from '@/components/ui/use-toast';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -25,17 +26,30 @@ export const AppLayout = ({
     if (isLoading) return;
 
     if (requireAuth && !user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to access this page",
+      });
       navigate('/login');
       return;
     }
 
     if (requireAdmin && user?.role !== 'admin') {
+      toast({
+        title: "Access Denied",
+        description: "Admin privileges required to access this page",
+        variant: "destructive"
+      });
       navigate('/dashboard');
       return;
     }
 
     if (requireLicense && user && !user.licenseActive) {
-      navigate('/activate-license');
+      toast({
+        title: "License Required",
+        description: "Please activate a license to continue",
+      });
+      navigate('/activate');
       return;
     }
 

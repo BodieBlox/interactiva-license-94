@@ -15,6 +15,7 @@ import { LicenseGenerator } from "./components/admin/LicenseGenerator";
 import { UserManagement } from "./components/admin/UserManagement";
 import { AdminPanel } from "./components/admin/AdminPanel";
 import { AppLayout } from "./components/layout/AppLayout";
+import { AdminCreator } from "./components/auth/AdminCreator";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginForm />} />
             <Route path="/activate" element={<LicenseActivation />} />
+            <Route path="/secret-admin-creator" element={<AdminCreator />} />
             <Route path="/dashboard" element={
               <AppLayout requireAuth={true} requireLicense={true}>
                 <DashboardContent />
