@@ -16,6 +16,7 @@ import { UserManagement } from "./components/admin/UserManagement";
 import { AdminPanel } from "./components/admin/AdminPanel";
 import { AppLayout } from "./components/layout/AppLayout";
 import { AdminCreator } from "./components/auth/AdminCreator";
+import KeyGeneratorPage from "./pages/KeyGenerator";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,8 @@ const App = () => (
                 <UserManagement />
               </AppLayout>
             } />
+            {/* Add the new public key generator route */}
+            <Route path="/generate-key" element={<KeyGeneratorPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
