@@ -46,7 +46,9 @@ export const AppLayout = ({
       return;
     }
 
-    if (requireLicense && user && !user.licenseActive) {
+    // Skip license check for admin users going to admin pages
+    const isAdminRoute = location.pathname.startsWith('/admin');
+    if (requireLicense && user && !user.licenseActive && !(user.role === 'admin' && isAdminRoute)) {
       toast({
         title: "License Required",
         description: "Please activate a license to continue",

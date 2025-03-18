@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/utils/firebase';
+import { ref, set } from 'firebase/database';
+import { auth, database } from '@/utils/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,8 +38,8 @@ export const AdminCreator = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Create a user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      // Create a user document in Realtime Database
+      await set(ref(database, `users/${user.uid}`), {
         id: user.uid,
         username: email.split('@')[0],
         email: email,
@@ -88,8 +88,8 @@ export const AdminCreator = () => {
       const userRecord = await auth.currentUser;
       const uid = userRecord?.uid || 'U3HZYimHJAMqmzHBh9nb5DvsRJz2'; // Fallback ID from your console logs
       
-      // Create a user document in Firestore
-      await setDoc(doc(db, 'users', uid), {
+      // Create a user document in Realtime Database
+      await set(ref(database, `users/${uid}`), {
         id: uid,
         username: 'dbrenner512',
         email: 'dbrenner512@gmail.com',
