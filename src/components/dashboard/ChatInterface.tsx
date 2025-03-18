@@ -1,19 +1,16 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
-import { getChatById, createChat, sendMessage } from '@/utils/api';
+import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
-interface ChatInterfaceProps {
-  chatId: string | 'new';
-}
-
-export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
+export const ChatInterface = () => {
+  const { chatId } = useParams<{ chatId: string }>();
   const { user } = useAuth();
   const [chat, setChat] = useState<Chat | null>(null);
   const [message, setMessage] = useState('');
@@ -21,6 +18,11 @@ export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  
+  // Track if we're already polling for AI responses
+  const [isPolling, setIsPolling] = useState(false);
+  // Ref to hold polling interval
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchChat = async () => {
@@ -41,7 +43,7 @@ export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
         } finally {
           setIsLoading(false);
         }
-      } else {
+      } else if (chatId) {
         try {
           const fetchedChat = await getChatById(chatId);
           if (fetchedChat) {
@@ -68,6 +70,13 @@ export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
     };
 
     fetchChat();
+    
+    return () => {
+      // Cleanup polling interval when component unmounts
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, [chatId, user, navigate]);
 
   useEffect(() => {
@@ -75,15 +84,58 @@ export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages]);
 
+  const startPollingForResponse = async (currentChatId: string, messageCount: number) => {
+    if (isPolling) return;
+    
+    setIsPolling(true);
+    
+    // Clear any existing interval first
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const updatedChat = await getChatById(currentChatId);
+        if (updatedChat && updatedChat.messages.length > messageCount) {
+          setChat(updatedChat);
+          clearInterval(pollingIntervalRef.current as NodeJS.Timeout);
+          setIsPolling(false);
+        }
+      } catch (error) {
+        console.error('Error polling for chat updates:', error);
+        // Stop polling on error
+        clearInterval(pollingIntervalRef.current as NodeJS.Timeout);
+        setIsPolling(false);
+      }
+    }, 1000);
+    
+    // Safety timeout to avoid infinite polling
+    setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        setIsPolling(false);
+      }
+    }, 30000);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !chat) return;
+    if (!message.trim() || !chat || isSending) return;
     
     setIsSending(true);
     try {
-      const sentMessage = await sendMessage(chat.id, message);
+      // Use the message content from state
+      const messageContent = message;
+      
+      // Clear the input field immediately
       setMessage('');
+      
+      const currentMessageCount = chat.messages.length;
+      
+      // Send the message
+      const sentMessage = await sendMessage(chat.id, messageContent);
       
       // Update local state
       setChat((prevChat) => {
@@ -91,21 +143,13 @@ export const ChatInterface = ({ chatId }: ChatInterfaceProps) => {
         
         return {
           ...prevChat,
-          messages: [...prevChat.messages, sentMessage]
+          messages: [...prevChat.messages, sentMessage],
+          updatedAt: new Date().toISOString()
         };
       });
       
-      // Set up polling to check for AI response
-      const pollInterval = setInterval(async () => {
-        const updatedChat = await getChatById(chat.id);
-        if (updatedChat && updatedChat.messages.length > chat.messages.length) {
-          setChat(updatedChat);
-          clearInterval(pollInterval);
-        }
-      }, 1000);
-      
-      // Clear the interval after 30 seconds to prevent infinite polling
-      setTimeout(() => clearInterval(pollInterval), 30000);
+      // Start polling for AI response with the current message count
+      startPollingForResponse(chat.id, currentMessageCount + 1);
       
     } catch (error) {
       console.error('Error sending message:', error);

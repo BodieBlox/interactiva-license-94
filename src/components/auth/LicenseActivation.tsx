@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,15 @@ import { KeyRound } from 'lucide-react';
 
 export const LicenseActivation = () => {
   const [licenseKey, setLicenseKey] = useState('');
-  const { activateUserLicense, isLoading, error } = useAuth();
+  const { user, activateUserLicense, isLoading, error } = useAuth();
+  const navigate = useNavigate();
+
+  // Use the user data to check if we should redirect
+  useEffect(() => {
+    if (user?.licenseActive) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +39,8 @@ export const LicenseActivation = () => {
         title: "Success",
         description: "License key activated successfully",
       });
-      // Redirection will happen in AppLayout
+      // Navigate to dashboard after successful activation
+      navigate('/dashboard');
     } catch (error) {
       console.error('License activation error:', error);
     }

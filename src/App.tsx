@@ -47,7 +47,7 @@ const App = () => (
             } />
             <Route path="/chat/:chatId" element={
               <AppLayout requireAuth={true} requireLicense={true}>
-                <ChatInterface chatId="new" />
+                <ChatInterface />
               </AppLayout>
             } />
             <Route path="/admin" element={
@@ -65,7 +65,6 @@ const App = () => (
                 <UserManagement />
               </AppLayout>
             } />
-            {/* Add the new public key generator route */}
             <Route path="/generate-key" element={<KeyGeneratorPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

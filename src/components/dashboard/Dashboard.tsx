@@ -7,7 +7,7 @@ import { getUserChats } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { ChatList } from './ChatList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquarePlus, User, LogOut } from 'lucide-react';
+import { MessageSquarePlus, Shield, LogOut } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 export const DashboardContent = () => {
@@ -55,8 +55,8 @@ export const DashboardContent = () => {
         <div className="flex space-x-3">
           {user?.role === 'admin' && (
             <Link to="/admin">
-              <Button variant="outline" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
+              <Button className="bg-amber-500 hover:bg-amber-600 transition-apple flex items-center gap-2">
+                <Shield className="h-4 w-4" />
                 <span>Admin Panel</span>
               </Button>
             </Link>
@@ -69,6 +69,23 @@ export const DashboardContent = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        {user?.role === 'admin' && (
+          <Card className="glass-panel shadow-lg border-0 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="p-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-medium text-amber-800 dark:text-amber-300">Administrator Access</h2>
+                <p className="text-amber-700 dark:text-amber-400 text-sm">You have access to the admin panel</p>
+              </div>
+              <Link to="/admin">
+                <Button className="bg-amber-500 hover:bg-amber-600 transition-apple flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  <span>Admin Panel</span>
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="glass-panel shadow-lg border-0">
           <CardHeader>
             <CardTitle>Your Conversations</CardTitle>
@@ -98,3 +115,4 @@ export const DashboardContent = () => {
     </div>
   );
 };
+
