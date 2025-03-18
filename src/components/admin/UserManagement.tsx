@@ -88,7 +88,9 @@ export const UserManagement = () => {
       const updatedUser = await updateUserStatus(selectedUser.id, status, message);
       
       // Update the local state
-      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
+      setUsers(prevUsers => prevUsers.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      ));
       
       toast({
         title: "Success",

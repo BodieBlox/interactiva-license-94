@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { License } from '@/utils/types';
-import { getLicenses, generateLicense } from '@/utils/api';
+import { getAllLicenses, createLicense } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ export const LicenseGenerator = () => {
   useEffect(() => {
     const fetchLicenses = async () => {
       try {
-        const allLicenses = await getLicenses();
+        const allLicenses = await getAllLicenses();
         setLicenses(allLicenses);
       } catch (error) {
         console.error('Error fetching licenses:', error);
@@ -37,7 +37,7 @@ export const LicenseGenerator = () => {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const newLicense = await generateLicense();
+      const newLicense = await createLicense();
       setLicenses([newLicense, ...licenses]);
       toast({
         title: "License Generated",

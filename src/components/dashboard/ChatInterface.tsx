@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
-import { getChatById, sendMessage, createChat } from '@/utils/api';
+import { getChatById, createChat, sendMessage } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';

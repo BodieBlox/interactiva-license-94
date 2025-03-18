@@ -1,4 +1,3 @@
-
 import { get, ref, set, push, update, remove } from "firebase/database";
 import { database } from "./firebase";
 import { Chat, ChatMessage, User, License } from "./types";
@@ -18,7 +17,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   return null;
 };
 
-export const getAllUsers = async (): Promise<User[]> => {
+export const getUsers = async (): Promise<User[]> => {
   const usersRef = ref(database, 'users');
   const snapshot = await get(usersRef);
   
@@ -30,8 +29,18 @@ export const getAllUsers = async (): Promise<User[]> => {
   return [];
 };
 
-export const updateUserStatus = async (userId: string, status: 'active' | 'warned' | 'suspended', warningMessage?: string): Promise<void> => {
+// Aliasing getAllUsers as getUsers for compatibility
+export const getAllUsers = getUsers;
+
+export const updateUserStatus = async (userId: string, status: 'active' | 'warned' | 'suspended', warningMessage?: string): Promise<User> => {
   const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
   const updates: {status: string, warningMessage?: string} = { status };
   
   if (warningMessage) {
@@ -39,6 +48,9 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'warne
   }
   
   await update(userRef, updates);
+  
+  // Return the updated user
+  return { ...user, ...updates };
 };
 
 // Chat API functions
@@ -98,6 +110,17 @@ export const createChat = async (userId: string, title: string): Promise<Chat> =
   return newChat;
 };
 
+export const sendMessage = async (chatId: string, content: string): Promise<ChatMessage> => {
+  const now = new Date().toISOString();
+  const message: Omit<ChatMessage, 'id'> = {
+    content,
+    role: 'user',
+    timestamp: now
+  };
+  
+  return addMessageToChat(chatId, message);
+};
+
 export const addMessageToChat = async (chatId: string, message: Omit<ChatMessage, 'id'>): Promise<ChatMessage> => {
   const chatRef = ref(database, `chats/${chatId}`);
   const chatSnapshot = await get(chatRef);
@@ -125,6 +148,10 @@ export const addMessageToChat = async (chatId: string, message: Omit<ChatMessage
 };
 
 // License API functions
+export const getLicenses = async (): Promise<License[]> => {
+  return getAllLicenses();
+};
+
 export const getAllLicenses = async (): Promise<License[]> => {
   const licensesRef = ref(database, 'licenses');
   const snapshot = await get(licensesRef);
@@ -135,6 +162,10 @@ export const getAllLicenses = async (): Promise<License[]> => {
   }
   
   return [];
+};
+
+export const generateLicense = async (): Promise<License> => {
+  return createLicense();
 };
 
 export const createLicense = async (): Promise<License> => {
