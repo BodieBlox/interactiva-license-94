@@ -66,13 +66,14 @@ export const AppLayout = ({
     // Check if user needs a license
     const checkLicense = async () => {
       if (user && !isActivationRoute) {
+        // Always check license validity
         const needsLicense = !user.licenseActive || await checkLicenseValidity();
         
         if (needsLicense && !(user.role === 'admin' && isAdminRoute)) {
           if (location.pathname !== '/activate') {
-            navigate('/activate');
+            setShowLicenseDialog(true);
+            return true;
           }
-          return true;
         }
       }
       return false;
@@ -108,7 +109,7 @@ export const AppLayout = ({
     if (user && user.status === 'warned') {
       setShowWarning(true);
     }
-  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname]);
+  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname, checkLicenseValidity]);
 
   const handleWarningContinue = () => {
     setShowWarningDialog(false);

@@ -18,6 +18,14 @@ export interface DashboardCustomization {
   logo?: string;
   companyName?: string;
   approved?: boolean;
+  pendingInvitation?: CompanyInvitation;
+}
+
+export interface CompanyInvitation {
+  fromUserId: string;
+  fromUsername: string;
+  companyName: string;
+  timestamp: string;
 }
 
 export interface License {

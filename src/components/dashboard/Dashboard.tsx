@@ -118,9 +118,9 @@ export const DashboardContent = () => {
         </div>
       </div>
 
-      {/* Create New Conversation Button - Prominently displayed */}
+      {/* Create New Conversation Button - Prominently displayed with improved visibility */}
       <Link to="/chat/new" className="block mb-6">
-        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30">
+        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30 text-white dark:text-white shadow-primary/20 font-medium">
           <MessageSquarePlus className="h-5 w-5" />
           <span>Create New Conversation</span>
         </Button>
