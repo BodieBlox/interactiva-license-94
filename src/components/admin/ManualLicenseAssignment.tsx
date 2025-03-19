@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { generateLicense, getAllUsers } from '@/utils/api';
+import { generateLicense, getAllUsers, assignLicenseToUser } from '@/utils/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Key, UserCog, UserCheck, Calendar, Infinity } from 'lucide-react';
 import { User } from '@/utils/types';
@@ -35,19 +36,15 @@ export default function ManualLicenseAssignment() {
 
     setIsAssigning(true);
     try {
-      // Only pass expirationDays if showExpiration is true
-      const expiration = showExpiration ? expirationDays : null;
-      
       // Generate a new license
       const licenseKey = await generateLicense();
       
-      // Update the user's license information directly in the database
-      // Since assignLicenseToUser doesn't exist, we'll need to implement this differently
-      // For now, show a success message but in reality we would need to add this function to the API
+      // Assign the license to the user
+      await assignLicenseToUser(selectedUserId, licenseKey.key);
       
       toast({
-        title: "License Generated",
-        description: `License key ${licenseKey.key} was generated. Please manually assign it to the user.`,
+        title: "License Assigned",
+        description: `A ${showExpiration ? 'temporary' : 'permanent'} license has been assigned to the user`,
         variant: "success"
       });
       

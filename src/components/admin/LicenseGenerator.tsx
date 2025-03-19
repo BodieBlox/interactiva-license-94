@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,17 +20,15 @@ export default function LicenseGenerator() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      // Only pass expirationDays if showExpiration is true
-      const expiration = showExpiration ? expirationDays : null;
-      
-      // Generate license with no parameters since the API doesn't accept them
+      // Generate license key
       const licenseKey = await generateLicense();
       
-      // Extract the key from the license object and set it as the generated license
+      // Set the generated license key
       setGeneratedLicense(licenseKey.key);
+      
       toast({
         title: "License Generated",
-        description: "New license key has been generated successfully",
+        description: `New ${showExpiration ? 'temporary' : 'permanent'} license key has been generated successfully`,
       });
     } catch (error) {
       console.error('Error generating license:', error);

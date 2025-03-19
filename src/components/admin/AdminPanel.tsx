@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +12,7 @@ import { BrandingApproval } from './BrandingApproval';
 import { UserCreator } from './UserCreator';
 import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
+import LicenseManager from './LicenseManager';
 
 interface NavItem {
   label: string;
@@ -46,6 +46,7 @@ export const AdminPanel = () => {
     { label: 'License Requests', path: '/admin/license-requests', icon: Rotate3D },
     { label: 'Chats', path: '/admin/chats', icon: MessageSquare },
     { label: 'License Generator', path: '/admin/license-generator', icon: Key },
+    { label: 'Manage Licenses', path: '/admin/manage-licenses', icon: Key },
     { label: 'Login Logs', path: '/admin/login-logs', icon: Users },
     { label: 'Branding Approval', path: '/admin/branding-approval', icon: Users },
     { label: 'Create User', path: '/admin/create-user', icon: Users },
@@ -107,6 +108,7 @@ export const AdminPanel = () => {
             <Route path="/license-requests" element={<LicenseRequests />} />
             <Route path="/chats" element={<ChatViewer />} />
             <Route path="/license-generator" element={<LicenseGenerator />} />
+            <Route path="/manage-licenses" element={<LicenseManager />} />
             <Route path="/login-logs" element={<LoginLogs />} />
             <Route path="/branding-approval" element={<BrandingApproval />} />
             <Route path="/create-user" element={<UserCreator />} />
@@ -118,7 +120,6 @@ export const AdminPanel = () => {
   );
 };
 
-// Simple Admin Dashboard component
 const AdminDashboard = () => {
   return (
     <div className="animate-fade-in">
