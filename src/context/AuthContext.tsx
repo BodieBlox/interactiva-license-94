@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -73,8 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const ip = await fetchIP();
               await logUserLogin(
                 userFromDB.id, 
-                ip, 
-                navigator.userAgent
+                { ip, userAgent: navigator.userAgent }
               );
             } catch (e) {
               console.error("Error logging login:", e);

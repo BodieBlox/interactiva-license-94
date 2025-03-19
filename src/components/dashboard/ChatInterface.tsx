@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -23,10 +22,8 @@ export const ChatInterface = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  // Check if this is a new chat
   const isNew = chatId === 'new';
 
-  // Fetch existing chat or create a new one
   useEffect(() => {
     const initializeChat = async () => {
       if (!user) {
@@ -36,18 +33,15 @@ export const ChatInterface = () => {
 
       setIsLoading(true);
       try {
-        // Handle new chat creation
         if (isNew) {
           const newChat = await createChat(user.id, 'New conversation');
           if (newChat && newChat.id) {
             setChat(newChat);
-            // Navigate to the new chat
             navigate(`/chat/${newChat.id}`, { replace: true });
           } else {
             throw new Error('Failed to create chat - no chat ID returned');
           }
         } 
-        // Handle existing chat
         else if (chatId) {
           const fetchedChat = await getChatById(chatId);
           if (fetchedChat) {
@@ -80,14 +74,11 @@ export const ChatInterface = () => {
   }, [user, chatId, isNew, navigate]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages]);
 
-  // Handle AI responses
   const handleAIResponse = async (userMessageContent: string, currentChat: Chat) => {
     try {
-      // First, add a placeholder message to show AI is typing
       const loadingMessageId = `loading_${Date.now()}`;
       setChat((prevChat) => {
         if (!prevChat) return null;
@@ -109,17 +100,13 @@ export const ChatInterface = () => {
         };
       });
       
-      // Generate AI response
       const aiMessage = await generateAIResponse(userMessageContent);
       
-      // Add AI response to the chat
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
-        role: 'assistant',
-        timestamp: new Date().toISOString()
+        role: 'assistant'
       });
       
-      // Remove the loading message and add the real AI response
       setChat((prevChat) => {
         if (!prevChat) return null;
         
@@ -137,7 +124,6 @@ export const ChatInterface = () => {
         };
       });
       
-      // Fetch the updated chat to update the UI with correct data from server
       const updatedChat = await getChatById(currentChat.id);
       if (updatedChat) {
         setChat(updatedChat);
@@ -146,7 +132,6 @@ export const ChatInterface = () => {
     } catch (error) {
       console.error('Error generating AI response:', error);
       
-      // Remove the loading message first
       setChat((prevChat) => {
         if (!prevChat) return null;
         
@@ -156,15 +141,12 @@ export const ChatInterface = () => {
         };
       });
       
-      // Add a generic response in case of error
       if (currentChat && currentChat.id) {
         await addMessageToChat(currentChat.id, {
           content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
-          role: 'assistant',
-          timestamp: new Date().toISOString()
+          role: 'assistant'
         });
         
-        // Fetch the updated chat to update the UI
         const updatedChat = await getChatById(currentChat.id);
         if (updatedChat) {
           setChat(updatedChat);
@@ -186,16 +168,12 @@ export const ChatInterface = () => {
     
     setIsSending(true);
     try {
-      // Use the message content from state
       const messageContent = message.trim();
       
-      // Clear the input field immediately
       setMessage('');
       
       let targetChat = chat;
       
-      // If we don't have a chat yet (and this is a new chat),
-      // create a new chat first
       if (!targetChat) {
         const newChat = await createChat(user!.id, 'New conversation');
         if (!newChat || !newChat.id) {
@@ -206,10 +184,8 @@ export const ChatInterface = () => {
         navigate(`/chat/${newChat.id}`, { replace: true });
       }
       
-      // Send the user message
       const sentMessage = await sendMessage(targetChat.id, messageContent);
       
-      // Update the UI with the sent message
       setChat(prevChat => {
         if (!prevChat) return targetChat;
         
@@ -222,7 +198,6 @@ export const ChatInterface = () => {
         };
       });
       
-      // Generate AI response
       await handleAIResponse(messageContent, targetChat);
       
     } catch (error) {
@@ -238,7 +213,6 @@ export const ChatInterface = () => {
   };
 
   const renderMessageContent = (content: string) => {
-    // Simple function to render newlines as <br> tags
     return content.split('\n').map((line, i) => (
       <span key={i}>
         {line}
@@ -247,7 +221,6 @@ export const ChatInterface = () => {
     ));
   };
 
-  // Show loading screen for new chat
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
@@ -268,7 +241,6 @@ export const ChatInterface = () => {
     );
   }
 
-  // Show error screen
   if (error) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
@@ -289,7 +261,6 @@ export const ChatInterface = () => {
 
   return (
     <div className={`flex flex-col h-[calc(100vh-${isMobile ? '3.5rem' : '4rem'})]`}>
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Button 
@@ -304,7 +275,6 @@ export const ChatInterface = () => {
         </div>
       </div>
       
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-950">
         {!hasMessages ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -354,7 +324,6 @@ export const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Input */}
       <form onSubmit={handleSendMessage} className="p-4 border-t bg-white/80 backdrop-blur-sm dark:bg-black/20">
         <div className="flex gap-2">
           <Input
