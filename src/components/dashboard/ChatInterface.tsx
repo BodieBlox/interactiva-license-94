@@ -1,118 +1,130 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
 import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
+import { generateAIResponse } from '@/utils/openai';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-
-// OpenAI API key - this should ideally be stored securely server-side
-const OPENAI_API_KEY = "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";
 
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { user } = useAuth();
   const [chat, setChat] = useState<Chat | null>(null);
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createAttempted, setCreateAttempted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
   // Check if this is a new chat
   const isNew = chatId === 'new';
 
-  useEffect(() => {
-    const fetchChat = async () => {
-      if (!user) {
-        setIsLoading(false);
-        setError("User not authenticated");
-        return;
-      }
-
-      if (isNew) {
-        try {
-          setIsLoading(true);
-          setCreateAttempted(true);
-          
-          // Create a new chat with the user ID
-          const newChat = await createChat(user.id, 'New conversation');
-          
-          if (newChat && newChat.id) {
-            // Set a small timeout to ensure the redirect happens
-            setTimeout(() => {
-              navigate(`/chat/${newChat.id}`, { replace: true });
-            }, 100);
-            setChat(newChat);
-          } else {
-            throw new Error('Failed to create chat - no chat ID returned');
-          }
-        } catch (error) {
-          console.error('Error creating chat:', error);
-          setError("Failed to create a new chat");
-          toast({
-            title: "Error",
-            description: "Failed to create a new chat",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      } else if (chatId) {
-        try {
-          setIsLoading(true);
-          const fetchedChat = await getChatById(chatId);
-          
-          if (fetchedChat) {
-            setChat(fetchedChat);
-          } else {
-            setError("Conversation not found");
-            toast({
-              title: "Not found",
-              description: "This conversation doesn't exist",
-              variant: "destructive"
-            });
-            navigate('/dashboard');
-          }
-        } catch (error) {
-          console.error('Error fetching chat:', error);
-          setError("Failed to load the conversation");
-          toast({
-            title: "Error",
-            description: "Failed to load the conversation",
-            variant: "destructive"
-          });
-          navigate('/dashboard');
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Only fetch if we haven't attempted creating yet or if this isn't a new chat
-    if (!createAttempted || !isNew) {
-      fetchChat();
+  // Create a new chat
+  const createNewChat = async () => {
+    if (!user) {
+      setError("User not authenticated");
+      return null;
     }
-  }, [chatId, user, navigate, isNew, createAttempted]);
+    
+    try {
+      setIsLoading(true);
+      // Create a new chat with the user ID
+      const newChat = await createChat(user.id, 'New conversation');
+      
+      if (newChat && newChat.id) {
+        // Navigate to the new chat
+        navigate(`/chat/${newChat.id}`, { replace: true });
+        return newChat;
+      } else {
+        throw new Error('Failed to create chat - no chat ID returned');
+      }
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      setError("Failed to create a new chat");
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Safety mechanism: If we're stuck on the 'new' chat route for more than 3 seconds, redirect to dashboard
+  // Fetch existing chat by ID
+  const fetchExistingChat = async (id: string) => {
+    if (!user) {
+      setError("User not authenticated");
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const fetchedChat = await getChatById(id);
+      
+      if (fetchedChat) {
+        setChat(fetchedChat);
+      } else {
+        setError("Conversation not found");
+        toast({
+          title: "Not found",
+          description: "This conversation doesn't exist",
+          variant: "destructive"
+        });
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Error fetching chat:', error);
+      setError("Failed to load the conversation");
+      toast({
+        title: "Error",
+        description: "Failed to load the conversation",
+        variant: "destructive"
+      });
+      navigate('/dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    if (!user) {
+      setError("User not authenticated");
+      return;
+    }
+
+    // Handle new chat creation
+    if (isNew) {
+      // Create a new chat immediately
+      createNewChat();
+    } 
+    // Handle existing chat
+    else if (chatId) {
+      fetchExistingChat(chatId);
+    }
+  }, []);
+
+  // Redirect if still on /chat/new after 5 seconds
   useEffect(() => {
     let timeoutId: number;
     
-    if (isNew && isLoading) {
+    if (isNew) {
       timeoutId = window.setTimeout(() => {
-        setIsLoading(false);
-        setError("Timed out while creating chat");
+        // If we're still on the new chat route after 5 seconds, something went wrong
+        navigate('/dashboard');
         toast({
           title: "Error",
-          description: "Couldn't create a new chat. Please try again.",
+          description: "Chat creation timed out. Please try again.",
           variant: "destructive"
         });
-      }, 3000);
+      }, 5000);
     }
     
     return () => {
@@ -120,15 +132,15 @@ export const ChatInterface = () => {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [isNew, isLoading, navigate]);
+  }, [isNew, navigate]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages]);
 
-  // Generate AI response
-  const generateAIResponse = async (userMessageContent: string) => {
+  // Handle AI responses
+  const handleAIResponse = async (userMessageContent: string) => {
     if (!chat) return;
     
     try {
@@ -154,31 +166,8 @@ export const ChatInterface = () => {
         };
       });
       
-      // Call OpenAI API to generate a response
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            { role: 'user', content: userMessageContent }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('OpenAI API error:', await response.text());
-        throw new Error(`OpenAI API returned ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const aiMessage = data.choices[0].message.content;
+      // Generate AI response
+      const aiMessage = await generateAIResponse(userMessageContent);
       
       // Add AI response to the chat
       const aiResponseMessage = await addMessageToChat(chat.id, {
@@ -266,7 +255,7 @@ export const ChatInterface = () => {
       setChat(updatedChat);
       
       // Generate AI response
-      await generateAIResponse(messageContent);
+      await handleAIResponse(messageContent);
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -290,24 +279,34 @@ export const ChatInterface = () => {
     ));
   };
 
+  // Show loading screen for new chat
+  if (isNew) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
+        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
+        <p className="text-muted-foreground">Creating new conversation...</p>
+        <Button 
+          variant="outline" 
+          className="mt-4"
+          onClick={() => navigate('/dashboard')}
+        >
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  // Show loading screen for existing chat
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
         <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
         <p className="text-muted-foreground">Loading conversation...</p>
-        {isNew && (
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => navigate('/dashboard')}
-          >
-            Cancel
-          </Button>
-        )}
       </div>
     );
   }
 
+  // Show error screen
   if (error) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
