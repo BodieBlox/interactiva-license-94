@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export const LicenseGenerator = () => {
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -24,6 +26,7 @@ export const LicenseGenerator = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(addMonths(new Date(), 1));
+  const [hasExpiry, setHasExpiry] = useState(true);
 
   useEffect(() => {
     const fetchLicenses = async () => {
@@ -62,7 +65,7 @@ export const LicenseGenerator = () => {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const expiryISOString = expiryDate ? expiryDate.toISOString() : undefined;
+      const expiryISOString = hasExpiry && expiryDate ? expiryDate.toISOString() : undefined;
       
       const newLicense = await createLicenseWithExpiry(expiryISOString);
       setLicenses([newLicense, ...licenses]);
@@ -99,6 +102,7 @@ export const LicenseGenerator = () => {
   };
 
   const handleOpenGenerateDialog = () => {
+    setHasExpiry(true);
     setExpiryDate(addMonths(new Date(), 1));
     setGenerateDialogOpen(true);
   };
@@ -351,14 +355,23 @@ export const LicenseGenerator = () => {
           </DialogHeader>
           
           <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Expiration Date</label>
-              <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="has-expiry" className="text-sm font-medium">License Expires</Label>
+              <Switch 
+                id="has-expiry" 
+                checked={hasExpiry} 
+                onCheckedChange={setHasExpiry}
+              />
+            </div>
+            
+            {hasExpiry && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Expiration Date</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="justify-start text-left font-normal"
+                      className="justify-start text-left font-normal w-full"
                     >
                       <Calendar className="mr-2 h-4 w-4" />
                       {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
@@ -375,15 +388,14 @@ export const LicenseGenerator = () => {
                     />
                   </PopoverContent>
                 </Popover>
-                <Button 
-                  variant="ghost" 
-                  className="justify-start text-muted-foreground hover:text-primary"
-                  onClick={() => setExpiryDate(undefined)}
-                >
-                  No expiration (permanent license)
-                </Button>
               </div>
-            </div>
+            )}
+
+            {!hasExpiry && (
+              <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground">
+                This license will never expire. Users will have permanent access to premium features.
+              </div>
+            )}
           </div>
           
           <DialogFooter>
@@ -396,7 +408,7 @@ export const LicenseGenerator = () => {
             </Button>
             <Button 
               onClick={handleGenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || (hasExpiry && !expiryDate)}
               className="bg-primary hover:bg-primary/90 transition-all duration-300"
             >
               {isGenerating ? (

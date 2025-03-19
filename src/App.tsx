@@ -10,6 +10,7 @@ import { ChatInterface } from './components/dashboard/ChatInterface';
 import { UserSettings } from './components/user/UserSettings';
 import KeyGenerator from './pages/KeyGenerator';
 import Index from './pages/Index';
+import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import './App.css';
 
@@ -20,6 +21,7 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/key-generator" element={<KeyGenerator />} />
 
         {/* Auth routes */}

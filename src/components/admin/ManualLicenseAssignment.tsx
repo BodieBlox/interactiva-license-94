@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getUserByEmail, createLicenseWithExpiry } from '@/utils/api';
 import { Key, Search, User, UserCheck } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export const ManualLicenseAssignment = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ export const ManualLicenseAssignment = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [foundUser, setFoundUser] = useState<any>(null);
+  const [hasExpiry, setHasExpiry] = useState(true);
 
   const handleSearch = async () => {
     if (!email.trim()) {
@@ -61,8 +63,8 @@ export const ManualLicenseAssignment = () => {
 
     setIsAssigning(true);
     try {
-      // Create a new license with optional expiry date
-      const expiryISODate = expiryDate ? new Date(expiryDate).toISOString() : undefined;
+      // Use undefined for no expiry or convert the date if hasExpiry is true
+      const expiryISODate = hasExpiry && expiryDate ? new Date(expiryDate).toISOString() : undefined;
       const newLicense = await createLicenseWithExpiry(expiryISODate);
       
       toast({
@@ -155,20 +157,34 @@ export const ManualLicenseAssignment = () => {
             </div>
           )}
 
-          {/* License expiry date */}
+          {/* License expiry toggle */}
           {foundUser && (
             <div className="space-y-3">
-              <Label htmlFor="expiryDate">License Expiry (Optional)</Label>
-              <Input
-                id="expiryDate"
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]} // Prevent past dates
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave blank for a license that doesn't expire
-              </p>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="license-expiry-toggle" className="text-sm font-medium">License Expires</Label>
+                <Switch 
+                  id="license-expiry-toggle" 
+                  checked={hasExpiry} 
+                  onCheckedChange={setHasExpiry}
+                />
+              </div>
+
+              {hasExpiry ? (
+                <>
+                  <Label htmlFor="expiryDate">Expiration Date</Label>
+                  <Input
+                    id="expiryDate"
+                    type="date"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]} // Prevent past dates
+                  />
+                </>
+              ) : (
+                <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground">
+                  This license will never expire. The user will have permanent access to premium features.
+                </div>
+              )}
             </div>
           )}
 
@@ -176,7 +192,7 @@ export const ManualLicenseAssignment = () => {
           {foundUser && (
             <Button 
               onClick={handleAssignLicense}
-              disabled={isAssigning}
+              disabled={isAssigning || (hasExpiry && !expiryDate)}
               className="w-full bg-primary hover:bg-primary/90 mt-4"
             >
               {isAssigning ? (

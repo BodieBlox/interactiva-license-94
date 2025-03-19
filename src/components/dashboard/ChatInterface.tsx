@@ -35,7 +35,7 @@ export const ChatInterface = () => {
     }
     
     if (isNewChatCreated) {
-      return null; // Prevent multiple creation attempts
+      return chat; // Return existing chat if already created
     }
     
     try {
@@ -153,9 +153,7 @@ export const ChatInterface = () => {
   }, [chat?.messages]);
 
   // Handle AI responses
-  const handleAIResponse = async (userMessageContent: string) => {
-    if (!chat) return;
-    
+  const handleAIResponse = async (userMessageContent: string, currentChat: Chat) => {
     try {
       // First, add a placeholder message to show AI is typing
       const loadingMessageId = `loading_${Date.now()}`;
@@ -183,7 +181,7 @@ export const ChatInterface = () => {
       const aiMessage = await generateAIResponse(userMessageContent);
       
       // Add AI response to the chat
-      const aiResponseMessage = await addMessageToChat(chat.id, {
+      const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
         role: 'assistant',
         timestamp: new Date().toISOString()
@@ -208,7 +206,7 @@ export const ChatInterface = () => {
       });
       
       // Fetch the updated chat to update the UI with correct data from server
-      const updatedChat = await getChatById(chat.id);
+      const updatedChat = await getChatById(currentChat.id);
       if (updatedChat) {
         setChat(updatedChat);
       }
@@ -227,16 +225,18 @@ export const ChatInterface = () => {
       });
       
       // Add a generic response in case of error
-      await addMessageToChat(chat.id, {
-        content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      });
-      
-      // Fetch the updated chat to update the UI
-      const updatedChat = await getChatById(chat.id);
-      if (updatedChat) {
-        setChat(updatedChat);
+      if (currentChat && currentChat.id) {
+        await addMessageToChat(currentChat.id, {
+          content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
+          role: 'assistant',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Fetch the updated chat to update the UI
+        const updatedChat = await getChatById(currentChat.id);
+        if (updatedChat) {
+          setChat(updatedChat);
+        }
       }
       
       toast({
@@ -252,15 +252,6 @@ export const ChatInterface = () => {
     
     if (!message.trim() || isSending) return;
     
-    if (!chat && !isNew) {
-      toast({
-        title: "Error",
-        description: "No active conversation",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setIsSending(true);
     try {
       // Use the message content from state
@@ -271,11 +262,10 @@ export const ChatInterface = () => {
       
       let targetChat = chat;
       
-      // If we don't have a chat yet (and this is a new chat that was just created),
-      // wait for the chat to be set
-      if (!targetChat && isNew) {
-        const newChat = await createNewChat();
-        targetChat = newChat;
+      // If we don't have a chat yet (and this is a new chat),
+      // create a new chat first
+      if (!targetChat) {
+        targetChat = await createNewChat();
         
         // If we still don't have a chat, something went wrong
         if (!targetChat) {
@@ -284,14 +274,29 @@ export const ChatInterface = () => {
       }
       
       // Send the user message
-      await sendMessage(targetChat.id, messageContent);
+      const sentMessage = await sendMessage(targetChat.id, messageContent);
+      
+      // Update the UI with the sent message
+      setChat(prevChat => {
+        if (!prevChat) return targetChat;
+        
+        const updatedMessages = [...(prevChat.messages || []), sentMessage];
+        
+        return {
+          ...prevChat,
+          messages: updatedMessages,
+          updatedAt: new Date().toISOString()
+        };
+      });
       
       // Fetch the updated chat with messages
       const updatedChat = await getChatById(targetChat.id);
-      setChat(updatedChat);
+      if (updatedChat) {
+        setChat(updatedChat);
+      }
       
       // Generate AI response
-      await handleAIResponse(messageContent);
+      await handleAIResponse(messageContent, targetChat);
       
     } catch (error) {
       console.error('Error sending message:', error);
