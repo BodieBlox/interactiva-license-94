@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { updateUsername, updateDashboardCustomization } from '@/utils/api';
 import { DashboardCustomization } from '@/utils/types';
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
-import { User, Palette, Key, Building2, Save } from 'lucide-react';
+import { User, Palette, Key, Building2, Save, ArrowLeft } from 'lucide-react';
 
 export const UserSettings = () => {
   const { user, setUser } = useAuth();
@@ -87,9 +88,17 @@ export const UserSettings = () => {
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-medium">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-medium">Settings</h1>
+          <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+        </div>
+        <Link to="/dashboard">
+          <Button variant="outline" className="flex items-center gap-2 bg-white dark:bg-gray-800">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">

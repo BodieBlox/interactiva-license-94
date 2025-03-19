@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -52,10 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }
             
-            // User exists in Database, use that data
-            setUser(userFromDB);
-            
-            // Check if there's a forcedLogout flag
+            // Check if there's a forcedLogout flag before setting the user
             if (userFromDB.forcedLogout) {
               // Clear the flag
               await update(ref(database, `users/${userFromDB.id}`), {
@@ -70,18 +68,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 variant: "destructive"
               });
               setUser(null);
-            } else {
-              // Log this login
-              try {
-                const ip = await fetchIP();
-                await logUserLogin(
-                  userFromDB.id, 
-                  ip, 
-                  navigator.userAgent
-                );
-              } catch (e) {
-                console.error("Error logging login:", e);
-              }
+              setIsLoading(false);
+              return;
+            }
+            
+            // User exists in Database, use that data
+            setUser(userFromDB);
+            
+            // Log this login
+            try {
+              const ip = await fetchIP();
+              await logUserLogin(
+                userFromDB.id, 
+                ip, 
+                navigator.userAgent
+              );
+            } catch (e) {
+              console.error("Error logging login:", e);
             }
           } else {
             // User exists in Auth but not in Database, create a new user document
@@ -312,6 +315,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             description: "Your session was terminated by an administrator",
             variant: "destructive"
           });
+          setUser(null);
           return true;
         }
       }

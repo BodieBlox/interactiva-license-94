@@ -10,9 +10,10 @@ import { LicenseRequests } from './LicenseRequests';
 import { LoginLogs } from './LoginLogs';
 import { UserCreator } from './UserCreator';
 import { ChatViewer } from './ChatViewer';
+import { BrandingApproval } from './BrandingApproval';
 import { 
   ArrowLeft, LogOut, Users, Key, MessageSquare, Shield, 
-  UserPlus, KeyRound, Clock, Globe 
+  UserPlus, KeyRound, Clock, Globe, Palette 
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Card } from '@/components/ui/card';
@@ -63,7 +64,7 @@ export const AdminPanel = () => {
           <Button 
             variant="outline" 
             onClick={handleLogout} 
-            className="flex items-center gap-2 transition-all duration-300 hover:bg-red-50 hover:text-red-500 hover:border-red-200 animate-scale-in"
+            className="flex items-center gap-2 transition-all duration-300 hover:bg-red-50 hover:text-red-500 hover:border-red-200 animate-scale-in bg-white dark:bg-gray-800"
           >
             <LogOut className="h-4 w-4" />
             <span>Logout</span>
@@ -72,7 +73,7 @@ export const AdminPanel = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-fade-in">
-        <TabsList className="grid grid-cols-7 mb-8 p-1 bg-muted/50 backdrop-blur-sm rounded-lg overflow-hidden">
+        <TabsList className="grid grid-cols-8 mb-8 p-1 bg-muted/50 backdrop-blur-sm rounded-lg overflow-hidden">
           <TabsTrigger 
             value="users" 
             className="flex items-center gap-2 data-[state=active]:shadow-md transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800"
@@ -93,6 +94,13 @@ export const AdminPanel = () => {
           >
             <KeyRound className="h-4 w-4" />
             <span>Requests</span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="branding"
+            className="flex items-center gap-2 data-[state=active]:shadow-md transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800"
+          >
+            <Palette className="h-4 w-4" />
+            <span>Branding</span>
           </TabsTrigger>
           <TabsTrigger 
             value="logins"
@@ -134,6 +142,12 @@ export const AdminPanel = () => {
             className="animate-fade-in focus-visible:outline-none focus-visible:ring-0"
           >
             <LicenseRequests />
+          </TabsContent>
+          <TabsContent 
+            value="branding" 
+            className="animate-fade-in focus-visible:outline-none focus-visible:ring-0"
+          >
+            <BrandingApproval />
           </TabsContent>
           <TabsContent 
             value="logins" 

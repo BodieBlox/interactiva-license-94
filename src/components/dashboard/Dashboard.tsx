@@ -94,12 +94,12 @@ export const DashboardContent = () => {
           <p className="text-muted-foreground mt-1">
             {user?.customization?.approved && user.customization.companyName ? 
               `Welcome to ${user.customization.companyName}` : 
-              `Welcome back, ${user?.username}`}
+              `Welcome back, ${user?.username || 'User'}`}
           </p>
         </div>
         <div className="flex space-x-3">
           <Link to="/settings">
-            <Button className="bg-secondary hover:bg-secondary/80 transition-apple flex items-center gap-2">
+            <Button className="bg-white dark:bg-gray-800 text-primary hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 border shadow-sm">
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </Button>
@@ -112,7 +112,11 @@ export const DashboardContent = () => {
               </Button>
             </Link>
           )}
-          <Button variant="ghost" onClick={handleLogout} className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            onClick={handleLogout} 
+            className="flex items-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
             <LogOut className="h-4 w-4" />
             <span>Logout</span>
           </Button>
