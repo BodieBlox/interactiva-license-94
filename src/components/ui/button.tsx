@@ -22,12 +22,17 @@ const buttonVariants = cva(
         subtle: "bg-muted/50 hover:bg-muted text-muted-foreground",
         success: "bg-green-500 text-white hover:bg-green-600 shadow-sm hover:shadow-md",
         warning: "bg-amber-500 text-white hover:bg-amber-600 shadow-sm hover:shadow-md",
+        glass: "bg-white/80 dark:bg-black/50 backdrop-blur-lg border border-white/20 dark:border-black/20 shadow-lg hover:bg-white/90 dark:hover:bg-black/60 text-foreground",
+        "glass-primary": "bg-primary/80 backdrop-blur-lg border border-primary/20 shadow-lg hover:bg-primary/90 text-primary-foreground",
+        "glass-destructive": "bg-destructive/80 backdrop-blur-lg border border-destructive/20 shadow-lg hover:bg-destructive/90 text-destructive-foreground",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        xs: "h-7 rounded-md px-2 text-xs",
+        xl: "h-14 rounded-md px-10 text-lg",
       },
     },
     defaultVariants: {

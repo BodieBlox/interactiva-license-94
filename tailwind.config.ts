@@ -90,12 +90,12 @@ export default {
 					to: { opacity: '0' }
 				},
 				'slide-in': {
-					from: { transform: 'translateY(10px)', opacity: '0' },
+					from: { transform: 'translateY(-10px)', opacity: '0' },
 					to: { transform: 'translateY(0)', opacity: '1' }
 				},
 				'slide-out': {
 					from: { transform: 'translateY(0)', opacity: '1' },
-					to: { transform: 'translateY(10px)', opacity: '0' }
+					to: { transform: 'translateY(-10px)', opacity: '0' }
 				},
 				'scale-in': {
 					from: { transform: 'scale(0.95)', opacity: '0' },
@@ -112,21 +112,63 @@ export default {
 					'50%': {
 						opacity: '0.8'
 					}
+				},
+				'float': {
+					'0%, 100%': {
+						transform: 'translateY(0)'
+					},
+					'50%': {
+						transform: 'translateY(-10px)'
+					}
+				},
+				'shimmer': {
+					'100%': {
+						transform: 'translateX(100%)'
+					}
+				},
+				'ping-slow': {
+					'75%, 100%': {
+						transform: 'scale(1.5)',
+						opacity: '0'
+					}
+				},
+				'spin-slow': {
+					'to': {
+						transform: 'rotate(360deg)'
+					}
+				},
+				'bounce-slow': {
+					'0%, 100%': {
+						transform: 'translateY(0)',
+						animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)'
+					},
+					'50%': {
+						transform: 'translateY(-15px)',
+						animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'fade-in': 'fade-in 0.2s ease-out',
-				'fade-out': 'fade-out 0.2s ease-out',
-				'slide-in': 'slide-in 0.2s ease-out',
-				'slide-out': 'slide-out 0.2s ease-out',
-				'scale-in': 'scale-in 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'fade-out': 'fade-out 0.3s ease-out',
+				'slide-in': 'slide-in 0.3s ease-out',
+				'slide-out': 'slide-out 0.3s ease-out',
+				'scale-in': 'scale-in 0.3s ease-apple',
 				'blur-in': 'blur-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-				'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite'
+				'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
+				'float': 'float 6s ease-in-out infinite',
+				'shimmer': 'shimmer 2s infinite',
+				'ping-slow': 'ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite',
+				'spin-slow': 'spin-slow 3s linear infinite',
+				'bounce-slow': 'bounce-slow 3s infinite'
 			},
 			transitionTimingFunction: {
 				'apple': 'cubic-bezier(0.16, 1, 0.3, 1)',
+				'bounce': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+				'bezier-1': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+				'bezier-2': 'cubic-bezier(0.65, 0.05, 0.36, 1)',
 			},
 		}
 	},
