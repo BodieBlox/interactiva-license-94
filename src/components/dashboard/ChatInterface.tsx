@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +19,7 @@ export const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createAttempted, setCreateAttempted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
@@ -37,12 +37,17 @@ export const ChatInterface = () => {
       if (isNew) {
         try {
           setIsLoading(true);
+          setCreateAttempted(true);
+          
           // Create a new chat with the user ID
           const newChat = await createChat(user.id, 'New conversation');
           
           if (newChat && newChat.id) {
+            // Set a small timeout to ensure the redirect happens
+            setTimeout(() => {
+              navigate(`/chat/${newChat.id}`, { replace: true });
+            }, 100);
             setChat(newChat);
-            navigate(`/chat/${newChat.id}`, { replace: true });
           } else {
             throw new Error('Failed to create chat - no chat ID returned');
           }
@@ -88,8 +93,34 @@ export const ChatInterface = () => {
       }
     };
 
-    fetchChat();
-  }, [chatId, user, navigate, isNew]);
+    // Only fetch if we haven't attempted creating yet or if this isn't a new chat
+    if (!createAttempted || !isNew) {
+      fetchChat();
+    }
+  }, [chatId, user, navigate, isNew, createAttempted]);
+
+  // Safety mechanism: If we're stuck on the 'new' chat route for more than 3 seconds, redirect to dashboard
+  useEffect(() => {
+    let timeoutId: number;
+    
+    if (isNew && isLoading) {
+      timeoutId = window.setTimeout(() => {
+        setIsLoading(false);
+        setError("Timed out while creating chat");
+        toast({
+          title: "Error",
+          description: "Couldn't create a new chat. Please try again.",
+          variant: "destructive"
+        });
+      }, 3000);
+    }
+    
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [isNew, isLoading, navigate]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -264,6 +295,15 @@ export const ChatInterface = () => {
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
         <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
         <p className="text-muted-foreground">Loading conversation...</p>
+        {isNew && (
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => navigate('/dashboard')}
+          >
+            Cancel
+          </Button>
+        )}
       </div>
     );
   }
