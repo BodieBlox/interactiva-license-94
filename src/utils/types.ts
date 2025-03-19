@@ -8,6 +8,7 @@ export interface User {
   licenseActive: boolean;
   licenseKey?: string;
   warningMessage?: string;
+  lastLogin?: LoginLog;
 }
 
 export interface License {
@@ -34,4 +35,23 @@ export interface Chat {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+}
+
+export interface LoginLog {
+  id: string;
+  userId: string;
+  ip: string;
+  userAgent: string;
+  timestamp: string;
+}
+
+export interface LicenseRequest {
+  id: string;
+  userId: string;
+  username: string;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }

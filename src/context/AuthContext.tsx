@@ -5,7 +5,7 @@ import { ref, get, set, update } from 'firebase/database';
 import { User } from '../utils/types';
 import { auth, database } from '../utils/firebase';
 import { toast } from '@/components/ui/use-toast';
-import { getUserByEmail } from '@/utils/api';
+import { getUserByEmail, logUserLogin, createLicenseRequest } from '@/utils/api';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +14,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   activateUserLicense: (licenseKey: string) => Promise<void>;
+  requestLicense: (message?: string) => Promise<void>;
+  checkForcedLogout: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +36,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (userFromDB) {
             // User exists in Database, use that data
             setUser(userFromDB);
+            
+            // Check if there's a forcedLogout flag
+            if (userFromDB.forcedLogout) {
+              // Clear the flag
+              await update(ref(database, `users/${userFromDB.id}`), {
+                forcedLogout: null
+              });
+              
+              // Force logout
+              await signOut(auth);
+              toast({
+                title: "Session Terminated",
+                description: "Your session was terminated by an administrator",
+                variant: "destructive"
+              });
+              setUser(null);
+            } else {
+              // Log this login
+              try {
+                const ip = await fetchIP();
+                await logUserLogin(
+                  userFromDB.id, 
+                  ip, 
+                  navigator.userAgent
+                );
+              } catch (e) {
+                console.error("Error logging login:", e);
+              }
+            }
           } else {
             // User exists in Auth but not in Database, create a new user document
             const newUser: User = {
@@ -178,6 +209,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
   };
+  
+  const requestLicense = async (message?: string) => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    setError(null);
+    try {
+      await createLicenseRequest(user.id, message);
+      toast({
+        title: "License Requested",
+        description: "Your license request has been submitted successfully",
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('License request error:', error);
+      setError((error as Error).message);
+      toast({
+        title: "License Request Failed",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const checkForcedLogout = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const userRef = ref(database, `users/${user.id}`);
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        if (userData.forcedLogout) {
+          // Clear the flag
+          await update(userRef, {
+            forcedLogout: null
+          });
+          
+          // Force logout
+          await signOut(auth);
+          toast({
+            title: "Session Terminated",
+            description: "Your session was terminated by an administrator",
+            variant: "destructive"
+          });
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Check forced logout error:', error);
+      return false;
+    }
+  };
+  
+  // Helper function to get IP address
+  const fetchIP = async (): Promise<string> => {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip;
+    } catch (error) {
+      console.error('Error fetching IP:', error);
+      return 'Unknown';
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -187,7 +288,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error,
         login,
         logout,
-        activateUserLicense
+        activateUserLicense,
+        requestLicense,
+        checkForcedLogout
       }}
     >
       {children}

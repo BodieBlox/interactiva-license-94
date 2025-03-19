@@ -1,6 +1,6 @@
-import { get, ref, set, push, update, remove } from "firebase/database";
-import { database } from "./firebase";
-import { Chat, ChatMessage, User, License } from "./types";
+import { get, ref, set, push, update, remove, query, orderByChild, equalTo } from "firebase/database";
+import { database, auth } from "./firebase";
+import { Chat, ChatMessage, User, License, LoginLog, LicenseRequest } from "./types";
 
 // User API functions
 export const getUserByEmail = async (email: string): Promise<User | null> => {
@@ -186,6 +186,22 @@ export const createLicense = async (): Promise<License> => {
 
 export const deleteLicense = async (licenseId: string): Promise<void> => {
   const licenseRef = ref(database, `licenses/${licenseId}`);
+  const licenseSnapshot = await get(licenseRef);
+  
+  if (!licenseSnapshot.exists()) {
+    throw new Error('License not found');
+  }
+  
+  const license = licenseSnapshot.val() as License;
+  
+  if (license.userId) {
+    const userRef = ref(database, `users/${license.userId}`);
+    await update(userRef, {
+      licenseActive: false,
+      licenseKey: null
+    });
+  }
+  
   await remove(licenseRef);
 };
 
@@ -269,6 +285,180 @@ export const clearUserChatHistory = async (userId: string): Promise<void> => {
 export const deleteChat = async (chatId: string): Promise<void> => {
   const chatRef = ref(database, `chats/${chatId}`);
   await remove(chatRef);
+};
+
+// New user session management functions
+export const logUserLogin = async (userId: string, ip: string, userAgent: string): Promise<LoginLog> => {
+  const logsRef = ref(database, 'loginLogs');
+  const newLogRef = push(logsRef);
+  const logId = newLogRef.key as string;
+  
+  const now = new Date().toISOString();
+  
+  const newLog: LoginLog = {
+    id: logId,
+    userId,
+    ip,
+    userAgent,
+    timestamp: now
+  };
+  
+  await set(newLogRef, newLog);
+  
+  const userRef = ref(database, `users/${userId}`);
+  await update(userRef, {
+    lastLogin: newLog
+  });
+  
+  return newLog;
+};
+
+export const getLoginLogs = async (): Promise<LoginLog[]> => {
+  const logsRef = ref(database, 'loginLogs');
+  const snapshot = await get(logsRef);
+  
+  if (snapshot.exists()) {
+    const logs = snapshot.val();
+    return Object.values(logs) as LoginLog[];
+  }
+  
+  return [];
+};
+
+export const getUserLoginLogs = async (userId: string): Promise<LoginLog[]> => {
+  const logsRef = ref(database, 'loginLogs');
+  const userLogsQuery = query(logsRef, orderByChild('userId'), equalTo(userId));
+  const snapshot = await get(userLogsQuery);
+  
+  if (snapshot.exists()) {
+    const logs = snapshot.val();
+    return Object.values(logs) as LoginLog[];
+  }
+  
+  return [];
+};
+
+export const forceUserLogout = async (userId: string): Promise<void> => {
+  const userRef = ref(database, `users/${userId}`);
+  await update(userRef, {
+    forcedLogout: new Date().toISOString()
+  });
+};
+
+// License request functions
+export const createLicenseRequest = async (userId: string, message?: string): Promise<LicenseRequest> => {
+  const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
+  
+  const requestsRef = ref(database, 'licenseRequests');
+  const newRequestRef = push(requestsRef);
+  const requestId = newRequestRef.key as string;
+  
+  const now = new Date().toISOString();
+  
+  const newRequest: LicenseRequest = {
+    id: requestId,
+    userId,
+    username: user.username,
+    email: user.email,
+    status: 'pending',
+    message,
+    createdAt: now
+  };
+  
+  await set(newRequestRef, newRequest);
+  return newRequest;
+};
+
+export const getLicenseRequests = async (): Promise<LicenseRequest[]> => {
+  const requestsRef = ref(database, 'licenseRequests');
+  const snapshot = await get(requestsRef);
+  
+  if (snapshot.exists()) {
+    const requests = snapshot.val();
+    return Object.values(requests) as LicenseRequest[];
+  }
+  
+  return [];
+};
+
+export const approveLicenseRequest = async (requestId: string): Promise<void> => {
+  const requestRef = ref(database, `licenseRequests/${requestId}`);
+  const requestSnapshot = await get(requestRef);
+  
+  if (!requestSnapshot.exists()) {
+    throw new Error('License request not found');
+  }
+  
+  const request = requestSnapshot.val() as LicenseRequest;
+  
+  if (request.status !== 'pending') {
+    throw new Error('License request has already been processed');
+  }
+  
+  const newLicense = await createLicense();
+  
+  const licenseRef = ref(database, `licenses/${newLicense.id}`);
+  await update(licenseRef, {
+    isActive: true,
+    userId: request.userId,
+    activatedAt: new Date().toISOString()
+  });
+  
+  const userRef = ref(database, `users/${request.userId}`);
+  await update(userRef, {
+    licenseActive: true,
+    licenseKey: newLicense.key
+  });
+  
+  await update(requestRef, {
+    status: 'approved',
+    resolvedAt: new Date().toISOString()
+  });
+};
+
+export const rejectLicenseRequest = async (requestId: string): Promise<void> => {
+  const requestRef = ref(database, `licenseRequests/${requestId}`);
+  const requestSnapshot = await get(requestRef);
+  
+  if (!requestSnapshot.exists()) {
+    throw new Error('License request not found');
+  }
+  
+  const request = requestSnapshot.val() as LicenseRequest;
+  
+  if (request.status !== 'pending') {
+    throw new Error('License request has already been processed');
+  }
+  
+  await update(requestRef, {
+    status: 'rejected',
+    resolvedAt: new Date().toISOString()
+  });
+};
+
+// User creation function
+export const createUser = async (email: string, password: string, username: string, role: 'user' | 'admin' = 'user'): Promise<User> => {
+  const userCredential = await auth.createUserWithEmailAndPassword(auth.getAuth(), email, password);
+  const firebaseUser = userCredential.user;
+  
+  const newUser: User = {
+    id: firebaseUser.uid,
+    username,
+    email,
+    role,
+    status: 'active',
+    licenseActive: false
+  };
+  
+  await set(ref(database, `users/${firebaseUser.uid}`), newUser);
+  return newUser;
 };
 
 // Helpers

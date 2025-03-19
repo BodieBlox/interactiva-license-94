@@ -1,21 +1,26 @@
 
 import { useState, useEffect } from 'react';
 import { License } from '@/utils/types';
-import { getAllLicenses, createLicense } from '@/utils/api';
+import { getAllLicenses, createLicense, deleteLicense } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { KeyRound, Plus, Copy, DownloadCloud, Search } from 'lucide-react';
+import { KeyRound, Plus, Copy, DownloadCloud, Search, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 
 export const LicenseGenerator = () => {
   const [licenses, setLicenses] = useState<License[]>([]);
   const [filteredLicenses, setFilteredLicenses] = useState<License[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchLicenses = async () => {
@@ -79,6 +84,40 @@ export const LicenseGenerator = () => {
       title: "Copied",
       description: "License key copied to clipboard",
     });
+  };
+
+  const handleOpenDeleteDialog = (license: License) => {
+    setSelectedLicense(license);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteLicense = async () => {
+    if (!selectedLicense) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteLicense(selectedLicense.id);
+      
+      // Remove from state
+      setLicenses(licenses.filter(l => l.id !== selectedLicense.id));
+      setFilteredLicenses(filteredLicenses.filter(l => l.id !== selectedLicense.id));
+      
+      toast({
+        title: "License Deleted",
+        description: "License has been deleted successfully",
+      });
+      
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting license:', error);
+      toast({
+        title: "Error",
+        description: `Failed to delete license: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const exportLicensesCSV = () => {
@@ -162,20 +201,20 @@ export const LicenseGenerator = () => {
 
       <Card className="glass-panel border-0 animate-scale-in">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-4 font-medium">License Key</th>
-                <th className="text-left p-4 font-medium">Status</th>
-                <th className="text-left p-4 font-medium">Created</th>
-                <th className="text-left p-4 font-medium">Activated By</th>
-                <th className="text-right p-4 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>License Key</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Activated By</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredLicenses.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-10 text-center text-muted-foreground">
+                <TableRow>
+                  <TableCell colSpan={5} className="p-10 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-3">
                       <KeyRound className="h-10 w-10 text-muted-foreground/30" />
                       <p>No licenses found</p>
@@ -189,17 +228,17 @@ export const LicenseGenerator = () => {
                         </Button>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredLicenses.map((license, index) => (
-                  <tr 
+                  <TableRow 
                     key={license.id} 
-                    className="border-b last:border-0 hover:bg-muted/30 transition-apple animate-fade-in"
+                    className="animate-fade-in"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
-                    <td className="p-4 font-mono">{license.key}</td>
-                    <td className="p-4">
+                    <TableCell className="font-mono">{license.key}</TableCell>
+                    <TableCell>
                       {license.isActive ? (
                         <Badge variant="default" className="bg-green-500 hover:bg-green-600 transition-colors">Activated</Badge>
                       ) : (
@@ -209,33 +248,89 @@ export const LicenseGenerator = () => {
                           <Badge variant="outline" className="border-primary text-primary hover:bg-primary/10 transition-colors">Available</Badge>
                         )
                       )}
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(license.createdAt), { addSuffix: true })}
-                    </td>
-                    <td className="p-4 text-sm">
+                    </TableCell>
+                    <TableCell className="text-sm">
                       {license.userId ? license.userId : '—'}
-                    </td>
-                    <td className="p-4 text-right">
-                      {!license.isActive && (
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {!license.isActive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyToClipboard(license.key)}
+                            className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Copy</span>
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleCopyToClipboard(license.key)}
-                          className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
+                          onClick={() => handleOpenDeleteDialog(license)}
+                          className="flex items-center gap-1 hover:bg-red-50 hover:text-red-600"
                         >
-                          <Copy className="h-3.5 w-3.5" />
-                          <span>Copy</span>
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Delete</span>
                         </Button>
-                      )}
-                    </td>
-                  </tr>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md glass-panel border-0 animate-scale-in">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <span>Delete License</span>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLicense?.isActive 
+                ? "This license is currently assigned to a user. Deleting it will revoke their access to premium features."
+                : "Are you sure you want to delete this license? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLicense && (
+            <div className="px-1 py-2">
+              <p className="text-sm font-mono bg-muted/50 p-2 rounded">
+                {selectedLicense.key}
+              </p>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDialogOpen(false)}
+              className="transition-all duration-300"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteLicense}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600 transition-all duration-300"
+            >
+              {isDeleting ? (
+                <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+              ) : (
+                'Delete License'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
