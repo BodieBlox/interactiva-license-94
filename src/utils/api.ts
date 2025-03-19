@@ -1,5 +1,6 @@
 import { get, ref, set, push, update, remove, query, orderByChild, equalTo } from "firebase/database";
 import { database, auth } from "./firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Chat, ChatMessage, User, License, LoginLog, LicenseRequest } from "./types";
 
 // User API functions
@@ -445,7 +446,8 @@ export const rejectLicenseRequest = async (requestId: string): Promise<void> => 
 
 // User creation function
 export const createUser = async (email: string, password: string, username: string, role: 'user' | 'admin' = 'user'): Promise<User> => {
-  const userCredential = await auth.createUserWithEmailAndPassword(auth.getAuth(), email, password);
+  // Fix the incorrect auth usage
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = userCredential.user;
   
   const newUser: User = {

@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -9,6 +8,7 @@ export interface User {
   licenseKey?: string;
   warningMessage?: string;
   lastLogin?: LoginLog;
+  forcedLogout?: string;
 }
 
 export interface License {
