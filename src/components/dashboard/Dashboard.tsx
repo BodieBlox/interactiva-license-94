@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -118,9 +117,8 @@ export const DashboardContent = () => {
         </div>
       </div>
 
-      {/* Create New Conversation Button - Prominently displayed with improved visibility */}
       <Link to="/chat/new" className="block mb-6">
-        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30 text-white dark:text-white font-medium">
+        <Button className="w-full bg-black hover:bg-black/90 text-white dark:text-white transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30 font-medium">
           <MessageSquarePlus className="h-5 w-5" />
           <span>Create New Conversation</span>
         </Button>

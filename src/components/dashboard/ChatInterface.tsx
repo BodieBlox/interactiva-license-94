@@ -19,6 +19,7 @@ export const ChatInterface = () => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
@@ -29,13 +30,16 @@ export const ChatInterface = () => {
     const fetchChat = async () => {
       if (!user) {
         setIsLoading(false);
+        setError("User not authenticated");
         return;
       }
 
       if (isNew) {
         try {
+          setIsLoading(true);
           // Create a new chat with the user ID
           const newChat = await createChat(user.id, 'New conversation');
+          
           if (newChat && newChat.id) {
             setChat(newChat);
             navigate(`/chat/${newChat.id}`, { replace: true });
@@ -44,21 +48,24 @@ export const ChatInterface = () => {
           }
         } catch (error) {
           console.error('Error creating chat:', error);
+          setError("Failed to create a new chat");
           toast({
             title: "Error",
             description: "Failed to create a new chat",
             variant: "destructive"
           });
-          navigate('/dashboard');
         } finally {
           setIsLoading(false);
         }
       } else if (chatId) {
         try {
+          setIsLoading(true);
           const fetchedChat = await getChatById(chatId);
+          
           if (fetchedChat) {
             setChat(fetchedChat);
           } else {
+            setError("Conversation not found");
             toast({
               title: "Not found",
               description: "This conversation doesn't exist",
@@ -68,6 +75,7 @@ export const ChatInterface = () => {
           }
         } catch (error) {
           console.error('Error fetching chat:', error);
+          setError("Failed to load the conversation");
           toast({
             title: "Error",
             description: "Failed to load the conversation",
@@ -253,8 +261,25 @@ export const ChatInterface = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
-        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+      <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
+        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
+        <p className="text-muted-foreground">Loading conversation...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
+        <div className="text-destructive mb-4">⚠️ Error</div>
+        <p className="text-muted-foreground">{error}</p>
+        <Button 
+          variant="outline" 
+          className="mt-4"
+          onClick={() => navigate('/dashboard')}
+        >
+          Back to Dashboard
+        </Button>
       </div>
     );
   }
