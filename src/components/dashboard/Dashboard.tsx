@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -117,6 +118,14 @@ export const DashboardContent = () => {
         </div>
       </div>
 
+      {/* Create New Conversation Button - Prominently displayed */}
+      <Link to="/chat/new" className="block mb-6">
+        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3">
+          <MessageSquarePlus className="h-5 w-5" />
+          <span>Create New Conversation</span>
+        </Button>
+      </Link>
+
       <div className="grid grid-cols-1 gap-6">
         {user?.role === 'admin' && (
           <Card className="glass-panel shadow-lg border-0 bg-amber-50 dark:bg-amber-950/20">
@@ -173,17 +182,7 @@ export const DashboardContent = () => {
                 <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
               </div>
             ) : (
-              <>
-                <div className="mb-4">
-                  <Link to="/chat/new">
-                    <Button className="bg-primary hover:bg-primary/90 transition-apple w-full flex items-center gap-2">
-                      <MessageSquarePlus className="h-5 w-5" />
-                      <span>New Conversation</span>
-                    </Button>
-                  </Link>
-                </div>
-                <ChatList chats={sortedChats} />
-              </>
+              <ChatList chats={sortedChats} />
             )}
           </CardContent>
         </Card>
