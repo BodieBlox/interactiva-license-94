@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -224,6 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // We don't set isLoading to false here - it will be handled by the auth state change listener
     } catch (error) {
       console.error('Login error:', error);
       setError((error as Error).message);
@@ -429,4 +431,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

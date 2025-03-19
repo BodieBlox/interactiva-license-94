@@ -45,7 +45,7 @@ export const AppLayout = ({
         title: "Authentication Required",
         description: "Please login to access this page",
       });
-      navigate('/login');
+      navigate('/login', { state: { from: location } });
       return;
     }
 
@@ -55,7 +55,14 @@ export const AppLayout = ({
         description: "Admin privileges required to access this page",
         variant: "destructive"
       });
-      navigate('/dashboard');
+      // Always check license when redirecting from admin pages
+      checkLicense().then(needsLicense => {
+        if (needsLicense) {
+          navigate('/activate');
+        } else {
+          navigate('/dashboard');
+        }
+      });
       return;
     }
 
@@ -109,7 +116,7 @@ export const AppLayout = ({
     if (user && user.status === 'warned') {
       setShowWarning(true);
     }
-  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location.pathname, checkLicenseValidity]);
+  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location, checkLicenseValidity]);
 
   const handleWarningContinue = () => {
     setShowWarningDialog(false);

@@ -19,7 +19,6 @@ export const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isNewChatCreated, setIsNewChatCreated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -27,125 +26,58 @@ export const ChatInterface = () => {
   // Check if this is a new chat
   const isNew = chatId === 'new';
 
-  // Create a new chat
-  const createNewChat = async () => {
-    if (!user) {
-      setError("User not authenticated");
-      return null;
-    }
-    
-    if (isNewChatCreated) {
-      return chat; // Return existing chat if already created
-    }
-    
-    try {
-      setIsLoading(true);
-      setIsNewChatCreated(true);
-      
-      // Create a new chat with the user ID
-      const newChat = await createChat(user.id, 'New conversation');
-      
-      if (newChat && newChat.id) {
-        // Set the chat immediately to prevent loading state issues
-        setChat(newChat);
-        // Navigate to the new chat
-        navigate(`/chat/${newChat.id}`, { replace: true });
-        return newChat;
-      } else {
-        throw new Error('Failed to create chat - no chat ID returned');
+  // Fetch existing chat or create a new one
+  useEffect(() => {
+    const initializeChat = async () => {
+      if (!user) {
+        setError("User not authenticated");
+        return;
       }
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      setError("Failed to create a new chat");
-      toast({
-        title: "Error",
-        description: "Failed to create a new chat",
-        variant: "destructive"
-      });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // Fetch existing chat by ID
-  const fetchExistingChat = async (id: string) => {
-    if (!user) {
-      setError("User not authenticated");
-      return;
-    }
-    
-    try {
       setIsLoading(true);
-      const fetchedChat = await getChatById(id);
-      
-      if (fetchedChat) {
-        setChat(fetchedChat);
-      } else {
-        setError("Conversation not found");
+      try {
+        // Handle new chat creation
+        if (isNew) {
+          const newChat = await createChat(user.id, 'New conversation');
+          if (newChat && newChat.id) {
+            setChat(newChat);
+            // Navigate to the new chat
+            navigate(`/chat/${newChat.id}`, { replace: true });
+          } else {
+            throw new Error('Failed to create chat - no chat ID returned');
+          }
+        } 
+        // Handle existing chat
+        else if (chatId) {
+          const fetchedChat = await getChatById(chatId);
+          if (fetchedChat) {
+            setChat(fetchedChat);
+          } else {
+            setError("Conversation not found");
+            toast({
+              title: "Not found",
+              description: "This conversation doesn't exist",
+              variant: "destructive"
+            });
+            navigate('/dashboard');
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing chat:', error);
+        setError("Failed to initialize conversation");
         toast({
-          title: "Not found",
-          description: "This conversation doesn't exist",
+          title: "Error",
+          description: "Failed to initialize conversation",
           variant: "destructive"
         });
         navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error fetching chat:', error);
-      setError("Failed to load the conversation");
-      toast({
-        title: "Error",
-        description: "Failed to load the conversation",
-        variant: "destructive"
-      });
-      navigate('/dashboard');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Initial load
-  useEffect(() => {
-    if (!user) {
-      setError("User not authenticated");
-      return;
-    }
-
-    // Handle new chat creation
-    if (isNew) {
-      // Create a new chat immediately
-      createNewChat();
-    } 
-    // Handle existing chat
-    else if (chatId) {
-      fetchExistingChat(chatId);
-    }
-  }, [user, chatId]);
-
-  // Redirect if still on /chat/new after 5 seconds
-  useEffect(() => {
-    let timeoutId: number;
-    
-    if (isNew) {
-      timeoutId = window.setTimeout(() => {
-        // If we're still on the new chat route after 5 seconds, something went wrong
-        if (chatId === 'new') {
-          navigate('/dashboard');
-          toast({
-            title: "Error",
-            description: "Chat creation timed out. Please try again.",
-            variant: "destructive"
-          });
-        }
-      }, 5000);
-    }
-    
-    return () => {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
+      } finally {
+        setIsLoading(false);
       }
     };
-  }, [isNew, chatId, navigate]);
+
+    initializeChat();
+  }, [user, chatId, isNew, navigate]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -265,12 +197,13 @@ export const ChatInterface = () => {
       // If we don't have a chat yet (and this is a new chat),
       // create a new chat first
       if (!targetChat) {
-        targetChat = await createNewChat();
-        
-        // If we still don't have a chat, something went wrong
-        if (!targetChat) {
+        const newChat = await createChat(user!.id, 'New conversation');
+        if (!newChat || !newChat.id) {
           throw new Error("Failed to create chat");
         }
+        targetChat = newChat;
+        setChat(newChat);
+        navigate(`/chat/${newChat.id}`, { replace: true });
       }
       
       // Send the user message
@@ -288,12 +221,6 @@ export const ChatInterface = () => {
           updatedAt: new Date().toISOString()
         };
       });
-      
-      // Fetch the updated chat with messages
-      const updatedChat = await getChatById(targetChat.id);
-      if (updatedChat) {
-        setChat(updatedChat);
-      }
       
       // Generate AI response
       await handleAIResponse(messageContent, targetChat);
@@ -321,28 +248,22 @@ export const ChatInterface = () => {
   };
 
   // Show loading screen for new chat
-  if (isNew && isLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
         <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
-        <p className="text-muted-foreground">Creating new conversation...</p>
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          onClick={() => navigate('/dashboard')}
-        >
-          Cancel
-        </Button>
-      </div>
-    );
-  }
-
-  // Show loading screen for existing chat
-  if (!isNew && isLoading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-[calc(100vh-4rem)]">
-        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
-        <p className="text-muted-foreground">Loading conversation...</p>
+        <p className="text-muted-foreground">
+          {isNew ? "Creating new conversation..." : "Loading conversation..."}
+        </p>
+        {isNew && (
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => navigate('/dashboard')}
+          >
+            Cancel
+          </Button>
+        )}
       </div>
     );
   }

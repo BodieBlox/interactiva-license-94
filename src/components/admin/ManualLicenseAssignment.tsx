@@ -3,59 +3,32 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getUserByEmail, createLicenseWithExpiry } from '@/utils/api';
-import { Key, Search, User, UserCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { generateLicense, getAllUsers, assignLicenseToUser } from '@/utils/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Key, UserCog, UserCheck, Calendar, Infinity } from 'lucide-react';
+import { User } from '@/utils/types';
 
-export const ManualLicenseAssignment = () => {
-  const [email, setEmail] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+export default function ManualLicenseAssignment() {
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [licenseType, setLicenseType] = useState('standard');
+  const [expirationDays, setExpirationDays] = useState(30);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [foundUser, setFoundUser] = useState<any>(null);
-  const [hasExpiry, setHasExpiry] = useState(true);
+  const [showExpiration, setShowExpiration] = useState(true);
 
-  const handleSearch = async () => {
-    if (!email.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const user = await getUserByEmail(email);
-      if (user) {
-        setFoundUser(user);
-      } else {
-        toast({
-          title: "User not found",
-          description: "No user exists with that email address",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error searching for user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to search for user",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: getAllUsers
+  });
 
   const handleAssignLicense = async () => {
-    if (!foundUser) {
+    if (!selectedUserId) {
       toast({
         title: "Error",
-        description: "Search for a user first",
+        description: "Please select a user",
         variant: "destructive"
       });
       return;
@@ -63,26 +36,32 @@ export const ManualLicenseAssignment = () => {
 
     setIsAssigning(true);
     try {
-      // Use undefined for no expiry or convert the date if hasExpiry is true
-      const expiryISODate = hasExpiry && expiryDate ? new Date(expiryDate).toISOString() : undefined;
-      const newLicense = await createLicenseWithExpiry(expiryISODate);
+      // Only pass expirationDays if showExpiration is true
+      const expiration = showExpiration ? expirationDays : null;
+      
+      // Generate a new license with the specified parameters
+      const licenseKey = await generateLicense({
+        type: licenseType,
+        expirationDays: expiration,
+        userId: selectedUserId
+      });
+      
+      // Assign the license to the user
+      await assignLicenseToUser(selectedUserId, licenseKey);
       
       toast({
-        title: "License Created",
-        description: `New license (${newLicense.key}) created for ${foundUser.username}`,
+        title: "License Assigned",
+        description: "License has been successfully assigned to the user",
         variant: "success"
       });
       
-      // Reset form after successful license creation
-      setEmail('');
-      setExpiryDate('');
-      setFoundUser(null);
-      
+      // Reset the form
+      setSelectedUserId('');
     } catch (error) {
       console.error('Error assigning license:', error);
       toast({
         title: "Error",
-        description: "Failed to assign license",
+        description: "Failed to assign license to user",
         variant: "destructive"
       });
     } finally {
@@ -91,120 +70,110 @@ export const ManualLicenseAssignment = () => {
   };
 
   return (
-    <Card className="glass-panel border-0 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Key className="h-5 w-5 text-primary" />
-          <span>Manual License Assignment</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {/* User search section */}
-          <div className="space-y-3">
-            <Label htmlFor="userEmail">User Email</Label>
-            <div className="flex gap-2">
-              <Input
-                id="userEmail"
-                type="email"
-                placeholder="user@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleSearch}
-                disabled={isSearching || !email.trim()}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isSearching ? (
-                  <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mr-2"></div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Manual License Assignment</CardTitle>
+          <CardDescription>
+            Assign licenses directly to users
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="userSelect">Select User</Label>
+            <Select
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+              disabled={usersLoading}
+            >
+              <SelectTrigger id="userSelect">
+                <SelectValue placeholder="Select a user" />
+              </SelectTrigger>
+              <SelectContent>
+                {usersLoading ? (
+                  <SelectItem value="loading" disabled>Loading users...</SelectItem>
                 ) : (
-                  <Search className="h-4 w-4 mr-2" />
+                  users?.map((user: User) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.username} ({user.email})
+                    </SelectItem>
+                  ))
                 )}
-                <span>Search</span>
-              </Button>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-
-          {/* Found user info */}
-          {foundUser && (
-            <div className="border rounded-md p-4 bg-muted/30">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">{foundUser.username}</h3>
-                  <p className="text-sm text-muted-foreground">{foundUser.email}</p>
-                </div>
-              </div>
-              
-              <div className="text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Role:</span>
-                  <span className="font-medium capitalize">{foundUser.role}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <span className="font-medium capitalize">{foundUser.status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">License Active:</span>
-                  <span className="font-medium">{foundUser.licenseActive ? 'Yes' : 'No'}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* License expiry toggle */}
-          {foundUser && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="license-expiry-toggle" className="text-sm font-medium">License Expires</Label>
-                <Switch 
-                  id="license-expiry-toggle" 
-                  checked={hasExpiry} 
-                  onCheckedChange={setHasExpiry}
-                />
-              </div>
-
-              {hasExpiry ? (
+          
+          <div className="space-y-2">
+            <Label htmlFor="licenseType">License Type</Label>
+            <Select
+              value={licenseType}
+              onValueChange={setLicenseType}
+            >
+              <SelectTrigger id="licenseType">
+                <SelectValue placeholder="Select license type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
+                <SelectItem value="enterprise">Enterprise</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center space-x-2 pt-2">
+            <Switch
+              id="expiration-mode"
+              checked={showExpiration}
+              onCheckedChange={setShowExpiration}
+            />
+            <Label htmlFor="expiration-mode" className="flex items-center gap-2">
+              {showExpiration ? (
                 <>
-                  <Label htmlFor="expiryDate">Expiration Date</Label>
-                  <Input
-                    id="expiryDate"
-                    type="date"
-                    value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]} // Prevent past dates
-                  />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>Set Expiration Period</span>
                 </>
               ) : (
-                <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground">
-                  This license will never expire. The user will have permanent access to premium features.
-                </div>
+                <>
+                  <Infinity className="h-4 w-4 text-muted-foreground" />
+                  <span>Perpetual License (No Expiration)</span>
+                </>
               )}
+            </Label>
+          </div>
+          
+          {showExpiration && (
+            <div className="space-y-2">
+              <Label htmlFor="expirationDays">Expiration Period (days)</Label>
+              <Input 
+                id="expirationDays"
+                type="number" 
+                min="1"
+                value={expirationDays} 
+                onChange={(e) => setExpirationDays(parseInt(e.target.value))}
+              />
             </div>
           )}
-
-          {/* Assign license button */}
-          {foundUser && (
-            <Button 
-              onClick={handleAssignLicense}
-              disabled={isAssigning || (hasExpiry && !expiryDate)}
-              className="w-full bg-primary hover:bg-primary/90 mt-4"
-            >
-              {isAssigning ? (
-                <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mr-2"></div>
-              ) : (
-                <UserCheck className="h-4 w-4 mr-2" />
-              )}
-              <span>Assign License</span>
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={handleAssignLicense} 
+            className="w-full"
+            disabled={isAssigning || !selectedUserId}
+          >
+            {isAssigning ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent border-white" />
+                Assigning License...
+              </>
+            ) : (
+              <>
+                <UserCheck className="mr-2 h-4 w-4" />
+                Assign License
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
-};
+}
