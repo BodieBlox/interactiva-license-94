@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Key } from 'lucide-react';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -34,6 +34,7 @@ export const AppLayout = ({
   const [showWarning, setShowWarning] = useState(false);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
+  const [showLicenseDialog, setShowLicenseDialog] = useState(false);
 
   useEffect(() => {
     // Only run redirects if we're not loading
@@ -60,13 +61,17 @@ export const AppLayout = ({
 
     // Skip license check for admin users going to admin pages
     const isAdminRoute = location.pathname.startsWith('/admin');
+    const isActivationRoute = location.pathname === '/activate';
+    
     if (requireLicense && user && !user.licenseActive && !(user.role === 'admin' && isAdminRoute)) {
-      toast({
-        title: "License Required",
-        description: "Please activate a license to continue",
-      });
-      navigate('/activate');
+      if (!isActivationRoute) {
+        // If not already on the activate page, show license dialog
+        setShowLicenseDialog(true);
+      }
       return;
+    } else {
+      // Close license dialog if shown but no longer needed
+      setShowLicenseDialog(false);
     }
 
     // Handle suspended users - they can't access the system
@@ -99,7 +104,11 @@ export const AppLayout = ({
   const handleSuspendedLogout = () => {
     setShowSuspendedDialog(false);
     logout();
-    navigate('/login');
+  };
+
+  const handleLicenseActivate = () => {
+    setShowLicenseDialog(false);
+    navigate('/activate');
   };
 
   // Only show loader if authentication is in progress AND we need auth for this page
@@ -137,6 +146,27 @@ export const AppLayout = ({
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleWarningContinue} className="bg-amber-500 hover:bg-amber-600">
               Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* License Dialog for users without a license */}
+      <AlertDialog open={showLicenseDialog} onOpenChange={setShowLicenseDialog}>
+        <AlertDialogContent className="glass-panel border-0">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              <span>License Required</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              You need an active license to access this content. Please activate your license to continue.
+              <p className="mt-2">If you don't have a license key, you can request one from an administrator.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleLicenseActivate} className="bg-primary hover:bg-primary/90">
+              Activate License
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

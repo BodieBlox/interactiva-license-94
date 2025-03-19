@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { KeyRound, MailPlus, ArrowRight } from 'lucide-react';
+import { KeyRound, MailPlus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const LicenseActivation = () => {
@@ -17,9 +17,29 @@ export const LicenseActivation = () => {
   const { user, activateUserLicense, requestLicense, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
+  // Handle auto-formatting of license key as user types
+  const handleLicenseKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove all non-alphanumeric characters
+    let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    
+    // Insert dashes after every 4 characters
+    if (value.length > 4) {
+      value = value.match(/.{1,4}/g)?.join('-') || value;
+    }
+    
+    // Limit to 19 characters (16 alphanumeric + 3 dashes)
+    if (value.length <= 19) {
+      setLicenseKey(value);
+    }
+  };
+
   // Use the user data to check if we should redirect
   useEffect(() => {
     if (user?.licenseActive) {
+      toast({
+        title: "License Active",
+        description: "You already have an active license.",
+      });
       navigate('/dashboard');
     }
   }, [user, navigate]);
@@ -64,6 +84,10 @@ export const LicenseActivation = () => {
     }
   };
 
+  const handleBackToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <div className="w-full max-w-md mx-auto">
       {!showRequestForm ? (
@@ -83,7 +107,7 @@ export const LicenseActivation = () => {
                   id="licenseKey"
                   placeholder="XXXX-XXXX-XXXX-XXXX"
                   value={licenseKey}
-                  onChange={(e) => setLicenseKey(e.target.value)}
+                  onChange={handleLicenseKeyChange}
                   className="bg-white/50 dark:bg-black/10 border-0 subtle-ring-focus transition-apple text-center tracking-wider font-mono uppercase"
                   maxLength={19}
                   required
@@ -123,6 +147,18 @@ export const LicenseActivation = () => {
                 <MailPlus className="mr-2 h-4 w-4" />
                 Request a License
               </Button>
+              
+              {user && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full transition-all mt-2 text-muted-foreground"
+                  onClick={handleBackToDashboard}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              )}
             </CardFooter>
           </Card>
         </form>
