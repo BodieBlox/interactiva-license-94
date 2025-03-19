@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,17 +20,13 @@ import { NotificationBanner } from '@/components/ui/NotificationBanner';
 
 export const AdminPanel = () => {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('users');
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
 
   const handleLogout = () => {
     logout();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-      variant: "success",
-    });
   };
 
   return (

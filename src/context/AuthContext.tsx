@@ -172,6 +172,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
       // User state will be updated by the onAuthStateChanged listener
+      
+      // Navigate to login page after logout
+      window.location.href = '/login';
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
     } catch (error) {
       console.error('Logout error:', error);
       setError((error as Error).message);

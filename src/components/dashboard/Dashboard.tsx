@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -21,7 +20,6 @@ export const DashboardContent = () => {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const navigate = useNavigate();
 
-  // Apply custom branding if available
   const customStyle = user?.customization?.approved ? {
     '--primary': user.customization.primaryColor || '#7E69AB',
   } as React.CSSProperties : {};
@@ -80,10 +78,6 @@ export const DashboardContent = () => {
 
   const handleLogout = () => {
     logout();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
   };
 
   return (
