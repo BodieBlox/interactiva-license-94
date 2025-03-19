@@ -8,9 +8,9 @@ import { LicenseActivation } from './components/auth/LicenseActivation';
 import { DashboardContent } from './components/dashboard/Dashboard';
 import { ChatInterface } from './components/dashboard/ChatInterface';
 import { UserSettings } from './components/user/UserSettings';
-import { KeyGenerator } from './pages/KeyGenerator';
-import { Index } from './pages/Index';
-import { NotFound } from './pages/NotFound';
+import KeyGenerator from './pages/KeyGenerator';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 import './App.css';
 
 function App() {
@@ -28,8 +28,8 @@ function App() {
         {/* Protected routes */}
         <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
         <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
-        <Route path="/chat/new" element={<AppLayout><ChatInterface isNew={true} /></AppLayout>} />
-        <Route path="/chat/:chatId" element={<AppLayout><ChatInterface isNew={false} /></AppLayout>} />
+        <Route path="/chat/new" element={<AppLayout><ChatInterface /></AppLayout>} />
+        <Route path="/chat/:chatId" element={<AppLayout><ChatInterface /></AppLayout>} />
         <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
 
         {/* Redirect and 404 */}

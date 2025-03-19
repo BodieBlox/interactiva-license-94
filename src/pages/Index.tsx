@@ -16,7 +16,7 @@ const Index = () => {
           <Link to="/login">
             <Button size="lg">Login</Button>
           </Link>
-          <Link to="/generate-key">
+          <Link to="/key-generator">
             <Button size="lg" variant="outline" className="flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
               Generate License Key

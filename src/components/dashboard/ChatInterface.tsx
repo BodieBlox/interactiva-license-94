@@ -20,12 +20,15 @@ export const ChatInterface = () => {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  
+  // Check if this is a new chat
+  const isNew = chatId === 'new';
 
   useEffect(() => {
     const fetchChat = async () => {
       if (!user) return;
 
-      if (chatId === 'new') {
+      if (isNew) {
         try {
           const newChat = await createChat(user.id, 'New conversation');
           setChat(newChat);
@@ -67,7 +70,7 @@ export const ChatInterface = () => {
     };
 
     fetchChat();
-  }, [chatId, user, navigate]);
+  }, [chatId, user, navigate, isNew]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
