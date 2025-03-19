@@ -1,6 +1,7 @@
-import { User, LoginLog, ChatMessage, Chat, LicenseRequest, DashboardCustomization } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+import { User, LoginLog, ChatMessage, Chat, LicenseRequest, DashboardCustomization, License } from './types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 const apiRequest = async (url: string, method: string = 'GET', body: any = null, headers: Record<string, string> = {}) => {
   const fetchOptions: RequestInit = {
@@ -62,8 +63,8 @@ export const getAllUsers = async (): Promise<User[]> => {
   return apiRequest('/users/all');
 };
 
-export const createUser = async (email: string, password?: string, username?: string, role?: string) => {
-  return apiRequest('/users', 'POST', { email, password, username, role });
+export const createUser = async (userData: { email: string, password?: string, username?: string, role?: string }) => {
+  return apiRequest('/users', 'POST', userData);
 };
 
 export const updateUser = async (id: string, userData: any) => {
@@ -174,7 +175,7 @@ export const clearUserChatHistory = async (userId: string) => {
   return apiRequest(`/users/${userId}/chats`, 'DELETE');
 };
 
-export const getAllLicenses = async () => {
+export const getAllLicenses = async (): Promise<License[]> => {
   return [
     {
       id: '1',

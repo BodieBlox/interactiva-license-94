@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -28,12 +29,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      console.log("Firebase auth state changed:", firebaseUser?.email);
       setIsLoading(true);
       if (firebaseUser) {
         try {
-          const userFromDB = await getUserByEmail(firebaseUser.email || '');
+          // First try to get the user from our own database
+          console.log("Fetching user from database:", firebaseUser.email);
+          const userFromDB = await getUserByEmail(firebaseUser.email || '').catch((err) => {
+            console.log("Error fetching user, will check Firebase DB:", err);
+            return null;
+          });
           
           if (userFromDB) {
+            console.log("User found in API database:", userFromDB);
+            
             if (userFromDB.licenseActive && userFromDB.licenseKey) {
               const isExpired = await checkLicenseExpiry(userFromDB.licenseKey);
               if (isExpired) {
@@ -78,17 +87,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               console.error("Error logging login:", e);
             }
           } else {
-            const newUser: User = {
-              id: firebaseUser.uid,
-              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || '',
-              role: 'user',
-              status: 'active',
-              licenseActive: false
-            };
+            // If not found in our database, check Firebase realtime database
+            console.log("Checking Firebase DB for user:", firebaseUser.uid);
+            const userRef = ref(database, `users/${firebaseUser.uid}`);
+            const snapshot = await get(userRef);
             
-            await set(ref(database, `users/${firebaseUser.uid}`), newUser);
-            setUser(newUser);
+            if (snapshot.exists()) {
+              console.log("User found in Firebase DB:", snapshot.val());
+              const userData = snapshot.val();
+              setUser(userData);
+              
+              try {
+                const ip = await fetchIP();
+                await logUserLogin(
+                  userData.id, 
+                  { ip, userAgent: navigator.userAgent }
+                );
+              } catch (e) {
+                console.error("Error logging login:", e);
+              }
+            } else {
+              // User not found anywhere, create a new one
+              console.log("Creating new user in Firebase DB");
+              const newUser: User = {
+                id: firebaseUser.uid,
+                username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                email: firebaseUser.email || '',
+                role: 'user',
+                status: 'active',
+                licenseActive: false
+              };
+              
+              await set(userRef, newUser);
+              setUser(newUser);
+            }
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
@@ -222,7 +254,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      console.log("Login attempt with:", email);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log("Firebase login success:", result.user?.email);
       // We don't set isLoading to false here - it will be handled by the auth state change listener
     } catch (error) {
       console.error('Login error:', error);

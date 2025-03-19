@@ -30,6 +30,7 @@ export const LoginForm = () => {
   useEffect(() => {
     const checkUserLicense = async () => {
       if (user) {
+        console.log("User authenticated:", user);
         if (!user.licenseActive) {
           // Show license dialog if user doesn't have an active license
           setShowLicenseDialog(true);
@@ -65,6 +66,7 @@ export const LoginForm = () => {
     }
     
     try {
+      console.log("Attempting login with:", email);
       await login(email, password);
       // Redirection happens in useEffect above
     } catch (error) {
