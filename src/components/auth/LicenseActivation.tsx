@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { KeyRound, MailPlus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { KeyRound, MailPlus, ArrowRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const LicenseActivation = () => {
@@ -84,10 +84,6 @@ export const LicenseActivation = () => {
     }
   };
 
-  const handleBackToDashboard = () => {
-    navigate('/dashboard');
-  };
-
   return (
     <div className="w-full max-w-md mx-auto">
       {!showRequestForm ? (
@@ -147,18 +143,6 @@ export const LicenseActivation = () => {
                 <MailPlus className="mr-2 h-4 w-4" />
                 Request a License
               </Button>
-              
-              {user && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full transition-all mt-2 text-muted-foreground"
-                  onClick={handleBackToDashboard}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Dashboard
-                </Button>
-              )}
             </CardFooter>
           </Card>
         </form>

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { Check, ChevronsUpDown, ImagePlus, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, ImagePlus, Loader2, ArrowLeft } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { updateUsername, updateDashboardCustomization, approveDashboardCustomization } from '@/utils/api';
 import { DashboardCustomization } from '@/utils/types';
 import {
@@ -22,9 +23,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
-// Add import for new components
 import { CompanyInvitation } from './CompanyInvitation';
 import { PendingInvitation } from './PendingInvitation';
 
@@ -129,7 +129,6 @@ export const UserSettings = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState(user?.customization?.primaryColor || "indigo")
 
-  // Handle username update
   const handleUsernameUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -162,7 +161,6 @@ export const UserSettings = () => {
     }
   };
 
-  // Handle company branding submission
   const handleCompanyBrandingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -180,7 +178,7 @@ export const UserSettings = () => {
       const customization: DashboardCustomization = {
         primaryColor,
         companyName,
-        approved: false // Needs admin approval
+        approved: false
       };
       
       const updatedUser = await updateDashboardCustomization(user!.id, customization);
@@ -201,12 +199,10 @@ export const UserSettings = () => {
     }
   };
 
-  // Handle primary color change
   const handlePrimaryColorChange = (color: string) => {
     setPrimaryColor(color);
   };
 
-  // Handle logo upload (placeholder)
   const handleLogoUpload = () => {
     toast({
       title: "Coming Soon",
@@ -214,12 +210,10 @@ export const UserSettings = () => {
     });
   };
 
-  // Handle admin approval request
   const handleAdminApprovalRequest = () => {
     setIsDialogOpen(true);
   };
 
-  // Handle confirmation of admin approval request
   const handleConfirmAdminApproval = async () => {
     setIsDialogOpen(false);
     setIsSubmittingBranding(true);
@@ -242,18 +236,23 @@ export const UserSettings = () => {
     }
   };
 
-  // Handle cancellation of admin approval request
   const handleCancelAdminApproval = () => {
     setIsDialogOpen(false);
   };
 
-  // Within the return statement, add the PendingInvitation component before any other content
-  // and add the CompanyInvitation component in the company branding section
   return (
     <div className="container max-w-3xl mx-auto py-10 space-y-8">
+      <div className="flex items-center mb-4">
+        <Link to="/dashboard">
+          <Button variant="ghost" className="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Dashboard</span>
+          </Button>
+        </Link>
+      </div>
+      
       {user && <PendingInvitation currentUser={user} />}
 
-      {/* Account Settings Section */}
       <Card className="glass-panel border-0 animate-fade-in">
         <CardHeader>
           <CardTitle className="text-2xl font-medium">Account Settings</CardTitle>
@@ -290,7 +289,6 @@ export const UserSettings = () => {
         </CardContent>
       </Card>
 
-      {/* Company Branding Section */}
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-medium">Company Branding</h3>
@@ -299,7 +297,6 @@ export const UserSettings = () => {
           </p>
         </div>
         
-        {/* Place the CompanyInvitation component here, after the company branding form */}
         {user && <CompanyInvitation currentUser={user} />}
       </div>
 

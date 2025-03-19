@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -26,13 +27,21 @@ export const ChatInterface = () => {
 
   useEffect(() => {
     const fetchChat = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       if (isNew) {
         try {
+          // Create a new chat with the user ID
           const newChat = await createChat(user.id, 'New conversation');
-          setChat(newChat);
-          navigate(`/chat/${newChat.id}`, { replace: true });
+          if (newChat && newChat.id) {
+            setChat(newChat);
+            navigate(`/chat/${newChat.id}`, { replace: true });
+          } else {
+            throw new Error('Failed to create chat - no chat ID returned');
+          }
         } catch (error) {
           console.error('Error creating chat:', error);
           toast({
@@ -40,6 +49,7 @@ export const ChatInterface = () => {
             description: "Failed to create a new chat",
             variant: "destructive"
           });
+          navigate('/dashboard');
         } finally {
           setIsLoading(false);
         }
@@ -63,6 +73,7 @@ export const ChatInterface = () => {
             description: "Failed to load the conversation",
             variant: "destructive"
           });
+          navigate('/dashboard');
         } finally {
           setIsLoading(false);
         }
