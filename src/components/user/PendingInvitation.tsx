@@ -24,22 +24,32 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const { fromUsername, companyName } = currentUser.customization.pendingInvitation;
 
   const handleAcceptInvitation = async () => {
+    if (!currentUser?.customization?.pendingInvitation) return;
+    
     setIsLoading(true);
     try {
+      // Create a new customization object with pendingInvitation removed and approved true
       const updatedCustomization: DashboardCustomization = {
         ...currentUser.customization,
         approved: true,
         pendingInvitation: undefined
       };
       
+      // Update the user's customization settings
       const updatedUser = await updateDashboardCustomization(currentUser.id, updatedCustomization);
-      setUser(updatedUser);
       
-      toast({
-        title: "Invitation Accepted",
-        description: `You are now using ${companyName}'s branding`,
-        variant: "success"
-      });
+      // Update the user in context
+      if (updatedUser) {
+        setUser(updatedUser);
+        
+        toast({
+          title: "Invitation Accepted",
+          description: `You are now using ${companyName}'s branding`,
+          variant: "success"
+        });
+      } else {
+        throw new Error("Failed to update user");
+      }
     } catch (error) {
       console.error('Error accepting invitation:', error);
       toast({
@@ -53,20 +63,30 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   };
 
   const handleDeclineInvitation = async () => {
+    if (!currentUser?.customization?.pendingInvitation) return;
+    
     setIsLoading(true);
     try {
+      // Create a copy of the current customization but without the pendingInvitation
       const updatedCustomization: DashboardCustomization = {
         ...currentUser.customization,
         pendingInvitation: undefined
       };
       
+      // Update the user's customization settings
       const updatedUser = await updateDashboardCustomization(currentUser.id, updatedCustomization);
-      setUser(updatedUser);
       
-      toast({
-        title: "Invitation Declined",
-        description: "You have declined the company branding invitation",
-      });
+      // Update the user in context
+      if (updatedUser) {
+        setUser(updatedUser);
+        
+        toast({
+          title: "Invitation Declined",
+          description: "You have declined the company branding invitation",
+        });
+      } else {
+        throw new Error("Failed to update user");
+      }
     } catch (error) {
       console.error('Error declining invitation:', error);
       toast({
@@ -80,7 +100,7 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   };
 
   return (
-    <Card className="border-primary/30 bg-primary/5 animate-pulse-slow">
+    <Card className="border-primary/30 bg-primary/5 shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 text-primary" />
@@ -103,7 +123,11 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
           disabled={isLoading}
           className="flex items-center gap-2"
         >
-          <XCircle className="h-4 w-4" />
+          {isLoading ? (
+            <div className="h-4 w-4 rounded-full border-2 border-t-current border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
           Decline
         </Button>
         <Button 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -6,9 +7,10 @@ import { getUserChats } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { ChatList } from './ChatList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquarePlus, Shield, LogOut, Settings, ArrowDownAZ, ArrowUpAZ, CalendarClock, MessagesSquare } from 'lucide-react';
+import { MessageSquarePlus, Shield, LogOut, Settings, ArrowDownAZ, ArrowUpAZ, CalendarClock, MessagesSquare, User } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type SortOption = 'newest' | 'oldest' | 'alphabetical' | 'messages';
 
@@ -19,6 +21,7 @@ export const DashboardContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const customStyle = user?.customization?.approved ? {
     '--primary': user.customization.primaryColor || '#7E69AB',
@@ -81,52 +84,93 @@ export const DashboardContent = () => {
   };
 
   return (
-    <div className="container max-w-5xl mx-auto px-4 py-8" style={customStyle}>
-      <div className="flex justify-between items-center mb-8">
+    <div className="container mx-auto px-4 py-6 md:py-8 max-w-5xl" style={customStyle}>
+      {/* Header */}
+      <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'} mb-6`}>
         <div>
-          <h1 className="text-3xl font-medium">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-medium">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             {user?.customization?.approved && user.customization.companyName ? 
               `Welcome to ${user.customization.companyName}` : 
               `Welcome back, ${user?.username || 'User'}`}
           </p>
         </div>
-        <div className="flex space-x-3">
-          <Link to="/settings">
-            <Button className="bg-white dark:bg-gray-800 text-primary hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 border shadow-sm">
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </Button>
-          </Link>
-          {user?.role === 'admin' && (
-            <Link to="/admin">
-              <Button className="bg-amber-500 hover:bg-amber-600 transition-apple flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                <span>Admin Panel</span>
+        
+        <div className={`flex ${isMobile ? 'justify-between' : 'space-x-3'}`}>
+          <div className="flex space-x-2">
+            <Link to="/settings">
+              <Button className="bg-white dark:bg-gray-800 text-primary hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 border shadow-sm">
+                {isMobile ? (
+                  <Settings className="h-4 w-4" />
+                ) : (
+                  <>
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
+                  </>
+                )}
               </Button>
             </Link>
-          )}
+            
+            {user?.role === 'admin' && (
+              <Link to="/admin">
+                <Button className="bg-amber-500 hover:bg-amber-600 transition-apple flex items-center gap-2">
+                  {isMobile ? (
+                    <Shield className="h-4 w-4" />
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4" />
+                      <span>Admin</span>
+                    </>
+                  )}
+                </Button>
+              </Link>
+            )}
+          </div>
+          
           <Button 
             variant="ghost" 
             onClick={handleLogout} 
             className="flex items-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            <LogOut className="h-4 w-4" />
-            <span>Logout</span>
+            {isMobile ? (
+              <LogOut className="h-4 w-4" />
+            ) : (
+              <>
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
 
+      {/* User profile card for mobile */}
+      {isMobile && (
+        <Card className="mb-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-primary/20 rounded-full p-3">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">{user?.username}</h3>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create New Conversation Button */}
       <Link to="/chat/new" className="block mb-6">
-        <Button className="w-full bg-black hover:bg-black/90 text-white dark:text-white transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30 font-medium">
+        <Button className="w-full bg-black hover:bg-black/90 text-white dark:text-white transition-all py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30 font-medium">
           <MessageSquarePlus className="h-5 w-5" />
           <span>Create New Conversation</span>
         </Button>
       </Link>
 
+      {/* Content Cards */}
       <div className="grid grid-cols-1 gap-6">
         {user?.role === 'admin' && (
-          <Card className="glass-panel shadow-lg border-0 bg-amber-50 dark:bg-amber-950/20">
+          <Card className="glass-panel shadow-lg border-0 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/20 dark:to-amber-900/10">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-amber-800 dark:text-amber-300">Administrator Access</h2>
@@ -142,15 +186,15 @@ export const DashboardContent = () => {
           </Card>
         )}
 
-        <Card className="glass-panel shadow-lg border-0">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="glass-panel shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+          <CardHeader className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between'} pb-2`}>
             <div>
               <CardTitle>Your Conversations</CardTitle>
               <CardDescription>Continue an existing conversation or start a new one</CardDescription>
             </div>
             <div className="flex items-center">
               <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className={`${isMobile ? 'w-full' : 'w-[180px]'}`}>
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
