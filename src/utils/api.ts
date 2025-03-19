@@ -1,4 +1,5 @@
-import { User, LoginLog, ChatMessage } from './types';
+
+import { User, LoginLog, ChatMessage, Chat, LicenseRequest, DashboardCustomization } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -65,8 +66,8 @@ export const getAllUsers = async (): Promise<User[]> => {
   return apiRequest('/users/all');
 };
 
-export const createUser = async (userData: any) => {
-  return apiRequest('/users', 'POST', userData);
+export const createUser = async (email: string, password?: string, username?: string, role?: string) => {
+  return apiRequest('/users', 'POST', { email, password, username, role });
 };
 
 export const updateUser = async (id: string, userData: any) => {
@@ -77,9 +78,42 @@ export const deleteUser = async (id: string) => {
   return apiRequest(`/users/${id}`, 'DELETE');
 };
 
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  return apiRequest(`/users/email/${email}`);
+};
+
+export const updateUsername = async (userId: string, username: string): Promise<User> => {
+  return updateUser(userId, { username });
+};
+
+export const updateUserStatus = async (userId: string, status: 'active' | 'suspended'): Promise<User> => {
+  return updateUser(userId, { status });
+};
+
+// Dashboard Customization
+export const updateDashboardCustomization = async (userId: string, customization: DashboardCustomization): Promise<User> => {
+  return updateUser(userId, { customization });
+};
+
+export const approveDashboardCustomization = async (userId: string): Promise<User> => {
+  return apiRequest(`/users/${userId}/approve-branding`, 'POST');
+};
+
 // License Management
 export const generateLicense = async () => {
   return apiRequest('/licenses/generate', 'POST');
+};
+
+export const createLicense = async () => {
+  return generateLicense();
+};
+
+export const suspendLicense = async (licenseId: string) => {
+  return apiRequest(`/licenses/${licenseId}/suspend`, 'POST');
+};
+
+export const revokeLicense = async (licenseId: string) => {
+  return apiRequest(`/licenses/${licenseId}/revoke`, 'POST');
 };
 
 // Login Logs
@@ -87,8 +121,29 @@ export const getLoginLogs = async (): Promise<LoginLog[]> => {
   return apiRequest('/login-logs');
 };
 
+export const logUserLogin = async (userId: string, info: any) => {
+  return apiRequest('/login-logs', 'POST', { userId, ...info });
+};
+
 export const forceUserLogout = async (userId: string) => {
-    return apiRequest(`/login-logs/logout/${userId}`, 'POST');
+  return apiRequest(`/login-logs/logout/${userId}`, 'POST');
+};
+
+// License Requests
+export const getLicenseRequests = async (): Promise<LicenseRequest[]> => {
+  return apiRequest('/license-requests');
+};
+
+export const createLicenseRequest = async (userId: string, message: string) => {
+  return apiRequest('/license-requests', 'POST', { userId, message });
+};
+
+export const approveLicenseRequest = async (requestId: string) => {
+  return apiRequest(`/license-requests/${requestId}/approve`, 'POST');
+};
+
+export const rejectLicenseRequest = async (requestId: string) => {
+  return apiRequest(`/license-requests/${requestId}/reject`, 'POST');
 };
 
 // Chat Messages
@@ -100,7 +155,35 @@ export const createChatMessage = async (chatId: string, message: string) => {
   return apiRequest(`/chat/${chatId}`, 'POST', { message });
 };
 
-// Add these new functions to support license management
+export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  return apiRequest(`/chats/${chatId}`);
+};
+
+export const getUserChats = async (userId: string): Promise<Chat[]> => {
+  return apiRequest(`/users/${userId}/chats`);
+};
+
+export const getAllChats = async (): Promise<Chat[]> => {
+  return apiRequest('/chats');
+};
+
+export const createChat = async (userId: string, title: string): Promise<Chat> => {
+  return apiRequest('/chats', 'POST', { userId, title });
+};
+
+export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant'): Promise<ChatMessage> => {
+  return apiRequest(`/chats/${chatId}/messages`, 'POST', { content, role });
+};
+
+export const addMessageToChat = async (chatId: string, message: { content: string, role: 'user' | 'assistant' }): Promise<ChatMessage> => {
+  return sendMessage(chatId, message.content, message.role);
+};
+
+export const clearUserChatHistory = async (userId: string) => {
+  return apiRequest(`/users/${userId}/chats`, 'DELETE');
+};
+
+// License Management (extended)
 export const getAllLicenses = async () => {
   // This would normally make an API request to get all licenses
   // For demo purposes, returning mock data
@@ -108,7 +191,7 @@ export const getAllLicenses = async () => {
     {
       id: '1',
       key: 'FREE-1234-5678-9ABC',
-      status: 'active',
+      status: 'active' as const,
       type: 'standard',
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString()
@@ -116,7 +199,7 @@ export const getAllLicenses = async () => {
     {
       id: '2',
       key: 'PREM-ABCD-EFGH-IJKL',
-      status: 'active',
+      status: 'active' as const,
       type: 'premium',
       expiresAt: null,
       createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
@@ -124,7 +207,7 @@ export const getAllLicenses = async () => {
     {
       id: '3',
       key: 'ENTP-MNOP-QRST-UVWX',
-      status: 'revoked',
+      status: 'revoked' as const,
       type: 'enterprise',
       expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
