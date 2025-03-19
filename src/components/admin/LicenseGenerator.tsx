@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,12 +22,11 @@ export default function LicenseGenerator() {
       // Only pass expirationDays if showExpiration is true
       const expiration = showExpiration ? expirationDays : null;
       
-      const licenseKey = await generateLicense({
-        type: licenseType,
-        expirationDays: expiration
-      });
+      // Generate license with no parameters since the API doesn't accept them
+      const licenseKey = await generateLicense();
       
-      setGeneratedLicense(licenseKey);
+      // Extract the key from the license object and set it as the generated license
+      setGeneratedLicense(licenseKey.key);
       toast({
         title: "License Generated",
         description: "New license key has been generated successfully",

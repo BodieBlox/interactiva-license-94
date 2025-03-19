@@ -7,11 +7,11 @@ import { ArrowLeft, LucideIcon, Shield, Users, MessageSquare, Key, Rotate3D, Lay
 import { UserManagement } from './UserManagement';
 import { LoginLogs } from './LoginLogs';
 import { ChatViewer } from './ChatViewer';
-import { LicenseGenerator } from './LicenseGenerator';
+import LicenseGenerator from './LicenseGenerator';
 import { LicenseRequests } from './LicenseRequests';
 import { BrandingApproval } from './BrandingApproval';
 import { UserCreator } from './UserCreator';
-import { ManualLicenseAssignment } from './ManualLicenseAssignment';
+import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface NavItem {

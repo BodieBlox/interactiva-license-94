@@ -555,3 +555,48 @@ const generateLicenseKey = (): string => {
   
   return segments.join('-');
 };
+
+// Add the missing assignLicenseToUser function
+export const assignLicenseToUser = async (userId: string, licenseKey: string): Promise<User> => {
+  const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
+  
+  // Update the user's license information
+  await update(userRef, {
+    licenseActive: true,
+    licenseKey: licenseKey
+  });
+  
+  // Activate the license in the licenses collection
+  const licensesRef = ref(database, 'licenses');
+  const licensesSnapshot = await get(licensesRef);
+  
+  if (licensesSnapshot.exists()) {
+    const licenses = licensesSnapshot.val();
+    const licenseEntries = Object.entries(licenses);
+    
+    for (const [licenseId, license] of licenseEntries) {
+      if ((license as License).key === licenseKey) {
+        const licenseRef = ref(database, `licenses/${licenseId}`);
+        await update(licenseRef, {
+          isActive: true,
+          userId: userId,
+          activatedAt: new Date().toISOString()
+        });
+        break;
+      }
+    }
+  }
+  
+  return {
+    ...user,
+    licenseActive: true,
+    licenseKey: licenseKey
+  };
+};

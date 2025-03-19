@@ -36,6 +36,22 @@ export const AppLayout = ({
   const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
   const [showLicenseDialog, setShowLicenseDialog] = useState(false);
 
+  // Define checkLicense function first before using it
+  const checkLicense = async () => {
+    if (user && location.pathname !== '/activate') {
+      // Always check license validity
+      const needsLicense = !user.licenseActive || await checkLicenseValidity();
+      
+      if (needsLicense && !(user.role === 'admin' && location.pathname.startsWith('/admin'))) {
+        if (location.pathname !== '/activate') {
+          setShowLicenseDialog(true);
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   useEffect(() => {
     // Only run redirects if we're not loading
     if (isLoading) return;
@@ -69,22 +85,6 @@ export const AppLayout = ({
     // Skip license check for admin users going to admin pages
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isActivationRoute = location.pathname === '/activate';
-    
-    // Check if user needs a license
-    const checkLicense = async () => {
-      if (user && !isActivationRoute) {
-        // Always check license validity
-        const needsLicense = !user.licenseActive || await checkLicenseValidity();
-        
-        if (needsLicense && !(user.role === 'admin' && isAdminRoute)) {
-          if (location.pathname !== '/activate') {
-            setShowLicenseDialog(true);
-            return true;
-          }
-        }
-      }
-      return false;
-    };
     
     if (requireLicense && user) {
       checkLicense();
