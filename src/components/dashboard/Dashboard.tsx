@@ -120,7 +120,7 @@ export const DashboardContent = () => {
 
       {/* Create New Conversation Button - Prominently displayed */}
       <Link to="/chat/new" className="block mb-6">
-        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3">
+        <Button className="w-full bg-primary hover:bg-primary/90 transition-apple py-6 text-lg flex items-center gap-3 shadow-lg border border-primary/30">
           <MessageSquarePlus className="h-5 w-5" />
           <span>Create New Conversation</span>
         </Button>

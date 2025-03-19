@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -17,6 +16,7 @@ interface AuthContextType {
   requestLicense: (message?: string) => Promise<void>;
   checkForcedLogout: () => Promise<boolean>;
   setUser: (user: User) => void;
+  checkLicenseValidity: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,15 +31,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       if (firebaseUser) {
         try {
-          // Get the user data from Realtime Database by email
           const userFromDB = await getUserByEmail(firebaseUser.email || '');
           
           if (userFromDB) {
-            // Check if the user has an expired license
             if (userFromDB.licenseActive && userFromDB.licenseKey) {
               const isExpired = await checkLicenseExpiry(userFromDB.licenseKey);
               if (isExpired) {
-                // Update user to reflect expired license
                 await update(ref(database, `users/${userFromDB.id}`), {
                   licenseActive: false
                 });
@@ -53,14 +50,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }
             
-            // Check if there's a forcedLogout flag before setting the user
             if (userFromDB.forcedLogout) {
-              // Clear the flag
               await update(ref(database, `users/${userFromDB.id}`), {
                 forcedLogout: null
               });
               
-              // Force logout
               await signOut(auth);
               toast({
                 title: "Session Terminated",
@@ -72,10 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               return;
             }
             
-            // User exists in Database, use that data
             setUser(userFromDB);
             
-            // Log this login
             try {
               const ip = await fetchIP();
               await logUserLogin(
@@ -87,7 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               console.error("Error logging login:", e);
             }
           } else {
-            // User exists in Auth but not in Database, create a new user document
             const newUser: User = {
               id: firebaseUser.uid,
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -97,14 +88,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               licenseActive: false
             };
             
-            // Save user in the database with their uid as the key
             await set(ref(database, `users/${firebaseUser.uid}`), newUser);
             setUser(newUser);
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
           setError(`Error fetching user data: ${(error as Error).message}`);
-          // Still set user to null on error to prevent infinite redirect loops
           setUser(null);
           toast({
             title: "Error",
@@ -129,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const licenseSnapshot = await get(licenseRef);
       
       if (!licenseSnapshot.exists()) {
-        return true; // License doesn't exist, consider it expired
+        return true;
       }
       
       const license = licenseSnapshot.val();
@@ -139,14 +128,94 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const now = new Date();
         
         if (expiryDate < now) {
-          return true; // License has expired
+          return true;
         }
       }
       
-      return false; // License is valid
+      return false;
     } catch (error) {
       console.error('Error checking license expiry:', error);
-      return false; // On error, don't expire the license
+      return false;
+    }
+  };
+
+  const checkLicenseValidity = async (): Promise<boolean> => {
+    if (!user || !user.licenseKey) return true;
+    
+    try {
+      const licenseRef = ref(database, `licenses/${user.licenseKey}`);
+      const licenseSnapshot = await get(licenseRef);
+      
+      if (!licenseSnapshot.exists()) {
+        await update(ref(database, `users/${user.id}`), {
+          licenseActive: false,
+          licenseKey: null
+        });
+        
+        setUser({
+          ...user,
+          licenseActive: false,
+          licenseKey: undefined
+        });
+        
+        toast({
+          title: "License Invalid",
+          description: "Your license key is not valid. Please activate a new license.",
+          variant: "destructive"
+        });
+        
+        return true;
+      }
+      
+      const license = licenseSnapshot.val();
+      
+      if (license.expiresAt) {
+        const expiryDate = new Date(license.expiresAt);
+        const now = new Date();
+        
+        if (expiryDate < now) {
+          await update(ref(database, `users/${user.id}`), {
+            licenseActive: false
+          });
+          
+          setUser({
+            ...user,
+            licenseActive: false
+          });
+          
+          toast({
+            title: "License Expired",
+            description: "Your license has expired. Please activate a new license.",
+            variant: "destructive"
+          });
+          
+          return true;
+        }
+      }
+      
+      if (license.suspendedAt) {
+        await update(ref(database, `users/${user.id}`), {
+          licenseActive: false
+        });
+        
+        setUser({
+          ...user,
+          licenseActive: false
+        });
+        
+        toast({
+          title: "License Suspended",
+          description: "Your license has been suspended. Please contact support.",
+          variant: "destructive"
+        });
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking license validity:', error);
+      return false;
     }
   };
 
@@ -155,7 +224,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // User state will be updated by the onAuthStateChanged listener
     } catch (error) {
       console.error('Login error:', error);
       setError((error as Error).message);
@@ -171,11 +239,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      // User state will be updated by the onAuthStateChanged listener
-      
-      // Navigate to login page after logout
       window.location.href = '/login';
-      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
@@ -197,14 +261,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Look up the license directly by key
       const licenseRef = ref(database, `licenses/${licenseKey}`);
       const licenseSnapshot = await get(licenseRef);
       
       if (!licenseSnapshot.exists()) {
-        // For the demo, allow a special key to always work
         if (licenseKey === 'FREE-1234-5678-9ABC') {
-          // Create the license with key as ID if it doesn't exist
           await set(licenseRef, {
             id: licenseKey,
             key: licenseKey,
@@ -215,7 +276,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
           });
           
-          // Update the user
           const updatedUser = {
             ...user,
             licenseActive: true,
@@ -246,14 +306,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('License key is already activated by another user');
       }
       
-      // Update the license
       await update(licenseRef, {
         isActive: true,
         userId: user.id,
         activatedAt: new Date().toISOString()
       });
       
-      // Update the user
       const updatedUser = {
         ...user,
         licenseActive: true,
@@ -311,12 +369,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (snapshot.exists()) {
         const userData = snapshot.val();
         if (userData.forcedLogout) {
-          // Clear the flag
           await update(userRef, {
             forcedLogout: null
           });
           
-          // Force logout
           await signOut(auth);
           toast({
             title: "Session Terminated",
@@ -357,7 +413,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         activateUserLicense,
         requestLicense,
         checkForcedLogout,
-        setUser
+        setUser,
+        checkLicenseValidity
       }}
     >
       {children}
@@ -372,3 +429,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

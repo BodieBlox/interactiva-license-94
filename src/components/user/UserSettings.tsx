@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,12 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
-import { User, Palette, Key, Building2, Save, ArrowLeft } from 'lucide-react';
+import { User, Palette, Key, Building2, Save, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export const UserSettings = () => {
   const { user, setUser } = useAuth();
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [skipApproval, setSkipApproval] = useState(false);
+  const [hasExistingApproval, setHasExistingApproval] = useState(false);
   const [customization, setCustomization] = useState<DashboardCustomization>({
     primaryColor: '#7E69AB',
     companyName: '',
@@ -32,6 +34,7 @@ export const UserSettings = () => {
           logo: user.customization.logo || '',
           approved: user.customization.approved || false
         });
+        setHasExistingApproval(user.customization.approved === true);
       }
     }
   }, [user]);
@@ -68,12 +71,26 @@ export const UserSettings = () => {
     
     setIsLoading(true);
     try {
-      const updatedUser = await updateDashboardCustomization(user.id, customization);
+      const customizationWithApproval = {
+        ...customization,
+        approved: skipApproval || hasExistingApproval ? true : false
+      };
+      
+      const updatedUser = await updateDashboardCustomization(user.id, customizationWithApproval);
       setUser({...user, ...updatedUser});
-      toast({
-        title: "Success",
-        description: "Dashboard customization settings saved. Changes will be applied after admin approval.",
-      });
+      
+      if (skipApproval || hasExistingApproval) {
+        toast({
+          title: "Success",
+          description: "Dashboard customization settings saved and applied immediately.",
+        });
+        setHasExistingApproval(true);
+      } else {
+        toast({
+          title: "Success",
+          description: "Dashboard customization settings saved. Changes will be applied after admin approval.",
+        });
+      }
     } catch (error) {
       console.error('Customization update error:', error);
       toast({
@@ -84,6 +101,20 @@ export const UserSettings = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetBranding = () => {
+    setCustomization({
+      primaryColor: '#7E69AB',
+      companyName: '',
+      logo: '',
+      approved: false
+    });
+    setSkipApproval(false);
+    toast({
+      title: "Reset",
+      description: "Branding settings have been reset to default values.",
+    });
   };
 
   return (
@@ -230,14 +261,14 @@ export const UserSettings = () => {
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-md p-4 mb-4">
                   <p className="text-green-800 dark:text-green-300 flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    Your custom branding is approved and active
+                    <span>Your custom branding is approved and active</span>
                   </p>
                 </div>
               ) : user?.customization?.approved === false ? (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-md p-4 mb-4">
                   <p className="text-amber-800 dark:text-amber-300 flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    Your branding customization is pending approval
+                    <span>Your branding customization is pending approval</span>
                   </p>
                 </div>
               ) : null}
@@ -285,7 +316,31 @@ export const UserSettings = () => {
                   <p className="text-xs text-muted-foreground">Enter a URL to your company logo (recommended size: 180x60px)</p>
                 </div>
                 
-                <div className="pt-2">
+                {hasExistingApproval && (
+                  <div className="flex items-center justify-between space-x-2 pt-2">
+                    <Label htmlFor="skipApproval" className="flex items-center gap-2 cursor-pointer">
+                      <span>Apply changes immediately</span>
+                      <span className="text-xs text-muted-foreground">(Skip approval)</span>
+                    </Label>
+                    <Switch
+                      id="skipApproval"
+                      checked={skipApproval}
+                      onCheckedChange={setSkipApproval}
+                    />
+                  </div>
+                )}
+                
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={resetBranding}
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset to Default
+                  </Button>
+                  
                   <Button 
                     type="submit" 
                     className="bg-primary hover:bg-primary/90 transition-apple"
@@ -304,7 +359,11 @@ export const UserSettings = () => {
               </form>
             </CardContent>
             <CardFooter className="text-sm text-muted-foreground border-t pt-4">
-              Branding changes require admin approval before they take effect.
+              {!hasExistingApproval ? 
+                "Branding changes require admin approval before they take effect." : 
+                skipApproval ? 
+                  "Changes will be applied immediately without requiring approval." : 
+                  "Changes will require admin approval before they take effect."}
             </CardFooter>
           </Card>
         </TabsContent>

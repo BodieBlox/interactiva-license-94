@@ -28,7 +28,7 @@ export const AppLayout = ({
   requireAdmin = false,
   requireLicense = false
 }: AppLayoutProps) => {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, checkLicenseValidity } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showWarning, setShowWarning] = useState(false);
@@ -63,15 +63,23 @@ export const AppLayout = ({
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isActivationRoute = location.pathname === '/activate';
     
-    if (requireLicense && user && !user.licenseActive && !(user.role === 'admin' && isAdminRoute)) {
-      if (!isActivationRoute) {
-        // If not already on the activate page, show license dialog
-        setShowLicenseDialog(true);
+    // Check if user needs a license
+    const checkLicense = async () => {
+      if (user && !isActivationRoute) {
+        const needsLicense = !user.licenseActive || await checkLicenseValidity();
+        
+        if (needsLicense && !(user.role === 'admin' && isAdminRoute)) {
+          if (location.pathname !== '/activate') {
+            navigate('/activate');
+          }
+          return true;
+        }
       }
-      return;
-    } else {
-      // Close license dialog if shown but no longer needed
-      setShowLicenseDialog(false);
+      return false;
+    };
+    
+    if (requireLicense && user) {
+      checkLicense();
     }
 
     // Handle suspended users - they can't access the system
@@ -87,7 +95,12 @@ export const AppLayout = ({
 
     // If we're on login page and already authenticated, redirect to dashboard
     if (location.pathname === '/login' && user) {
-      navigate('/dashboard');
+      // Check if license is needed before going to dashboard
+      checkLicense().then(needsLicense => {
+        if (!needsLicense) {
+          navigate('/dashboard');
+        }
+      });
       return;
     }
 
