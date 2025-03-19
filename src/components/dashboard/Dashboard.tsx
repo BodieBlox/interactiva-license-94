@@ -1,19 +1,30 @@
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/utils/types';
 import { getUserChats } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { ChatList } from './ChatList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquarePlus, Shield, LogOut } from 'lucide-react';
+import { MessageSquarePlus, Shield, LogOut, Settings, ArrowDownAZ, ArrowUpAZ, CalendarClock, MessagesSquare } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type SortOption = 'newest' | 'oldest' | 'alphabetical' | 'messages';
 
 export const DashboardContent = () => {
   const { user, logout } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
+  const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const navigate = useNavigate();
+
+  // Apply custom branding if available
+  const customStyle = user?.customization?.approved ? {
+    '--primary': user.customization.primaryColor || '#7E69AB',
+  } as React.CSSProperties : {};
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -37,6 +48,36 @@ export const DashboardContent = () => {
     fetchChats();
   }, [user]);
 
+  useEffect(() => {
+    if (!chats.length) {
+      setSortedChats([]);
+      return;
+    }
+
+    const sorted = [...chats];
+    
+    switch (sortBy) {
+      case 'newest':
+        sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+        break;
+      case 'alphabetical':
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'messages':
+        sorted.sort((a, b) => {
+          const aMessages = Array.isArray(a.messages) ? a.messages.length : 0;
+          const bMessages = Array.isArray(b.messages) ? b.messages.length : 0;
+          return bMessages - aMessages;
+        });
+        break;
+    }
+    
+    setSortedChats(sorted);
+  }, [chats, sortBy]);
+
   const handleLogout = () => {
     logout();
     toast({
@@ -46,13 +87,23 @@ export const DashboardContent = () => {
   };
 
   return (
-    <div className="container max-w-5xl mx-auto px-4 py-8">
+    <div className="container max-w-5xl mx-auto px-4 py-8" style={customStyle}>
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-medium">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back, {user?.username}</p>
+          <p className="text-muted-foreground mt-1">
+            {user?.customization?.approved && user.customization.companyName ? 
+              `Welcome to ${user.customization.companyName}` : 
+              `Welcome back, ${user?.username}`}
+          </p>
         </div>
         <div className="flex space-x-3">
+          <Link to="/settings">
+            <Button className="bg-secondary hover:bg-secondary/80 transition-apple flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
+            </Button>
+          </Link>
           {user?.role === 'admin' && (
             <Link to="/admin">
               <Button className="bg-amber-500 hover:bg-amber-600 transition-apple flex items-center gap-2">
@@ -87,9 +138,36 @@ export const DashboardContent = () => {
         )}
 
         <Card className="glass-panel shadow-lg border-0">
-          <CardHeader>
-            <CardTitle>Your Conversations</CardTitle>
-            <CardDescription>Continue an existing conversation or start a new one</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Your Conversations</CardTitle>
+              <CardDescription>Continue an existing conversation or start a new one</CardDescription>
+            </div>
+            <div className="flex items-center">
+              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest" className="flex items-center gap-2">
+                    <CalendarClock className="h-4 w-4" />
+                    <span>Newest First</span>
+                  </SelectItem>
+                  <SelectItem value="oldest" className="flex items-center gap-2">
+                    <CalendarClock className="h-4 w-4" />
+                    <span>Oldest First</span>
+                  </SelectItem>
+                  <SelectItem value="alphabetical" className="flex items-center gap-2">
+                    <ArrowDownAZ className="h-4 w-4" />
+                    <span>Alphabetical</span>
+                  </SelectItem>
+                  <SelectItem value="messages" className="flex items-center gap-2">
+                    <MessagesSquare className="h-4 w-4" />
+                    <span>Most Messages</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -106,7 +184,7 @@ export const DashboardContent = () => {
                     </Button>
                   </Link>
                 </div>
-                <ChatList chats={chats} />
+                <ChatList chats={sortedChats} />
               </>
             )}
           </CardContent>
@@ -115,4 +193,3 @@ export const DashboardContent = () => {
     </div>
   );
 };
-

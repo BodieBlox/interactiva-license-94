@@ -1,7 +1,7 @@
 import { get, ref, set, push, update, remove, query, orderByChild, equalTo } from "firebase/database";
 import { database, auth } from "./firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { Chat, ChatMessage, User, License, LoginLog, LicenseRequest } from "./types";
+import { Chat, ChatMessage, User, License, LoginLog, LicenseRequest, DashboardCustomization } from "./types";
 
 // User API functions
 export const getUserByEmail = async (email: string): Promise<User | null> => {
@@ -52,6 +52,70 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'warne
   
   // Return the updated user
   return { ...user, ...updates };
+};
+
+// User settings functions
+export const updateUsername = async (userId: string, username: string): Promise<User> => {
+  const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
+  await update(userRef, { username });
+  
+  return { ...user, username };
+};
+
+export const updateDashboardCustomization = async (userId: string, customization: DashboardCustomization): Promise<User> => {
+  const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
+  
+  // If not approved yet, set to false by default
+  if (customization.approved === undefined) {
+    customization.approved = false;
+  }
+  
+  await update(userRef, { customization });
+  
+  return { ...user, customization };
+};
+
+export const approveDashboardCustomization = async (userId: string): Promise<User> => {
+  const userRef = ref(database, `users/${userId}`);
+  const userSnapshot = await get(userRef);
+  
+  if (!userSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  
+  const user = userSnapshot.val() as User;
+  
+  if (!user.customization) {
+    throw new Error('User has no customization settings');
+  }
+  
+  const updatedCustomization = {
+    ...user.customization,
+    approved: true
+  };
+  
+  await update(userRef, { 
+    customization: updatedCustomization 
+  });
+  
+  return { 
+    ...user, 
+    customization: updatedCustomization 
+  };
 };
 
 // Chat API functions
@@ -179,6 +243,23 @@ export const createLicense = async (): Promise<License> => {
     key: licenseKey,
     isActive: false,
     createdAt: new Date().toISOString()
+  };
+  
+  await set(licenseRef, newLicense);
+  return newLicense;
+};
+
+export const createLicenseWithExpiry = async (expiresAt?: string): Promise<License> => {
+  const licenseKey = generateLicenseKey();
+  
+  const licenseRef = ref(database, `licenses/${licenseKey}`);
+  
+  const newLicense: License = {
+    id: licenseKey,
+    key: licenseKey,
+    isActive: false,
+    createdAt: new Date().toISOString(),
+    expiresAt
   };
   
   await set(licenseRef, newLicense);

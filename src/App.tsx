@@ -1,77 +1,43 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import { LoginForm } from "./components/auth/LoginForm";
-import { LicenseActivation } from "./components/auth/LicenseActivation";
-import { DashboardContent } from "./components/dashboard/Dashboard";
-import { ChatInterface } from "./components/dashboard/ChatInterface";
-import { LicenseGenerator } from "./components/admin/LicenseGenerator";
-import { UserManagement } from "./components/admin/UserManagement";
-import { AdminPanel } from "./components/admin/AdminPanel";
-import { AppLayout } from "./components/layout/AppLayout";
-import { AdminCreator } from "./components/auth/AdminCreator";
-import KeyGeneratorPage from "./pages/KeyGenerator";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { AppLayout } from './components/layout/AppLayout';
+import { AdminPanel } from './components/admin/AdminPanel';
+import { LoginForm } from './components/auth/LoginForm';
+import { LicenseActivation } from './components/auth/LicenseActivation';
+import { DashboardContent } from './components/dashboard/Dashboard';
+import { ChatInterface } from './components/dashboard/ChatInterface';
+import { UserSettings } from './components/user/UserSettings';
+import { KeyGenerator } from './pages/KeyGenerator';
+import { Index } from './pages/Index';
+import { NotFound } from './pages/NotFound';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+function App() {
+  return (
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={
-              <AppLayout>
-                <LoginForm />
-              </AppLayout>
-            } />
-            <Route path="/activate" element={
-              <AppLayout requireAuth={true}>
-                <LicenseActivation />
-              </AppLayout>
-            } />
-            <Route path="/secret-admin-creator" element={<AdminCreator />} />
-            <Route path="/dashboard" element={
-              <AppLayout requireAuth={true} requireLicense={true}>
-                <DashboardContent />
-              </AppLayout>
-            } />
-            <Route path="/chat/:chatId" element={
-              <AppLayout requireAuth={true} requireLicense={true}>
-                <ChatInterface />
-              </AppLayout>
-            } />
-            <Route path="/admin" element={
-              <AppLayout requireAuth={true} requireAdmin={true}>
-                <AdminPanel />
-              </AppLayout>
-            } />
-            <Route path="/admin/licenses" element={
-              <AppLayout requireAuth={true} requireAdmin={true}>
-                <LicenseGenerator />
-              </AppLayout>
-            } />
-            <Route path="/admin/users" element={
-              <AppLayout requireAuth={true} requireAdmin={true}>
-                <UserManagement />
-              </AppLayout>
-            } />
-            <Route path="/generate-key" element={<KeyGeneratorPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/key-generator" element={<KeyGenerator />} />
+
+        {/* Auth routes */}
+        <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
+
+        {/* Protected routes */}
+        <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
+        <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
+        <Route path="/chat/new" element={<AppLayout><ChatInterface isNew={true} /></AppLayout>} />
+        <Route path="/chat/:chatId" element={<AppLayout><ChatInterface isNew={false} /></AppLayout>} />
+        <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
+
+        {/* Redirect and 404 */}
+        <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </AuthProvider>
-  </QueryClientProvider>
-);
+  );
+}
 
 export default App;

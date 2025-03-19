@@ -1,6 +1,5 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
 import { User } from '../utils/types';
 import { auth, database } from '../utils/firebase';
@@ -16,6 +15,7 @@ interface AuthContextType {
   activateUserLicense: (licenseKey: string) => Promise<void>;
   requestLicense: (message?: string) => Promise<void>;
   checkForcedLogout: () => Promise<boolean>;
+  setUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +34,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userFromDB = await getUserByEmail(firebaseUser.email || '');
           
           if (userFromDB) {
+            // Check if the user has an expired license
+            if (userFromDB.licenseActive && userFromDB.licenseKey) {
+              const isExpired = await checkLicenseExpiry(userFromDB.licenseKey);
+              if (isExpired) {
+                // Update user to reflect expired license
+                await update(ref(database, `users/${userFromDB.id}`), {
+                  licenseActive: false
+                });
+                userFromDB.licenseActive = false;
+                
+                toast({
+                  title: "License Expired",
+                  description: "Your license has expired. Please activate a new license.",
+                  variant: "destructive"
+                });
+              }
+            }
+            
             // User exists in Database, use that data
             setUser(userFromDB);
             
@@ -101,6 +119,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+  
+  const checkLicenseExpiry = async (licenseKey: string): Promise<boolean> => {
+    try {
+      const licenseRef = ref(database, `licenses/${licenseKey}`);
+      const licenseSnapshot = await get(licenseRef);
+      
+      if (!licenseSnapshot.exists()) {
+        return true; // License doesn't exist, consider it expired
+      }
+      
+      const license = licenseSnapshot.val();
+      
+      if (license.expiresAt) {
+        const expiryDate = new Date(license.expiresAt);
+        const now = new Date();
+        
+        if (expiryDate < now) {
+          return true; // License has expired
+        }
+      }
+      
+      return false; // License is valid
+    } catch (error) {
+      console.error('Error checking license expiry:', error);
+      return false; // On error, don't expire the license
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -155,7 +200,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isActive: true,
             userId: user.id,
             createdAt: new Date().toISOString(),
-            activatedAt: new Date().toISOString()
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
           });
           
           // Update the user
@@ -175,6 +221,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       const license = licenseSnapshot.val();
+      
+      if (license.expiresAt) {
+        const expiryDate = new Date(license.expiresAt);
+        const now = new Date();
+        
+        if (expiryDate < now) {
+          throw new Error('This license has expired');
+        }
+      }
       
       if (license.isActive && license.userId !== user.id) {
         throw new Error('License key is already activated by another user');
@@ -268,7 +323,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Helper function to get IP address
   const fetchIP = async (): Promise<string> => {
     try {
       const response = await fetch('https://api.ipify.org?format=json');
@@ -290,7 +344,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         activateUserLicense,
         requestLicense,
-        checkForcedLogout
+        checkForcedLogout,
+        setUser
       }}
     >
       {children}

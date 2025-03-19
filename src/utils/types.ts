@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -9,6 +10,14 @@ export interface User {
   warningMessage?: string;
   lastLogin?: LoginLog;
   forcedLogout?: string;
+  customization?: DashboardCustomization;
+}
+
+export interface DashboardCustomization {
+  primaryColor?: string;
+  logo?: string;
+  companyName?: string;
+  approved?: boolean;
 }
 
 export interface License {
@@ -19,6 +28,7 @@ export interface License {
   createdAt: string;
   activatedAt?: string;
   suspendedAt?: string;
+  expiresAt?: string;
 }
 
 export interface ChatMessage {
