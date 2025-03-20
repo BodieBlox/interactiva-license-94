@@ -48,7 +48,6 @@ export default function ManualLicenseAssignment() {
       toast({
         title: "License Assigned",
         description: `A ${showExpiration ? 'temporary' : 'permanent'} ${licenseType} license has been assigned to the user`,
-        variant: "success"
       });
       
       // Reset the form

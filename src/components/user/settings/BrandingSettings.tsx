@@ -152,7 +152,7 @@ export const BrandingSettings = () => {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 className="bg-white/50 dark:bg-black/10"
-                disabled={isApproved && !user?.role === 'admin'}
+                disabled={isApproved && user?.role !== 'admin'}
               />
             </div>
 
@@ -162,7 +162,7 @@ export const BrandingSettings = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={isApproved && !user?.role === 'admin'}
+                    disabled={isApproved && user?.role !== 'admin'}
                     className={cn(
                       "flex items-center justify-between w-full",
                       !selectedColor && "text-muted-foreground"
@@ -227,7 +227,7 @@ export const BrandingSettings = () => {
                 variant="outline" 
                 className="w-full" 
                 onClick={handleLogoUpload}
-                disabled={isApproved && !user?.role === 'admin'}
+                disabled={isApproved && user?.role !== 'admin'}
               >
                 <ImagePlus className="mr-2 h-4 w-4" />
                 Upload Logo (Coming Soon)
