@@ -430,7 +430,7 @@ export const rejectLicenseRequest = async (requestId: string) => {
 // Chat Functions
 export const getUserChats = async (userId: string): Promise<Chat[]> => {
   try {
-    const chatsRef = ref(database, 'chats');
+    const chatsRef = ref(database, 'chat'); // Changed from 'chats' to 'chat'
     const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
     const snapshot = await get(userChatsQuery);
     
@@ -448,7 +448,7 @@ export const getUserChats = async (userId: string): Promise<Chat[]> => {
 
 export const getAllChats = async (): Promise<Chat[]> => {
   try {
-    const chatsRef = ref(database, 'chats');
+    const chatsRef = ref(database, 'chat'); // Changed from 'chats' to 'chat'
     const snapshot = await get(chatsRef);
     
     if (snapshot.exists()) {
@@ -465,7 +465,7 @@ export const getAllChats = async (): Promise<Chat[]> => {
 
 export const getChatById = async (chatId: string): Promise<Chat | null> => {
   try {
-    const chatRef = ref(database, `chats/${chatId}`);
+    const chatRef = ref(database, `chat/${chatId}`); // Changed from 'chats' to 'chat'
     const snapshot = await get(chatRef);
     
     if (snapshot.exists()) {
@@ -481,7 +481,7 @@ export const getChatById = async (chatId: string): Promise<Chat | null> => {
 
 export const createChat = async (userId: string, title: string): Promise<Chat> => {
   try {
-    const chatsRef = ref(database, 'chats');
+    const chatsRef = ref(database, 'chat'); // Changed from 'chats' to 'chat'
     const newChatRef = push(chatsRef);
     
     const newChat: Chat = {
@@ -511,7 +511,7 @@ export const createChat = async (userId: string, title: string): Promise<Chat> =
 
 export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
   try {
-    const chatRef = ref(database, `chats/${chatId}`);
+    const chatRef = ref(database, `chat/${chatId}`); // Changed from 'chats' to 'chat'
     const snapshot = await get(chatRef);
     
     if (snapshot.exists()) {
@@ -528,7 +528,7 @@ export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> =>
 
 export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant' = 'user'): Promise<ChatMessage> => {
   try {
-    const chatRef = ref(database, `chats/${chatId}`);
+    const chatRef = ref(database, `chat/${chatId}`); // Changed from 'chats' to 'chat'
     const snapshot = await get(chatRef);
     
     if (!snapshot.exists()) {
@@ -569,13 +569,13 @@ export const addMessageToChat = async (chatId: string, message: { content: strin
 
 export const clearUserChatHistory = async (userId: string) => {
   try {
-    const chatsRef = ref(database, 'chats');
+    const chatsRef = ref(database, 'chat'); // Changed from 'chats' to 'chat'
     const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
     const snapshot = await get(userChatsQuery);
     
     if (snapshot.exists()) {
       const chats = snapshot.val();
-      const promises = Object.keys(chats).map(key => remove(ref(database, `chats/${key}`)));
+      const promises = Object.keys(chats).map(key => remove(ref(database, `chat/${key}`)));
       await Promise.all(promises);
     }
     

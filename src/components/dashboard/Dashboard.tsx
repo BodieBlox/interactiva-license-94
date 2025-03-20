@@ -27,28 +27,28 @@ export const DashboardContent = () => {
     '--primary': user.customization.primaryColor || '#7E69AB',
   } as React.CSSProperties : {};
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      if (user) {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const userChats = await getUserChats(user.id);
-          setChats(userChats);
-        } catch (error) {
-          console.error('Error fetching chats:', error);
-          setError(error instanceof Error ? error : new Error('Failed to load your chats'));
-          toast({
-            title: "Error",
-            description: "Failed to load your chats",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoading(false);
-        }
+  const fetchChats = async () => {
+    if (user) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const userChats = await getUserChats(user.id);
+        setChats(userChats);
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+        setError(error instanceof Error ? error : new Error('Failed to load your chats'));
+        toast({
+          title: "Error",
+          description: "Failed to load your chats",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchChats();
   }, [user]);
 
@@ -222,7 +222,12 @@ export const DashboardContent = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <ChatList chats={sortedChats} isLoading={isLoading} error={error} />
+            <ChatList
+              chats={sortedChats}
+              isLoading={isLoading}
+              error={error}
+              onRetry={fetchChats}
+            />
           </CardContent>
         </Card>
       </div>

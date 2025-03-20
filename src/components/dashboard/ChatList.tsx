@@ -2,15 +2,22 @@
 import { Link } from 'react-router-dom';
 import { Chat } from '@/utils/types';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useCallback } from 'react';
 
 interface ChatListProps {
   chats: Chat[];
   isLoading: boolean;
   error: Error | null;
+  onRetry?: () => void;
 }
 
-export const ChatList = ({ chats, isLoading, error }: ChatListProps) => {
+export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) => {
+  const handleRetry = useCallback(() => {
+    if (onRetry) onRetry();
+  }, [onRetry]);
+
   // Show loading state
   if (isLoading) {
     return (
@@ -26,11 +33,20 @@ export const ChatList = ({ chats, isLoading, error }: ChatListProps) => {
       <div className="text-center py-8 animate-fade-in">
         <MessageSquare className="h-10 w-10 mx-auto text-red-400 opacity-30 mb-4" />
         <h3 className="text-lg font-medium text-red-500">Error loading conversations</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-muted-foreground mt-1 text-sm mb-4">
           {error.message.includes("indexOn") 
-            ? "Database indexing issue. Please contact your administrator." 
+            ? "There's a database indexing issue. We're working on fixing it." 
             : error.message}
         </p>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleRetry}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>Try Again</span>
+        </Button>
       </div>
     );
   }
