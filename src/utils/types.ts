@@ -7,6 +7,8 @@ export interface User {
   status: 'active' | 'warned' | 'suspended';
   licenseActive: boolean;
   licenseKey?: string;
+  licenseType?: 'basic' | 'premium' | 'enterprise';
+  isCompanyAdmin?: boolean;
   warningMessage?: string;
   lastLogin?: LoginLog;
   forcedLogout?: string;
@@ -18,6 +20,7 @@ export interface DashboardCustomization {
   logo?: string;
   companyName?: string;
   approved?: boolean;
+  isCompanyMember?: boolean;
   pendingInvitation?: CompanyInvitation;
 }
 
@@ -26,6 +29,7 @@ export interface CompanyInvitation {
   fromUsername: string;
   companyName: string;
   timestamp: string;
+  primaryColor?: string;
 }
 
 export interface License {

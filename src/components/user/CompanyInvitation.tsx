@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -152,11 +151,11 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
     return (
       <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-500">
-            <Users className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
             Team Management
           </CardTitle>
-          <CardDescription className="text-amber-700 dark:text-amber-400">
+          <CardDescription>
             Get your company branding approved to invite team members
           </CardDescription>
         </CardHeader>
