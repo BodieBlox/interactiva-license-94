@@ -6,9 +6,36 @@ import { MessageSquare } from 'lucide-react';
 
 interface ChatListProps {
   chats: Chat[];
+  isLoading: boolean;
+  error: Error | null;
 }
 
-export const ChatList = ({ chats }: ChatListProps) => {
+export const ChatList = ({ chats, isLoading, error }: ChatListProps) => {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="h-6 w-6 rounded-full border-3 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="text-center py-8 animate-fade-in">
+        <MessageSquare className="h-10 w-10 mx-auto text-red-400 opacity-30 mb-4" />
+        <h3 className="text-lg font-medium text-red-500">Error loading conversations</h3>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {error.message.includes("indexOn") 
+            ? "Database indexing issue. Please contact your administrator." 
+            : error.message}
+        </p>
+      </div>
+    );
+  }
+
+  // Show empty state
   if (chats.length === 0) {
     return (
       <div className="text-center py-12 animate-fade-in">
@@ -19,6 +46,7 @@ export const ChatList = ({ chats }: ChatListProps) => {
     );
   }
 
+  // Show chats list
   return (
     <ul className="space-y-3 animate-fade-in">
       {chats.map((chat, index) => {

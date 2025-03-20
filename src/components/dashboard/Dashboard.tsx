@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +18,7 @@ export const DashboardContent = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -30,11 +30,14 @@ export const DashboardContent = () => {
   useEffect(() => {
     const fetchChats = async () => {
       if (user) {
+        setIsLoading(true);
+        setError(null);
         try {
           const userChats = await getUserChats(user.id);
           setChats(userChats);
         } catch (error) {
           console.error('Error fetching chats:', error);
+          setError(error instanceof Error ? error : new Error('Failed to load your chats'));
           toast({
             title: "Error",
             description: "Failed to load your chats",
@@ -219,13 +222,7 @@ export const DashboardContent = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-              </div>
-            ) : (
-              <ChatList chats={sortedChats} />
-            )}
+            <ChatList chats={sortedChats} isLoading={isLoading} error={error} />
           </CardContent>
         </Card>
       </div>
