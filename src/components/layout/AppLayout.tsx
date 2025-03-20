@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -39,6 +38,11 @@ export const AppLayout = ({
   // Define checkLicense function first before using it
   const checkLicense = async () => {
     if (user && location.pathname !== '/activate') {
+      // Skip license check for users who are company members
+      if (user.customization?.isCompanyMember) {
+        return false;
+      }
+      
       // Always check license validity
       const needsLicense = !user.licenseActive || await checkLicenseValidity();
       

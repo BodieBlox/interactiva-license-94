@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, LucideIcon, Shield, Users, MessageSquare, Key, Rotate3D, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, LucideIcon, Shield, Users, MessageSquare, Key, Rotate3D, LayoutDashboard, Building } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { LoginLogs } from './LoginLogs';
 import { ChatViewer } from './ChatViewer';
@@ -13,6 +14,7 @@ import { UserCreator } from './UserCreator';
 import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LicenseManager from './LicenseManager';
+import CompaniesManagement from './CompaniesManagement';
 
 interface NavItem {
   label: string;
@@ -43,6 +45,7 @@ export const AdminPanel = () => {
   const navItems: NavItem[] = [
     { label: 'Dashboard', path: '/admin/', icon: LayoutDashboard },
     { label: 'Users', path: '/admin/users', icon: Users },
+    { label: 'Companies', path: '/admin/companies', icon: Building },
     { label: 'License Requests', path: '/admin/license-requests', icon: Rotate3D },
     { label: 'Chats', path: '/admin/chats', icon: MessageSquare },
     { label: 'License Generator', path: '/admin/license-generator', icon: Key },
@@ -105,6 +108,7 @@ export const AdminPanel = () => {
           <Routes>
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/users" element={<UserManagement />} />
+            <Route path="/companies" element={<CompaniesManagement />} />
             <Route path="/license-requests" element={<LicenseRequests />} />
             <Route path="/chats" element={<ChatViewer />} />
             <Route path="/license-generator" element={<LicenseGenerator />} />
@@ -175,10 +179,10 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10"
-          onClick={() => window.location.href = '/admin/assign-license'}
+          onClick={() => window.location.href = '/admin/companies'}
         >
-          <Key className="h-8 w-8 text-indigo-500" />
-          <span>Assign License</span>
+          <Building className="h-8 w-8 text-indigo-500" />
+          <span>Manage Companies</span>
         </Button>
       </div>
     </div>

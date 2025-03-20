@@ -30,19 +30,25 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const handleAcceptInvitation = async () => {
     setIsLoading(true);
     try {
-      const updatedUser = await updateDashboardCustomization(currentUser.id, {
-        ...currentUser.customization,
+      // Prepare customization with all required fields and no undefined values
+      const updatedCustomization = {
+        ...(currentUser.customization || {}),
         companyName: companyName,
-        primaryColor: primaryColor,
+        primaryColor: primaryColor || '#6366f1', // Default to indigo if not provided
         isCompanyMember: true,
-        pendingInvitation: undefined
-      });
+      };
+      
+      // Remove the pending invitation explicitly
+      delete updatedCustomization.pendingInvitation;
+      
+      const updatedUser = await updateDashboardCustomization(currentUser.id, updatedCustomization);
       
       // Update licenseType to 'enterprise' when joining a company
       // Important: using the specific type value from the union type
       const userWithLicense = {
         ...updatedUser,
-        licenseType: 'enterprise' as const
+        licenseType: 'enterprise' as const,
+        licenseActive: true // Set license as active since they're on company license now
       };
       setUser(userWithLicense);
       

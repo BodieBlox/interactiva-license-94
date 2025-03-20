@@ -24,8 +24,8 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
 
   // Check if current user has approved branding they can share and is a company admin
   const canInviteOthers = user?.customization?.approved && 
-                          user?.customization?.companyName && 
-                          (user?.isCompanyAdmin || user?.role === 'admin');
+                         user?.customization?.companyName && 
+                         (user?.isCompanyAdmin || user?.role === 'admin');
   
   // Check if user has enterprise license for company features or is an admin
   const hasEnterpriseLicense = user?.licenseType === 'enterprise' || user?.role === 'admin';
@@ -104,7 +104,6 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
       toast({
         title: "Invitation Sent",
         description: `${invitedUser.username} has been invited to join your company branding`,
-        variant: "success"
       });
       
       setShowDialog(false);
@@ -204,6 +203,10 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <span>Any changes to your branding will apply to them as well</span>
               </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>They will receive enterprise license benefits</span>
+              </li>
             </ul>
           </div>
           
@@ -263,6 +266,7 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
               
               <p className="text-sm text-muted-foreground">
                 If they accept, they will use your company's branding settings and will not be able to modify it themselves.
+                They'll be covered by your enterprise license benefits.
               </p>
             </div>
           )}
