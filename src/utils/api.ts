@@ -1,310 +1,110 @@
 
 import { User, LoginLog, ChatMessage, Chat, LicenseRequest, DashboardCustomization, License } from './types';
+import { ref, get, set, update, push, remove, query, orderByChild, equalTo } from 'firebase/database';
+import { database, auth } from './firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
-// Mock data for development
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'admin',
-    email: 'admin@example.com',
-    role: 'admin',
-    status: 'active',
-    licenseActive: true,
-    licenseKey: 'ADMIN-1234-5678-9ABC',
-    customization: {
-      primaryColor: '#7E69AB',
-      companyName: 'Admin Corp',
-      approved: true
+// User Functions
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  try {
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const users = snapshot.val();
+      const userArray = Object.values(users) as User[];
+      const user = userArray.find(u => u.email === email);
+      return user || null;
     }
-  },
-  {
-    id: '2',
-    username: 'user',
-    email: 'user@example.com',
-    role: 'user',
-    status: 'active',
-    licenseActive: true,
-    licenseKey: 'USER-1234-5678-9ABC'
-  },
-  {
-    id: '3',
-    username: 'warned',
-    email: 'warned@example.com',
-    role: 'user',
-    status: 'warned',
-    licenseActive: true,
-    licenseKey: 'WARN-1234-5678-9ABC',
-    warningMessage: 'Your account has been flagged for unusual activity.'
-  },
-  {
-    id: '4',
-    username: 'suspended',
-    email: 'suspended@example.com',
-    role: 'user',
-    status: 'suspended',
-    licenseActive: false,
-    warningMessage: 'Your account has been suspended due to violation of terms.'
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
+    throw error;
   }
-];
-
-const mockLoginLogs: LoginLog[] = [
-  {
-    id: '1',
-    userId: '1',
-    ip: '192.168.1.1',
-    userAgent: 'Chrome/90.0.4430.93',
-    timestamp: new Date().toISOString()
-  },
-  {
-    id: '2',
-    userId: '2',
-    ip: '192.168.1.2',
-    userAgent: 'Firefox/88.0',
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  }
-];
-
-const mockLicenses: License[] = [
-  {
-    id: '1',
-    key: 'FREE-1234-5678-9ABC',
-    isActive: true,
-    status: 'active',
-    type: 'standard',
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    key: 'PREM-ABCD-EFGH-IJKL',
-    isActive: true,
-    status: 'active',
-    type: 'premium',
-    expiresAt: null,
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: '3',
-    key: 'ENTP-MNOP-QRST-UVWX',
-    isActive: false,
-    status: 'revoked',
-    type: 'enterprise',
-    expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-  }
-];
-
-const mockLicenseRequests: LicenseRequest[] = [
-  {
-    id: '1',
-    userId: '2',
-    username: 'user',
-    email: 'user@example.com',
-    status: 'pending',
-    message: 'I need access to premium features for my work.',
-    createdAt: new Date().toISOString()
-  }
-];
-
-const mockChats: Chat[] = [
-  {
-    id: '1',
-    title: 'Getting Started',
-    userId: '1',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        content: 'Hello! How can I help you today?',
-        role: 'assistant',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        content: 'I need help getting started with the system.',
-        role: 'user',
-        timestamp: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '3',
-        content: 'I\'d be happy to help you get started! What specific aspects of the system would you like to know more about?',
-        role: 'assistant',
-        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ]
-  },
-  {
-    id: '2',
-    title: 'Technical Support',
-    userId: '1',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        content: 'How can I assist you with technical issues?',
-        role: 'assistant',
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        content: 'I\'m having trouble connecting to the database.',
-        role: 'user',
-        timestamp: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '3',
-        content: 'Let me help you troubleshoot that. What error message are you seeing?',
-        role: 'assistant',
-        timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ]
-  }
-];
-
-// Mock API function that simulates API response delays
-const mockApiResponse = <T>(data: T, delay: number = 500): Promise<T> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(data);
-    }, delay);
-  });
-};
-
-// API Functions using mock data instead of real API calls
-export const login = async (credentials: { email: string; password: string }) => {
-  console.log('Mock login with:', credentials);
-  
-  const user = mockUsers.find(u => u.email === credentials.email);
-  
-  if (!user) {
-    throw new Error('User not found');
-  }
-  
-  // Simple validation - in a real app this would be handled by auth service
-  if (credentials.password !== 'password') {
-    throw new Error('Invalid password');
-  }
-  
-  return mockApiResponse({ user });
-};
-
-export const register = async (userData: { email: string; password: string; username: string }) => {
-  console.log('Mock register:', userData);
-  
-  const existingUser = mockUsers.find(u => u.email === userData.email);
-  
-  if (existingUser) {
-    throw new Error('User with this email already exists');
-  }
-  
-  const newUser: User = {
-    id: `user-${Date.now()}`,
-    username: userData.username,
-    email: userData.email,
-    role: 'user',
-    status: 'active',
-    licenseActive: false
-  };
-  
-  mockUsers.push(newUser);
-  
-  return mockApiResponse({ user: newUser });
-};
-
-export const activateLicense = async (licenseKey: string) => {
-  console.log('Mock license activation:', licenseKey);
-  
-  const license = mockLicenses.find(l => l.key === licenseKey);
-  
-  if (!license) {
-    throw new Error('License not found');
-  }
-  
-  if (!license.isActive) {
-    throw new Error('License is inactive');
-  }
-  
-  return mockApiResponse({ success: true, licenseKey });
-};
-
-export const requestLicense = async (message: string) => {
-  console.log('Mock license request:', message);
-  return mockApiResponse({ success: true, message: 'License request submitted' });
-};
-
-export const forgotPassword = async (email: string) => {
-  console.log('Mock forgot password:', email);
-  return mockApiResponse({ success: true, message: 'Password reset email sent' });
-};
-
-export const resetPassword = async (token: string, newPassword: string) => {
-  console.log('Mock reset password with token:', token);
-  return mockApiResponse({ success: true, message: 'Password reset successful' });
 };
 
 export const getUsers = async (): Promise<User[]> => {
-  console.log('Mock get users');
-  return mockApiResponse(mockUsers);
+  try {
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const users = snapshot.val();
+      return Object.values(users) as User[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
 };
 
 export const getAllUsers = async (): Promise<User[]> => {
-  console.log('Mock get all users');
-  return mockApiResponse(mockUsers);
+  return getUsers();
 };
 
 export const createUser = async (userData: { email: string, password?: string, username?: string, role?: string }) => {
-  console.log('Mock create user:', userData);
-  
-  const newUser: User = {
-    id: `user-${Date.now()}`,
-    username: userData.username || userData.email.split('@')[0],
-    email: userData.email,
-    role: (userData.role as 'user' | 'admin') || 'user',
-    status: 'active',
-    licenseActive: false
-  };
-  
-  mockUsers.push(newUser);
-  
-  return mockApiResponse(newUser);
+  try {
+    // Create the user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      userData.email,
+      userData.password || 'password123'
+    );
+    
+    const uid = userCredential.user.uid;
+    
+    // Create a user document in Realtime Database
+    const newUser: User = {
+      id: uid,
+      username: userData.username || userData.email.split('@')[0],
+      email: userData.email,
+      role: (userData.role as 'user' | 'admin') || 'user',
+      status: 'active',
+      licenseActive: false
+    };
+    
+    await set(ref(database, `users/${uid}`), newUser);
+    
+    return newUser;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
 };
 
-export const updateUser = async (id: string, userData: any) => {
-  console.log('Mock update user:', id, userData);
-  
-  const userIndex = mockUsers.findIndex(user => user.id === id);
-  
-  if (userIndex === -1) {
-    throw new Error('User not found');
+export const updateUser = async (id: string, userData: Partial<User>) => {
+  try {
+    const userRef = ref(database, `users/${id}`);
+    await update(userRef, userData);
+    
+    // Get the updated user
+    const snapshot = await get(userRef);
+    return snapshot.val() as User;
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
   }
-  
-  mockUsers[userIndex] = { ...mockUsers[userIndex], ...userData };
-  
-  return mockApiResponse(mockUsers[userIndex]);
 };
 
 export const deleteUser = async (id: string) => {
-  console.log('Mock delete user:', id);
-  
-  const userIndex = mockUsers.findIndex(user => user.id === id);
-  
-  if (userIndex === -1) {
-    throw new Error('User not found');
+  try {
+    const userRef = ref(database, `users/${id}`);
+    
+    // Get user before deleting
+    const snapshot = await get(userRef);
+    const user = snapshot.val() as User;
+    
+    // Delete user
+    await remove(userRef);
+    
+    return user;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
   }
-  
-  const deletedUser = mockUsers.splice(userIndex, 1)[0];
-  
-  return mockApiResponse(deletedUser);
-};
-
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-  console.log('Mock get user by email:', email);
-  
-  const user = mockUsers.find(user => user.email === email);
-  
-  return mockApiResponse(user || null);
 };
 
 export const updateUsername = async (userId: string, username: string): Promise<User> => {
@@ -320,37 +120,77 @@ export const updateDashboardCustomization = async (userId: string, customization
 };
 
 export const approveDashboardCustomization = async (userId: string): Promise<User> => {
-  console.log('Mock approve dashboard customization:', userId);
-  
-  const userIndex = mockUsers.findIndex(user => user.id === userId);
-  
-  if (userIndex === -1) {
-    throw new Error('User not found');
+  try {
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('User not found');
+    }
+    
+    const user = snapshot.val() as User;
+    if (user.customization) {
+      user.customization.approved = true;
+      await update(userRef, { customization: user.customization });
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('Error approving dashboard customization:', error);
+    throw error;
   }
-  
-  if (mockUsers[userIndex].customization) {
-    mockUsers[userIndex].customization.approved = true;
+};
+
+export const forceUserLogout = async (userId: string) => {
+  try {
+    const userRef = ref(database, `users/${userId}`);
+    await update(userRef, { forcedLogout: new Date().toISOString() });
+    return { success: true };
+  } catch (error) {
+    console.error('Error forcing user logout:', error);
+    throw error;
   }
-  
-  return mockApiResponse(mockUsers[userIndex]);
+};
+
+// License Functions
+export const getAllLicenses = async (): Promise<License[]> => {
+  try {
+    const licensesRef = ref(database, 'licenses');
+    const snapshot = await get(licensesRef);
+    
+    if (snapshot.exists()) {
+      const licenses = snapshot.val();
+      return Object.values(licenses) as License[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching licenses:', error);
+    throw error;
+  }
 };
 
 export const generateLicense = async () => {
-  console.log('Mock generate license');
-  
-  const newLicense: License = {
-    id: `license-${Date.now()}`,
-    key: `KEY-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`,
-    isActive: true,
-    status: 'active',
-    type: 'standard',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-  };
-  
-  mockLicenses.push(newLicense);
-  
-  return mockApiResponse(newLicense);
+  try {
+    const licenseKey = `KEY-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
+    
+    const newLicense: License = {
+      id: licenseKey,
+      key: licenseKey,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      type: 'standard'
+    };
+    
+    await set(ref(database, `licenses/${licenseKey}`), newLicense);
+    
+    return newLicense;
+  } catch (error) {
+    console.error('Error generating license:', error);
+    throw error;
+  }
 };
 
 export const createLicense = async () => {
@@ -358,237 +198,369 @@ export const createLicense = async () => {
 };
 
 export const suspendLicense = async (licenseId: string) => {
-  console.log('Mock suspend license:', licenseId);
-  
-  const licenseIndex = mockLicenses.findIndex(license => license.id === licenseId);
-  
-  if (licenseIndex === -1) {
-    throw new Error('License not found');
+  try {
+    const licenseRef = ref(database, `licenses/${licenseId}`);
+    const snapshot = await get(licenseRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('License not found');
+    }
+    
+    const license = snapshot.val() as License;
+    license.isActive = false;
+    license.status = 'inactive';
+    license.suspendedAt = new Date().toISOString();
+    
+    await update(licenseRef, license);
+    
+    return license;
+  } catch (error) {
+    console.error('Error suspending license:', error);
+    throw error;
   }
-  
-  mockLicenses[licenseIndex].isActive = false;
-  mockLicenses[licenseIndex].status = 'inactive';
-  mockLicenses[licenseIndex].suspendedAt = new Date().toISOString();
-  
-  return mockApiResponse(mockLicenses[licenseIndex]);
 };
 
 export const revokeLicense = async (licenseId: string) => {
-  console.log('Mock revoke license:', licenseId);
-  
-  const licenseIndex = mockLicenses.findIndex(license => license.id === licenseId);
-  
-  if (licenseIndex === -1) {
-    throw new Error('License not found');
+  try {
+    const licenseRef = ref(database, `licenses/${licenseId}`);
+    const snapshot = await get(licenseRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('License not found');
+    }
+    
+    const license = snapshot.val() as License;
+    license.isActive = false;
+    license.status = 'revoked';
+    
+    await update(licenseRef, license);
+    
+    return license;
+  } catch (error) {
+    console.error('Error revoking license:', error);
+    throw error;
   }
-  
-  mockLicenses[licenseIndex].isActive = false;
-  mockLicenses[licenseIndex].status = 'revoked';
-  
-  return mockApiResponse(mockLicenses[licenseIndex]);
 };
 
+export const deleteLicense = async (licenseId: string) => {
+  try {
+    const licenseRef = ref(database, `licenses/${licenseId}`);
+    await remove(licenseRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting license:', error);
+    throw error;
+  }
+};
+
+export const assignLicenseToUser = async (userId: string, licenseKey: string) => {
+  try {
+    const userRef = ref(database, `users/${userId}`);
+    const licenseRef = ref(database, `licenses/${licenseKey}`);
+    
+    // Check if user and license exist
+    const userSnapshot = await get(userRef);
+    const licenseSnapshot = await get(licenseRef);
+    
+    if (!userSnapshot.exists()) {
+      throw new Error('User not found');
+    }
+    
+    if (!licenseSnapshot.exists()) {
+      throw new Error('License not found');
+    }
+    
+    // Update user
+    await update(userRef, {
+      licenseActive: true,
+      licenseKey: licenseKey
+    });
+    
+    // Update license
+    await update(licenseRef, {
+      userId: userId,
+      isActive: true,
+      activatedAt: new Date().toISOString()
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error assigning license to user:', error);
+    throw error;
+  }
+};
+
+// Login Logs Functions
 export const getLoginLogs = async (): Promise<LoginLog[]> => {
-  console.log('Mock get login logs');
-  return mockApiResponse(mockLoginLogs);
-};
-
-export const logUserLogin = async (userId: string, info: any) => {
-  console.log('Mock log user login:', userId, info);
-  
-  const newLog: LoginLog = {
-    id: `log-${Date.now()}`,
-    userId,
-    ip: info.ip || '0.0.0.0',
-    userAgent: info.userAgent || 'Unknown',
-    timestamp: new Date().toISOString()
-  };
-  
-  mockLoginLogs.push(newLog);
-  
-  return mockApiResponse(newLog);
-};
-
-export const forceUserLogout = async (userId: string) => {
-  console.log('Mock force user logout:', userId);
-  
-  const userIndex = mockUsers.findIndex(user => user.id === userId);
-  
-  if (userIndex === -1) {
-    throw new Error('User not found');
+  try {
+    const logsRef = ref(database, 'loginLogs');
+    const snapshot = await get(logsRef);
+    
+    if (snapshot.exists()) {
+      const logs = snapshot.val();
+      return Object.values(logs) as LoginLog[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching login logs:', error);
+    throw error;
   }
-  
-  mockUsers[userIndex].forcedLogout = new Date().toISOString();
-  
-  return mockApiResponse({ success: true });
 };
 
+export const logUserLogin = async (userId: string, info: { ip: string, userAgent: string }) => {
+  try {
+    const logsRef = ref(database, 'loginLogs');
+    const newLogRef = push(logsRef);
+    
+    const newLog: LoginLog = {
+      id: newLogRef.key || `log-${Date.now()}`,
+      userId,
+      ip: info.ip || '0.0.0.0',
+      userAgent: info.userAgent || 'Unknown',
+      timestamp: new Date().toISOString()
+    };
+    
+    await set(newLogRef, newLog);
+    
+    return newLog;
+  } catch (error) {
+    console.error('Error logging user login:', error);
+    throw error;
+  }
+};
+
+// License Request Functions
 export const getLicenseRequests = async (): Promise<LicenseRequest[]> => {
-  console.log('Mock get license requests');
-  return mockApiResponse(mockLicenseRequests);
+  try {
+    const requestsRef = ref(database, 'licenseRequests');
+    const snapshot = await get(requestsRef);
+    
+    if (snapshot.exists()) {
+      const requests = snapshot.val();
+      return Object.values(requests) as LicenseRequest[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching license requests:', error);
+    throw error;
+  }
 };
 
 export const createLicenseRequest = async (userId: string, message?: string) => {
-  console.log('Mock create license request:', userId, message);
-  
-  const user = mockUsers.find(user => user.id === userId);
-  
-  if (!user) {
-    throw new Error('User not found');
+  try {
+    // Get user data
+    const userRef = ref(database, `users/${userId}`);
+    const userSnapshot = await get(userRef);
+    
+    if (!userSnapshot.exists()) {
+      throw new Error('User not found');
+    }
+    
+    const user = userSnapshot.val() as User;
+    
+    // Create request
+    const requestsRef = ref(database, 'licenseRequests');
+    const newRequestRef = push(requestsRef);
+    
+    const newRequest: LicenseRequest = {
+      id: newRequestRef.key || `request-${Date.now()}`,
+      userId,
+      username: user.username,
+      email: user.email,
+      status: 'pending',
+      message,
+      createdAt: new Date().toISOString()
+    };
+    
+    await set(newRequestRef, newRequest);
+    
+    return newRequest;
+  } catch (error) {
+    console.error('Error creating license request:', error);
+    throw error;
   }
-  
-  const newRequest: LicenseRequest = {
-    id: `request-${Date.now()}`,
-    userId,
-    username: user.username,
-    email: user.email,
-    status: 'pending',
-    message,
-    createdAt: new Date().toISOString()
-  };
-  
-  mockLicenseRequests.push(newRequest);
-  
-  return mockApiResponse(newRequest);
 };
 
 export const approveLicenseRequest = async (requestId: string) => {
-  console.log('Mock approve license request:', requestId);
-  
-  const requestIndex = mockLicenseRequests.findIndex(request => request.id === requestId);
-  
-  if (requestIndex === -1) {
-    throw new Error('License request not found');
+  try {
+    const requestRef = ref(database, `licenseRequests/${requestId}`);
+    const snapshot = await get(requestRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('License request not found');
+    }
+    
+    const request = snapshot.val() as LicenseRequest;
+    request.status = 'approved';
+    request.resolvedAt = new Date().toISOString();
+    
+    await update(requestRef, request);
+    
+    return request;
+  } catch (error) {
+    console.error('Error approving license request:', error);
+    throw error;
   }
-  
-  mockLicenseRequests[requestIndex].status = 'approved';
-  mockLicenseRequests[requestIndex].resolvedAt = new Date().toISOString();
-  
-  return mockApiResponse(mockLicenseRequests[requestIndex]);
 };
 
 export const rejectLicenseRequest = async (requestId: string) => {
-  console.log('Mock reject license request:', requestId);
-  
-  const requestIndex = mockLicenseRequests.findIndex(request => request.id === requestId);
-  
-  if (requestIndex === -1) {
-    throw new Error('License request not found');
+  try {
+    const requestRef = ref(database, `licenseRequests/${requestId}`);
+    const snapshot = await get(requestRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('License request not found');
+    }
+    
+    const request = snapshot.val() as LicenseRequest;
+    request.status = 'rejected';
+    request.resolvedAt = new Date().toISOString();
+    
+    await update(requestRef, request);
+    
+    return request;
+  } catch (error) {
+    console.error('Error rejecting license request:', error);
+    throw error;
   }
-  
-  mockLicenseRequests[requestIndex].status = 'rejected';
-  mockLicenseRequests[requestIndex].resolvedAt = new Date().toISOString();
-  
-  return mockApiResponse(mockLicenseRequests[requestIndex]);
 };
 
-export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
-  console.log('Mock get chat messages:', chatId);
-  
-  const chat = mockChats.find(chat => chat.id === chatId);
-  
-  if (!chat) {
-    throw new Error('Chat not found');
-  }
-  
-  return mockApiResponse(chat.messages || []);
-};
-
-export const createChatMessage = async (chatId: string, message: string) => {
-  console.log('Mock create chat message:', chatId, message);
-  
-  const chatIndex = mockChats.findIndex(chat => chat.id === chatId);
-  
-  if (chatIndex === -1) {
-    throw new Error('Chat not found');
-  }
-  
-  const newMessage: ChatMessage = {
-    id: `message-${Date.now()}`,
-    content: message,
-    role: 'user',
-    timestamp: new Date().toISOString()
-  };
-  
-  if (!mockChats[chatIndex].messages) {
-    mockChats[chatIndex].messages = [];
-  }
-  
-  mockChats[chatIndex].messages.push(newMessage);
-  mockChats[chatIndex].updatedAt = newMessage.timestamp;
-  
-  return mockApiResponse(newMessage);
-};
-
-export const getChatById = async (chatId: string): Promise<Chat | null> => {
-  console.log('Mock get chat by id:', chatId);
-  
-  const chat = mockChats.find(chat => chat.id === chatId);
-  
-  return mockApiResponse(chat || null);
-};
-
+// Chat Functions
 export const getUserChats = async (userId: string): Promise<Chat[]> => {
-  console.log('Mock get user chats:', userId);
-  
-  const userChats = mockChats.filter(chat => chat.userId === userId);
-  
-  return mockApiResponse(userChats);
+  try {
+    const chatsRef = ref(database, 'chats');
+    const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
+    const snapshot = await get(userChatsQuery);
+    
+    if (snapshot.exists()) {
+      const chats = snapshot.val();
+      return Object.values(chats) as Chat[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching user chats:', error);
+    throw error;
+  }
 };
 
 export const getAllChats = async (): Promise<Chat[]> => {
-  console.log('Mock get all chats');
-  return mockApiResponse(mockChats);
+  try {
+    const chatsRef = ref(database, 'chats');
+    const snapshot = await get(chatsRef);
+    
+    if (snapshot.exists()) {
+      const chats = snapshot.val();
+      return Object.values(chats) as Chat[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching all chats:', error);
+    throw error;
+  }
+};
+
+export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  try {
+    const chatRef = ref(database, `chats/${chatId}`);
+    const snapshot = await get(chatRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val() as Chat;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching chat by ID:', error);
+    throw error;
+  }
 };
 
 export const createChat = async (userId: string, title: string): Promise<Chat> => {
-  console.log('Mock create chat:', userId, title);
-  
-  const newChat: Chat = {
-    id: `chat-${Date.now()}`,
-    title,
-    userId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    messages: [
-      {
-        id: `welcome-${Date.now()}`,
-        content: 'Hello! How can I help you today?',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      }
-    ]
-  };
-  
-  mockChats.push(newChat);
-  
-  return mockApiResponse(newChat);
+  try {
+    const chatsRef = ref(database, 'chats');
+    const newChatRef = push(chatsRef);
+    
+    const newChat: Chat = {
+      id: newChatRef.key || `chat-${Date.now()}`,
+      title,
+      userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [
+        {
+          id: `welcome-${Date.now()}`,
+          content: 'Hello! How can I help you today?',
+          role: 'assistant',
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+    
+    await set(newChatRef, newChat);
+    
+    return newChat;
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    throw error;
+  }
+};
+
+export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
+  try {
+    const chatRef = ref(database, `chats/${chatId}`);
+    const snapshot = await get(chatRef);
+    
+    if (snapshot.exists()) {
+      const chat = snapshot.val() as Chat;
+      return chat.messages || [];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching chat messages:', error);
+    throw error;
+  }
 };
 
 export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant' = 'user'): Promise<ChatMessage> => {
-  console.log('Mock send message:', chatId, content, role);
-  
-  const chatIndex = mockChats.findIndex(chat => chat.id === chatId);
-  
-  if (chatIndex === -1) {
-    throw new Error('Chat not found');
+  try {
+    const chatRef = ref(database, `chats/${chatId}`);
+    const snapshot = await get(chatRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Chat not found');
+    }
+    
+    const chat = snapshot.val() as Chat;
+    
+    const newMessage: ChatMessage = {
+      id: `message-${Date.now()}`,
+      content,
+      role,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (!chat.messages) {
+      chat.messages = [];
+    }
+    
+    chat.messages.push(newMessage);
+    chat.updatedAt = newMessage.timestamp;
+    
+    await update(chatRef, {
+      messages: chat.messages,
+      updatedAt: chat.updatedAt
+    });
+    
+    return newMessage;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
   }
-  
-  const newMessage: ChatMessage = {
-    id: `message-${Date.now()}`,
-    content,
-    role,
-    timestamp: new Date().toISOString()
-  };
-  
-  if (!mockChats[chatIndex].messages) {
-    mockChats[chatIndex].messages = [];
-  }
-  
-  mockChats[chatIndex].messages.push(newMessage);
-  mockChats[chatIndex].updatedAt = newMessage.timestamp;
-  
-  return mockApiResponse(newMessage);
 };
 
 export const addMessageToChat = async (chatId: string, message: { content: string, role: 'user' | 'assistant' }): Promise<ChatMessage> => {
@@ -596,55 +568,55 @@ export const addMessageToChat = async (chatId: string, message: { content: strin
 };
 
 export const clearUserChatHistory = async (userId: string) => {
-  console.log('Mock clear user chat history:', userId);
-  
-  const userChatsIndexes = mockChats
-    .map((chat, index) => chat.userId === userId ? index : -1)
-    .filter(index => index !== -1);
-  
-  // Remove from the end to preserve indexes
-  for (let i = userChatsIndexes.length - 1; i >= 0; i--) {
-    mockChats.splice(userChatsIndexes[i], 1);
+  try {
+    const chatsRef = ref(database, 'chats');
+    const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
+    const snapshot = await get(userChatsQuery);
+    
+    if (snapshot.exists()) {
+      const chats = snapshot.val();
+      const promises = Object.keys(chats).map(key => remove(ref(database, `chats/${key}`)));
+      await Promise.all(promises);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing user chat history:', error);
+    throw error;
   }
-  
-  return mockApiResponse({ success: true });
 };
 
-export const getAllLicenses = async (): Promise<License[]> => {
-  console.log('Mock get all licenses');
-  return mockApiResponse(mockLicenses);
+// The following functions are kept for compatibility but work directly with Firebase now
+export const login = async (credentials: { email: string; password: string }) => {
+  console.error('login function should not be called directly, use Firebase auth');
+  throw new Error('Use Firebase auth directly');
 };
 
-export const deleteLicense = async (licenseId: string) => {
-  console.log(`License ${licenseId} deleted`);
-  
-  const licenseIndex = mockLicenses.findIndex(license => license.id === licenseId);
-  
-  if (licenseIndex === -1) {
-    throw new Error('License not found');
-  }
-  
-  mockLicenses.splice(licenseIndex, 1);
-  
-  return mockApiResponse({ success: true });
+export const register = async (userData: { email: string; password: string; username: string }) => {
+  console.error('register function should not be called directly, use Firebase auth');
+  throw new Error('Use Firebase auth directly');
 };
 
-export const assignLicenseToUser = async (userId: string, licenseKey: string) => {
-  console.log(`License ${licenseKey} assigned to user ${userId}`);
-  
-  const userIndex = mockUsers.findIndex(user => user.id === userId);
-  const licenseIndex = mockLicenses.findIndex(license => license.key === licenseKey);
-  
-  if (userIndex === -1) {
-    throw new Error('User not found');
-  }
-  
-  if (licenseIndex === -1) {
-    throw new Error('License not found');
-  }
-  
-  mockUsers[userIndex].licenseActive = true;
-  mockUsers[userIndex].licenseKey = licenseKey;
-  
-  return mockApiResponse({ success: true });
+export const activateLicense = async (licenseKey: string) => {
+  console.error('activateLicense function should not be called directly');
+  throw new Error('Use Firebase database directly');
+};
+
+export const requestLicense = async (message: string) => {
+  console.error('requestLicense function should not be called directly');
+  throw new Error('Use createLicenseRequest instead');
+};
+
+export const forgotPassword = async (email: string) => {
+  console.error('forgotPassword function should not be called directly');
+  throw new Error('Use Firebase auth directly');
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  console.error('resetPassword function should not be called directly');
+  throw new Error('Use Firebase auth directly');
+};
+
+export const createChatMessage = async (chatId: string, message: string) => {
+  return sendMessage(chatId, message, 'user');
 };

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,11 +35,11 @@ export default function ManualLicenseAssignment() {
 
     setIsAssigning(true);
     try {
-      // Generate a new license
-      const licenseKey = await generateLicense();
+      // Generate a new license with type and expiration based on form values
+      const licenseResult = await generateLicense();
       
-      // Assign the license to the user
-      await assignLicenseToUser(selectedUserId, licenseKey.key);
+      // Now assign the license to the user
+      await assignLicenseToUser(selectedUserId, licenseResult.key);
       
       toast({
         title: "License Assigned",
@@ -54,7 +53,7 @@ export default function ManualLicenseAssignment() {
       console.error('Error assigning license:', error);
       toast({
         title: "Error",
-        description: "Failed to assign license to user",
+        description: `Failed to assign license to user: ${(error as Error).message}`,
         variant: "destructive"
       });
     } finally {
