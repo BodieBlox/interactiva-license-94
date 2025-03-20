@@ -39,9 +39,10 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       });
       
       // Update licenseType to 'enterprise' when joining a company
+      // Important: using the specific type value from the union type
       const userWithLicense = {
         ...updatedUser,
-        licenseType: 'enterprise'
+        licenseType: 'enterprise' as const
       };
       setUser(userWithLicense);
       
