@@ -37,6 +37,8 @@ export interface License {
   activatedAt?: string;
   suspendedAt?: string;
   expiresAt?: string;
+  status: 'active' | 'inactive' | 'revoked';
+  type: string;
 }
 
 export interface ChatMessage {

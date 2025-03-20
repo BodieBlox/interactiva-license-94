@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -62,7 +61,11 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      await createUser(email, password, username);
+      await createUser({
+        email,
+        password,
+        username
+      });
       
       toast({
         title: "Success",

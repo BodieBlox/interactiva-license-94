@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,16 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getAllLicenses, deleteLicense } from '@/utils/api';
 import { Copy, Trash, Key, Calendar, Infinity, Search, Shield } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-// Define the License type if it's not already defined in types.ts
-interface License {
-  id: string;
-  key: string;
-  status: 'active' | 'inactive' | 'revoked';
-  type: string;
-  expiresAt: string | null;
-  createdAt: string;
-}
+import { License } from '@/utils/types';
 
 const LicenseManager = () => {
   const [licenses, setLicenses] = useState<License[]>([]);

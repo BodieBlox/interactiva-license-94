@@ -1,4 +1,3 @@
-
 import { User, LoginLog, ChatMessage, Chat, LicenseRequest, DashboardCustomization, License } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -180,7 +179,8 @@ export const getAllLicenses = async (): Promise<License[]> => {
     {
       id: '1',
       key: 'FREE-1234-5678-9ABC',
-      status: 'active' as const,
+      isActive: true,
+      status: 'active',
       type: 'standard',
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString()
@@ -188,7 +188,8 @@ export const getAllLicenses = async (): Promise<License[]> => {
     {
       id: '2',
       key: 'PREM-ABCD-EFGH-IJKL',
-      status: 'active' as const,
+      isActive: true,
+      status: 'active',
       type: 'premium',
       expiresAt: null,
       createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
@@ -196,7 +197,8 @@ export const getAllLicenses = async (): Promise<License[]> => {
     {
       id: '3',
       key: 'ENTP-MNOP-QRST-UVWX',
-      status: 'revoked' as const,
+      isActive: false,
+      status: 'revoked',
       type: 'enterprise',
       expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()

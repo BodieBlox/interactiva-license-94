@@ -38,7 +38,12 @@ export const UserCreator = () => {
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      await createUser(values.email, values.password, values.username, values.role);
+      await createUser({
+        email: values.email,
+        password: values.password,
+        username: values.username,
+        role: values.role
+      });
       
       toast({
         title: "User Created",
