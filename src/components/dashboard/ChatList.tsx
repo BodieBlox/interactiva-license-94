@@ -35,7 +35,7 @@ export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) =>
         <h3 className="text-lg font-medium text-red-500">Error loading conversations</h3>
         <p className="text-muted-foreground mt-1 text-sm mb-4">
           {error.message.includes("indexOn") 
-            ? "There's a database indexing issue. We're working on fixing it." 
+            ? "Database indexing issue. Please contact your administrator." 
             : error.message}
         </p>
         <Button 
@@ -82,7 +82,7 @@ export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) =>
                     <MessageSquare className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-medium">{chat.title}</h3>
+                    <h3 className="font-medium">{chat.title || "New Conversation"}</h3>
                     <p className="text-sm text-muted-foreground">
                       {messageCount} message{messageCount !== 1 ? 's' : ''}
                     </p>

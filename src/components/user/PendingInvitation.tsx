@@ -31,8 +31,11 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       // Create a new customization object with pendingInvitation removed and approved true
       const updatedCustomization: DashboardCustomization = {
         ...currentUser.customization,
+        companyName: currentUser.customization.pendingInvitation.companyName,
+        primaryColor: currentUser.customization.pendingInvitation.primaryColor,
         approved: true,
-        pendingInvitation: undefined
+        pendingInvitation: undefined,
+        isCompanyMember: true
       };
       
       // Update the user's customization settings

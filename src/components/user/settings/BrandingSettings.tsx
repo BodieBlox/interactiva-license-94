@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, ImagePlus, Loader2, Palette, Building, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Check, ChevronsUpDown, ImagePlus, Loader2, Palette, Building, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { updateDashboardCustomization, approveDashboardCustomization } from '@/utils/api';
@@ -34,6 +34,11 @@ export const BrandingSettings = () => {
   
   const isApproved = user?.customization?.approved;
   const isPendingApproval = user?.customization?.companyName && !isApproved;
+  const isEnterpriseLicense = user?.licenseType === 'enterprise';
+  const isPartOfCompany = user?.customization?.pendingInvitation || (user?.customization?.companyName && user?.customization?.approved && !user?.isCompanyAdmin);
+
+  // Check if user has enterprise license for branding features
+  const canAccessBranding = isEnterpriseLicense || user?.role === 'admin';
 
   const handleCompanyBrandingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +47,15 @@ export const BrandingSettings = () => {
       toast({
         title: "Error",
         description: "Company name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!canAccessBranding) {
+      toast({
+        title: "Enterprise License Required",
+        description: "Company branding features require an enterprise license",
         variant: "destructive"
       });
       return;
@@ -106,6 +120,63 @@ export const BrandingSettings = () => {
       description: "Logo upload functionality is under development",
     });
   };
+
+  if (!canAccessBranding && !isPartOfCompany) {
+    return (
+      <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-amber-600" />
+            Enterprise Feature
+          </CardTitle>
+          <CardDescription className="text-amber-700">
+            Company branding requires an enterprise license
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center py-6 text-center">
+          <Building className="h-16 w-16 text-amber-400/30 mb-4" />
+          <p className="max-w-md mb-2 text-amber-800 dark:text-amber-400">
+            Company branding allows you to customize the appearance of your dashboard with your company colors and logo.
+          </p>
+          <p className="text-sm text-amber-700/80 dark:text-amber-500/80">
+            Please upgrade to an enterprise license or contact your administrator to access this feature.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isPartOfCompany && !user?.isCompanyAdmin) {
+    return (
+      <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="h-5 w-5 text-blue-600" />
+            Company Managed
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            Your branding is managed by your company administrator
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center py-6 text-center">
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800/50 mb-4 w-full max-w-md">
+            <p className="text-blue-800 dark:text-blue-400 font-medium">
+              Company: {user?.customization?.companyName}
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <div className="h-4 w-4 rounded-full" style={{ backgroundColor: colorOptions.find(c => c.value === user?.customization?.primaryColor)?.color || user?.customization?.primaryColor }} />
+              <span className="text-sm text-blue-700 dark:text-blue-500">
+                {colorOptions.find(c => c.value === user?.customization?.primaryColor)?.label || user?.customization?.primaryColor}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-blue-700/80 dark:text-blue-500/80 max-w-md">
+            Your dashboard branding is managed by your company administrator. You cannot modify these settings yourself.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

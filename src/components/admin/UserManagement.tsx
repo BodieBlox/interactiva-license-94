@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
 import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, Key, ClipboardX } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
@@ -379,7 +380,7 @@ export const UserManagement = () => {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
               onClick={() => setDialogOpen(false)}
@@ -403,7 +404,7 @@ export const UserManagement = () => {
               }
             >
               {isProcessing ? (
-                <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mr-2"></div>
               ) : (
                 'Confirm'
               )}
