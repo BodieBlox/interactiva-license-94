@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, LucideIcon, Shield, Users, MessageSquare, Key, Rotate3D, LayoutDashboard, Building } from 'lucide-react';
@@ -15,6 +15,7 @@ import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LicenseManager from './LicenseManager';
 import CompaniesManagement from './CompaniesManagement';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 interface NavItem {
   label: string;
@@ -22,11 +23,28 @@ interface NavItem {
   icon: LucideIcon;
 }
 
+// Create a QueryClient instance
+const queryClient = new QueryClient();
+
 export const AdminPanel = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<string>(window.location.pathname.split('/admin/')[1] || 'dashboard');
+  const location = useLocation();
   const isMobile = useIsMobile();
+  
+  // Get the active section from the current path
+  const getActiveSection = () => {
+    const path = location.pathname;
+    const section = path.split('/admin/')[1] || '';
+    return section;
+  };
+  
+  const [activeSection, setActiveSection] = useState<string>(getActiveSection());
+  
+  // Update activeSection when location changes
+  useEffect(() => {
+    setActiveSection(getActiveSection());
+  }, [location]);
 
   if (!user || user.role !== 'admin') {
     return (
@@ -43,7 +61,7 @@ export const AdminPanel = () => {
   }
 
   const navItems: NavItem[] = [
-    { label: 'Dashboard', path: '/admin/', icon: LayoutDashboard },
+    { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { label: 'Users', path: '/admin/users', icon: Users },
     { label: 'Companies', path: '/admin/companies', icon: Building },
     { label: 'License Requests', path: '/admin/license-requests', icon: Rotate3D },
@@ -58,7 +76,6 @@ export const AdminPanel = () => {
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    setActiveSection(path.split('/admin/')[1] || 'dashboard');
   };
 
   return (
@@ -84,13 +101,13 @@ export const AdminPanel = () => {
           {navItems.map((item) => (
             <Button
               key={item.path}
-              variant={activeSection === (item.path.split('/admin/')[1] || 'dashboard') ? 'default' : 'ghost'}
+              variant={activeSection === (item.path.split('/admin/')[1] || '') ? 'default' : 'ghost'}
               className={`
                 ${isMobile 
                   ? 'flex-shrink-0 mr-2 px-3 h-10' 
                   : 'w-full justify-start mb-1'
                 }
-                ${activeSection === (item.path.split('/admin/')[1] || 'dashboard')
+                ${activeSection === (item.path.split('/admin/')[1] || '')
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-muted'
                 }
@@ -105,19 +122,21 @@ export const AdminPanel = () => {
 
         {/* Main Content */}
         <div className="flex-1 bg-white dark:bg-gray-950 rounded-lg border shadow-sm p-4 md:p-6">
-          <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/companies" element={<CompaniesManagement />} />
-            <Route path="/license-requests" element={<LicenseRequests />} />
-            <Route path="/chats" element={<ChatViewer />} />
-            <Route path="/license-generator" element={<LicenseGenerator />} />
-            <Route path="/manage-licenses" element={<LicenseManager />} />
-            <Route path="/login-logs" element={<LoginLogs />} />
-            <Route path="/branding-approval" element={<BrandingApproval />} />
-            <Route path="/create-user" element={<UserCreator />} />
-            <Route path="/assign-license" element={<ManualLicenseAssignment />} />
-          </Routes>
+          <QueryClientProvider client={queryClient}>
+            <Routes>
+              <Route path="/" element={<AdminDashboard />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/companies" element={<CompaniesManagement />} />
+              <Route path="/license-requests" element={<LicenseRequests />} />
+              <Route path="/chats" element={<ChatViewer />} />
+              <Route path="/license-generator" element={<LicenseGenerator />} />
+              <Route path="/manage-licenses" element={<LicenseManager />} />
+              <Route path="/login-logs" element={<LoginLogs />} />
+              <Route path="/branding-approval" element={<BrandingApproval />} />
+              <Route path="/create-user" element={<UserCreator />} />
+              <Route path="/assign-license" element={<ManualLicenseAssignment />} />
+            </Routes>
+          </QueryClientProvider>
         </div>
       </div>
     </div>
@@ -125,6 +144,8 @@ export const AdminPanel = () => {
 };
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="animate-fade-in">
       <h2 className="text-xl font-medium mb-4">Admin Dashboard</h2>
@@ -134,7 +155,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-blue-200 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/10"
-          onClick={() => window.location.href = '/admin/users'}
+          onClick={() => navigate('/admin/users')}
         >
           <Users className="h-8 w-8 text-blue-500" />
           <span>Manage Users</span>
@@ -143,7 +164,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-amber-200 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/10"
-          onClick={() => window.location.href = '/admin/license-requests'}
+          onClick={() => navigate('/admin/license-requests')}
         >
           <Rotate3D className="h-8 w-8 text-amber-500" />
           <span>License Requests</span>
@@ -152,7 +173,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-200 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10"
-          onClick={() => window.location.href = '/admin/license-generator'}
+          onClick={() => navigate('/admin/license-generator')}
         >
           <Key className="h-8 w-8 text-purple-500" />
           <span>Generate Licenses</span>
@@ -161,7 +182,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/10"
-          onClick={() => window.location.href = '/admin/chats'}
+          onClick={() => navigate('/admin/chats')}
         >
           <MessageSquare className="h-8 w-8 text-green-500" />
           <span>View Chat History</span>
@@ -170,7 +191,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10"
-          onClick={() => window.location.href = '/admin/login-logs'}
+          onClick={() => navigate('/admin/login-logs')}
         >
           <Users className="h-8 w-8 text-red-500" />
           <span>Login Logs</span>
@@ -179,7 +200,7 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10"
-          onClick={() => window.location.href = '/admin/companies'}
+          onClick={() => navigate('/admin/companies')}
         >
           <Building className="h-8 w-8 text-indigo-500" />
           <span>Manage Companies</span>

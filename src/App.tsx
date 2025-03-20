@@ -13,32 +13,38 @@ import Index from './pages/Index';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import './App.css';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a new QueryClient instance
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<LoginForm />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/key-generator" element={<KeyGenerator />} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/key-generator" element={<KeyGenerator />} />
 
-        {/* Auth routes */}
-        <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
+          {/* Auth routes */}
+          <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
 
-        {/* Protected routes */}
-        <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
-        <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
-        <Route path="/chat/new" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
-        <Route path="/chat/:chatId" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
-        <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
+          {/* Protected routes */}
+          <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
+          <Route path="/chat/new" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
+          <Route path="/chat/:chatId" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
+          <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
 
-        {/* Redirect and 404 */}
-        <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AuthProvider>
+          {/* Redirect and 404 */}
+          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
