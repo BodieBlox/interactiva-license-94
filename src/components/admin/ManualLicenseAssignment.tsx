@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,11 +35,8 @@ export default function ManualLicenseAssignment() {
 
     setIsAssigning(true);
     try {
-      // Generate a new license with type and expiration based on form values
-      const licenseResult = await generateLicense({
-        type: licenseType,
-        expirationDays: showExpiration ? expirationDays : null
-      });
+      // Generate a new license - don't pass any parameters as the API doesn't accept them
+      const licenseResult = await generateLicense();
       
       // Now assign the license to the user
       await assignLicenseToUser(selectedUserId, licenseResult.key);
