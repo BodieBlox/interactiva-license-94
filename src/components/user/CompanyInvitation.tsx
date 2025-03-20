@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,38 +22,13 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
   const [invitedUser, setInvitedUser] = useState<UserType | null>(null);
   const { user } = useAuth();
 
-  // Check if current user has approved branding they can share
-  const canInviteOthers = user?.customization?.approved && user.customization.companyName;
+  // Check if current user has approved branding they can share and is a company admin
+  const canInviteOthers = user?.customization?.approved && 
+                          user?.customization?.companyName && 
+                          (user?.isCompanyAdmin || user?.role === 'admin');
   
-  // Check if user has enterprise license for company features
+  // Check if user has enterprise license for company features or is an admin
   const hasEnterpriseLicense = user?.licenseType === 'enterprise' || user?.role === 'admin';
-
-  if (!hasEnterpriseLicense) {
-    return (
-      <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-500">
-            <Lock className="h-5 w-5" />
-            Enterprise Feature
-          </CardTitle>
-          <CardDescription className="text-amber-700 dark:text-amber-400">
-            Team management requires an enterprise license
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center text-center gap-2 py-4">
-            <Users className="h-12 w-12 text-amber-500/50" />
-            <p className="text-amber-800 dark:text-amber-500">
-              Inviting team members is available only with an enterprise license.
-            </p>
-            <p className="text-sm text-amber-700/80 dark:text-amber-500/80">
-              Please upgrade your license or contact your administrator for access.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const handleInviteSearch = async () => {
     if (!email.trim()) {
@@ -120,8 +96,8 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
           fromUserId: user.id,
           fromUsername: user.username,
           companyName: user.customization.companyName,
-          primaryColor: user.customization.primaryColor,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          primaryColor: user.customization.primaryColor
         }
       });
       
@@ -146,6 +122,33 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
       setIsLoading(false);
     }
   };
+
+  if (!hasEnterpriseLicense) {
+    return (
+      <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-500">
+            <Lock className="h-5 w-5" />
+            Enterprise Feature
+          </CardTitle>
+          <CardDescription className="text-amber-700 dark:text-amber-400">
+            Team management requires an enterprise license
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center text-center gap-2 py-4">
+            <Users className="h-12 w-12 text-amber-500/50" />
+            <p className="text-amber-800 dark:text-amber-500">
+              Inviting team members is available only with an enterprise license.
+            </p>
+            <p className="text-sm text-amber-700/80 dark:text-amber-500/80">
+              Please upgrade your license or contact your administrator for access.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!canInviteOthers) {
     return (
