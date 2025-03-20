@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,14 +37,17 @@ export default function ManualLicenseAssignment() {
     setIsAssigning(true);
     try {
       // Generate a new license with type and expiration based on form values
-      const licenseResult = await generateLicense();
+      const licenseResult = await generateLicense({
+        type: licenseType,
+        expirationDays: showExpiration ? expirationDays : null
+      });
       
       // Now assign the license to the user
       await assignLicenseToUser(selectedUserId, licenseResult.key);
       
       toast({
         title: "License Assigned",
-        description: `A ${showExpiration ? 'temporary' : 'permanent'} license has been assigned to the user`,
+        description: `A ${showExpiration ? 'temporary' : 'permanent'} ${licenseType} license has been assigned to the user`,
         variant: "success"
       });
       

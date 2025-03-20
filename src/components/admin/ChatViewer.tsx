@@ -28,6 +28,7 @@ export const ChatViewer = () => {
   const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
+  // Fetch users on component mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -48,6 +49,7 @@ export const ChatViewer = () => {
     fetchUsers();
   }, []);
 
+  // Fetch all chats when view mode changes to 'all'
   useEffect(() => {
     if (viewMode === 'all') {
       fetchAllChats();
@@ -61,7 +63,7 @@ export const ChatViewer = () => {
     
     try {
       const chats = await getAllChats();
-      setUserChats(chats);
+      setUserChats(Array.isArray(chats) ? chats : []);
     } catch (error) {
       console.error('Error fetching all chats:', error);
       toast({
@@ -82,9 +84,9 @@ export const ChatViewer = () => {
     setViewMode('user');
     
     try {
-      // Fetch real chats for the selected user
+      // Fetch chats for the selected user
       const chats = await getUserChats(userId);
-      setUserChats(chats);
+      setUserChats(Array.isArray(chats) ? chats : []);
     } catch (error) {
       console.error('Error fetching user chats:', error);
       toast({
@@ -130,7 +132,7 @@ export const ChatViewer = () => {
     if (!chatToDelete) return;
 
     try {
-      // Call API to delete chat
+      // Delete the chat from Firebase
       await deleteChatFromAPI(chatToDelete.id);
       
       // Update UI
@@ -160,8 +162,6 @@ export const ChatViewer = () => {
 
   // Function to delete chat from API
   const deleteChatFromAPI = async (chatId: string) => {
-    // Add this function to your API file
-    // This is a mock implementation
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`, {
       method: 'DELETE'
     });
