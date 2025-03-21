@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, Send, CheckCircle, XCircle, UserPlus, User, Mail, Lock } from 'lucide-react';
+import { Users, Send, CheckCircle, XCircle, UserPlus, User, Mail, Lock, Building, Search } from 'lucide-react';
 import { User as UserType } from '@/utils/types';
 import { getUserByEmail, updateDashboardCustomization } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
@@ -18,14 +18,15 @@ interface CompanyInvitationProps {
 export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [invitedUser, setInvitedUser] = useState<UserType | null>(null);
   const { user } = useAuth();
 
   // Check if current user has approved branding they can share and is a company admin
   const canInviteOthers = user?.customization?.approved && 
-                         user?.customization?.companyName && 
-                         (user?.isCompanyAdmin || user?.role === 'admin');
+                          user?.customization?.companyName && 
+                          (user?.isCompanyAdmin || user?.role === 'admin');
   
   // Check if user has enterprise license for company features or is an admin
   const hasEnterpriseLicense = user?.licenseType === 'enterprise' || user?.role === 'admin';
@@ -40,7 +41,7 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
     try {
       const foundUser = await getUserByEmail(email);
       
@@ -62,6 +63,26 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
         return;
       }
       
+      // Check if user is already part of a company
+      if (foundUser.customization?.companyName) {
+        toast({
+          title: "User Already in Company",
+          description: "This user is already associated with a company",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check if user already has an invitation
+      if (foundUser.customization?.pendingInvitation) {
+        toast({
+          title: "Invitation Exists",
+          description: "This user already has a pending invitation",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setInvitedUser(foundUser);
       setShowDialog(true);
       
@@ -73,7 +94,7 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -89,9 +110,9 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
 
     setIsLoading(true);
     try {
-      // Create company invitation in the invited user's data
-      await updateDashboardCustomization(invitedUser.id, {
-        ...invitedUser.customization || {},
+      // Create clean customization object for invited user
+      const updatedCustomization = {
+        ...(invitedUser.customization || {}),
         pendingInvitation: {
           fromUserId: user.id,
           fromUsername: user.username,
@@ -99,11 +120,13 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
           timestamp: new Date().toISOString(),
           primaryColor: user.customization.primaryColor
         }
-      });
+      };
+      
+      await updateDashboardCustomization(invitedUser.id, updatedCustomization);
       
       toast({
         title: "Invitation Sent",
-        description: `${invitedUser.username} has been invited to join your company branding`,
+        description: `${invitedUser.username} has been invited to join your company`,
       });
       
       setShowDialog(false);
@@ -124,23 +147,23 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
 
   if (!hasEnterpriseLicense) {
     return (
-      <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
+      <Card className="bg-amber-900/20 border-amber-700/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-500">
+          <CardTitle className="flex items-center gap-2 text-amber-300">
             <Lock className="h-5 w-5" />
             Enterprise Feature
           </CardTitle>
-          <CardDescription className="text-amber-700 dark:text-amber-400">
+          <CardDescription className="text-amber-400/80">
             Team management requires an enterprise license
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center text-center gap-2 py-4">
-            <Users className="h-12 w-12 text-amber-500/50" />
-            <p className="text-amber-800 dark:text-amber-500">
+            <Users className="h-12 w-12 text-amber-500/30" />
+            <p className="text-amber-300">
               Inviting team members is available only with an enterprise license.
             </p>
-            <p className="text-sm text-amber-700/80 dark:text-amber-500/80">
+            <p className="text-sm text-amber-400/80">
               Please upgrade your license or contact your administrator for access.
             </p>
           </div>
@@ -151,10 +174,10 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
 
   if (!canInviteOthers) {
     return (
-      <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30">
+      <Card className="bg-amber-900/20 border-amber-700/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
+            <Building className="h-5 w-5 text-primary" />
             Team Management
           </CardTitle>
           <CardDescription>
@@ -163,8 +186,8 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center text-center gap-2 py-4">
-            <UserPlus className="h-12 w-12 text-amber-500/50" />
-            <p className="text-amber-800 dark:text-amber-500">
+            <UserPlus className="h-12 w-12 text-amber-500/30" />
+            <p className="text-amber-300">
               Your company branding must be approved before you can invite team members.
             </p>
           </div>
@@ -213,23 +236,28 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
           <div className="space-y-2">
             <Label htmlFor="inviteEmail">Invite by Email</Label>
             <div className="flex gap-2">
-              <Input
-                id="inviteEmail"
-                type="email"
-                placeholder="colleague@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1"
-              />
+              <div className="relative flex-1">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="inviteEmail"
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
               <Button 
                 onClick={handleInviteSearch}
-                disabled={isLoading || !email.trim()}
+                disabled={isSearching || !email.trim()}
+                variant="default"
               >
-                {isLoading ? (
-                  <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                {isSearching ? (
+                  <div className="h-4 w-4 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mr-2"></div>
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Search className="h-4 w-4 mr-2" />
                 )}
+                Find User
               </Button>
             </div>
           </div>
@@ -241,7 +269,7 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
           <DialogHeader>
             <DialogTitle>Invite to Company</DialogTitle>
             <DialogDescription>
-              You are about to invite this user to join your company branding
+              You are about to invite this user to join your company
             </DialogDescription>
           </DialogHeader>
           
@@ -264,10 +292,12 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
                 </CardContent>
               </Card>
               
-              <p className="text-sm text-muted-foreground">
-                If they accept, they will use your company's branding settings and will not be able to modify it themselves.
-                They'll be covered by your enterprise license benefits.
-              </p>
+              <div className="bg-secondary/30 p-3 rounded-md text-sm text-muted-foreground">
+                <p>
+                  If they accept, they will use your company's branding settings and will not be able to modify it themselves.
+                  They'll be covered by your enterprise license benefits.
+                </p>
+              </div>
             </div>
           )}
           

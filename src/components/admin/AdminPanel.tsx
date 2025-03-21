@@ -14,7 +14,7 @@ import { UserCreator } from './UserCreator';
 import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LicenseManager from './LicenseManager';
-import CompaniesManagement from './CompaniesManagement';
+import { CompanyManagementPanel } from './company/CompanyManagementPanel';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 interface NavItem {
@@ -82,7 +82,7 @@ export const AdminPanel = () => {
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-medium">Admin Panel</h1>
+          <h1 className="text-3xl font-medium">CentralAI Admin</h1>
           <p className="text-muted-foreground">Manage users, licenses, and system settings</p>
         </div>
         <Button 
@@ -108,7 +108,7 @@ export const AdminPanel = () => {
                   : 'w-full justify-start mb-1'
                 }
                 ${activeSection === (item.path.split('/admin/')[1] || '')
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-centralai-purple text-white'
                   : 'hover:bg-muted'
                 }
               `}
@@ -121,12 +121,12 @@ export const AdminPanel = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 bg-white dark:bg-gray-950 rounded-lg border shadow-sm p-4 md:p-6">
+        <div className="flex-1 bg-card rounded-lg border shadow-sm p-4 md:p-6">
           <QueryClientProvider client={queryClient}>
             <Routes>
               <Route path="/" element={<AdminDashboard />} />
               <Route path="/users" element={<UserManagement />} />
-              <Route path="/companies" element={<CompaniesManagement />} />
+              <Route path="/companies" element={<CompanyManagementPanel />} />
               <Route path="/license-requests" element={<LicenseRequests />} />
               <Route path="/chats" element={<ChatViewer />} />
               <Route path="/license-generator" element={<LicenseGenerator />} />
@@ -149,21 +149,30 @@ const AdminDashboard = () => {
   return (
     <div className="animate-fade-in">
       <h2 className="text-xl font-medium mb-4">Admin Dashboard</h2>
-      <p className="text-muted-foreground mb-6">Welcome to the admin panel. Use the navigation to manage the system.</p>
+      <p className="text-muted-foreground mb-6">Welcome to the CentralAI admin panel. Use the navigation to manage the system.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-blue-200 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/10"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-centralai-accent/20 hover:border-centralai-accent/40 hover:bg-centralai-accent/5"
           onClick={() => navigate('/admin/users')}
         >
-          <Users className="h-8 w-8 text-blue-500" />
+          <Users className="h-8 w-8 text-centralai-purple" />
           <span>Manage Users</span>
         </Button>
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-amber-200 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/10"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-centralai-accent/20 hover:border-centralai-accent/40 hover:bg-centralai-accent/5"
+          onClick={() => navigate('/admin/companies')}
+        >
+          <Building className="h-8 w-8 text-centralai-purple" />
+          <span>Manage Companies</span>
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/5"
           onClick={() => navigate('/admin/license-requests')}
         >
           <Rotate3D className="h-8 w-8 text-amber-500" />
@@ -172,7 +181,7 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-200 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5"
           onClick={() => navigate('/admin/license-generator')}
         >
           <Key className="h-8 w-8 text-purple-500" />
@@ -181,7 +190,7 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/10"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-green-500/20 hover:border-green-500/40 hover:bg-green-500/5"
           onClick={() => navigate('/admin/chats')}
         >
           <MessageSquare className="h-8 w-8 text-green-500" />
@@ -190,20 +199,11 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5"
           onClick={() => navigate('/admin/login-logs')}
         >
           <Users className="h-8 w-8 text-red-500" />
           <span>Login Logs</span>
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10"
-          onClick={() => navigate('/admin/companies')}
-        >
-          <Building className="h-8 w-8 text-indigo-500" />
-          <span>Manage Companies</span>
         </Button>
       </div>
     </div>

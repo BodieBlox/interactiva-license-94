@@ -65,6 +65,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				centralai: {
+					dark: '#1A1F2C',
+					charcoal: '#403E43',
+					darker: '#221F26',
+					purple: '#7E69AB',
+					accent: '#6D4F9F',
 				}
 			},
 			borderRadius: {

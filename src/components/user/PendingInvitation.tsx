@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { User as UserType } from '@/utils/types';
-import { updateDashboardCustomization } from '@/utils/api';
+import { updateDashboardCustomization, updateUser } from '@/utils/api';
 import { Clock, Check, X, Building } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -30,26 +30,33 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const handleAcceptInvitation = async () => {
     setIsLoading(true);
     try {
-      // Prepare customization with all required fields and no undefined values
+      // Prepare customization without undefined values
       const updatedCustomization = {
-        ...(currentUser.customization || {}),
         companyName: companyName,
-        primaryColor: primaryColor || '#6366f1', // Default to indigo if not provided
+        primaryColor: primaryColor || '#7E69AB',
         isCompanyMember: true,
+        approved: true,
       };
       
-      // Remove the pending invitation explicitly
-      delete updatedCustomization.pendingInvitation;
+      // Make a clean copy without the pendingInvitation
+      const { pendingInvitation, ...restCustomization } = currentUser.customization || {};
+      const cleanCustomization = { ...restCustomization, ...updatedCustomization };
       
-      const updatedUser = await updateDashboardCustomization(currentUser.id, updatedCustomization);
+      const updatedUser = await updateDashboardCustomization(currentUser.id, cleanCustomization);
       
-      // Update licenseType to 'enterprise' when joining a company
-      // Important: using the specific type value from the union type
+      // Update license type to enterprise with proper type
+      await updateUser(currentUser.id, { 
+        licenseType: 'enterprise' as 'basic' | 'premium' | 'enterprise', 
+        licenseActive: true 
+      });
+      
+      // Merge the returned user with license information
       const userWithLicense = {
         ...updatedUser,
-        licenseType: 'enterprise' as const,
-        licenseActive: true // Set license as active since they're on company license now
+        licenseType: 'enterprise' as 'basic' | 'premium' | 'enterprise',
+        licenseActive: true
       };
+      
       setUser(userWithLicense);
       
       toast({
@@ -60,7 +67,7 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       console.error('Error accepting invitation:', error);
       toast({
         title: "Error",
-        description: `Failed to accept invitation: ${(error as Error).message}`,
+        description: `Failed to accept invitation: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
@@ -71,10 +78,10 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const handleDeclineInvitation = async () => {
     setIsLoading(true);
     try {
-      const updatedUser = await updateDashboardCustomization(currentUser.id, {
-        ...currentUser.customization,
-        pendingInvitation: undefined
-      });
+      // Create a clean copy without pendingInvitation
+      const { pendingInvitation, ...restCustomization } = currentUser.customization || {};
+      
+      const updatedUser = await updateDashboardCustomization(currentUser.id, restCustomization);
       
       setUser(updatedUser);
       
@@ -86,7 +93,7 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       console.error('Error declining invitation:', error);
       toast({
         title: "Error",
-        description: `Failed to decline invitation: ${(error as Error).message}`,
+        description: `Failed to decline invitation: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {

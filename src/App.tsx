@@ -1,6 +1,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { CompanyProvider } from './context/CompanyContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { LoginForm } from './components/auth/LoginForm';
@@ -22,27 +23,29 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/key-generator" element={<KeyGenerator />} />
+        <CompanyProvider>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<LoginForm />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/key-generator" element={<KeyGenerator />} />
 
-          {/* Auth routes */}
-          <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
+            {/* Auth routes */}
+            <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
 
-          {/* Protected routes */}
-          <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
-          <Route path="/chat/new" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
-          <Route path="/chat/:chatId" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
-          <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
+            {/* Protected routes */}
+            <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
+            <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
+            <Route path="/chat/new" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
+            <Route path="/chat/:chatId" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
+            <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
 
-          {/* Redirect and 404 */}
-          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* Redirect and 404 */}
+            <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </CompanyProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
