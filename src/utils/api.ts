@@ -1,6 +1,7 @@
 import { User, DashboardCustomization, License, LicenseRequest, ChatMessage, Chat, LoginLog } from './types';
 import { database } from './firebase';
 import { ref, set, get, push, remove, update, query, orderByChild, equalTo } from 'firebase/database';
+import { v4 as uuidv4 } from 'uuid';
 
 // User related functions
 export const getUsers = async (): Promise<User[]> => {
@@ -578,72 +579,84 @@ export const forceUserLogout = async (userId: string): Promise<void> => {
 };
 
 // Chat related functions
-export const createChat = async (userId: string, title?: string): Promise<Chat> => {
-  const chatRef = push(ref(database, 'chats'));
-  const chatId = chatRef.key;
-  
-  if (!chatId) {
-    throw new Error('Failed to generate chat ID');
-  }
-  
-  const chatData: Chat = {
-    id: chatId,
+export const createChat = async (userId: string, title: string): Promise<Chat> => {
+  const newChat: Chat = {
+    id: uuidv4(),
     userId,
-    title: title || 'New Chat',
+    title,
+    messages: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    messages: []
   };
-  
-  await set(chatRef, chatData);
-  return chatData;
-};
 
-export const getChatById = async (chatId: string): Promise<Chat | null> => {
-  const chatRef = ref(database, `chats/${chatId}`);
-  const snapshot = await get(chatRef);
-  
-  if (snapshot.exists()) {
-    return { ...snapshot.val(), id: snapshot.key } as Chat;
-  } else {
-    return null;
-  }
+  const chatRef = ref(database, `chats/${newChat.id}`);
+  await set(chatRef, newChat);
+  return newChat;
 };
 
 export const getUserChats = async (userId: string): Promise<Chat[]> => {
-  const chatsRef = ref(database, 'chats');
-  const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
-  const snapshot = await get(userChatsQuery);
-  
-  if (!snapshot.exists()) {
+  try {
+    // Query the chats by userId
+    console.log('Querying chats for userId:', userId);
+    const chatsRef = query(ref(database, 'chats'), orderByChild('userId'), equalTo(userId));
+    const snapshot = await get(chatsRef);
+    
+    if (!snapshot.exists()) {
+      console.log('No chats found for this user');
+      return [];
+    }
+    
+    // Convert the snapshot to an array of Chat objects
+    const chats: Chat[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const chat = childSnapshot.val();
+      chats.push(chat);
+    });
+    
+    console.log(`Found ${chats.length} chats for user`);
+    return chats;
+  } catch (error) {
+    console.error('Error fetching user chats:', error);
     return [];
   }
-  
-  const chats: Chat[] = [];
-  snapshot.forEach(chatSnapshot => {
-    chats.push({ ...chatSnapshot.val(), id: chatSnapshot.key } as Chat);
-  });
-  
-  // Sort by updatedAt, most recent first
-  return chats.sort((a, b) => 
-    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
 };
 
 export const getAllChats = async (): Promise<Chat[]> => {
-  const chatsRef = ref(database, 'chats');
-  const snapshot = await get(chatsRef);
-  
-  if (!snapshot.exists()) {
+  try {
+    const chatsRef = ref(database, 'chats');
+    const snapshot = await get(chatsRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const chats: Chat[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const chat = childSnapshot.val();
+      chats.push(chat);
+    });
+    
+    return chats;
+  } catch (error) {
+    console.error('Error fetching all chats:', error);
     return [];
   }
-  
-  const chats: Chat[] = [];
-  snapshot.forEach(chatSnapshot => {
-    chats.push({ ...chatSnapshot.val(), id: chatSnapshot.key } as Chat);
-  });
-  
-  return chats;
+};
+
+export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  try {
+    const chatRef = ref(database, `chats/${chatId}`);
+    const snapshot = await get(chatRef);
+    
+    if (!snapshot.exists()) {
+      return null;
+    }
+    
+    return snapshot.val() as Chat;
+  } catch (error) {
+    console.error('Error fetching chat by ID:', error);
+    return null;
+  }
 };
 
 export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant'): Promise<ChatMessage> => {

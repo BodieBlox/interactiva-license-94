@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -43,13 +44,20 @@ export const AppLayout = ({
         return false;
       }
       
-      // Always check license validity
-      const needsLicense = !user.licenseActive || await checkLicenseValidity();
-      
-      if (needsLicense && !(user.role === 'admin' && location.pathname.startsWith('/admin'))) {
+      // Only check license validity if user doesn't have an active license already
+      if (!user.licenseActive) {
         if (location.pathname !== '/activate') {
           setShowLicenseDialog(true);
           return true;
+        }
+      } else if (requireLicense) {
+        // If user has an active license but we need to verify it's valid
+        const needsLicense = await checkLicenseValidity();
+        if (needsLicense && !(user.role === 'admin' && location.pathname.startsWith('/admin'))) {
+          if (location.pathname !== '/activate') {
+            setShowLicenseDialog(true);
+            return true;
+          }
         }
       }
     }
@@ -90,7 +98,8 @@ export const AppLayout = ({
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isActivationRoute = location.pathname === '/activate';
     
-    if (requireLicense && user) {
+    // Only check license if we require it and not already on activation page
+    if (requireLicense && user && !isActivationRoute) {
       checkLicense();
     }
 

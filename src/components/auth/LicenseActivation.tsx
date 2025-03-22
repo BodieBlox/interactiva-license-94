@@ -39,8 +39,8 @@ export const LicenseActivation = () => {
   useEffect(() => {
     if (user?.licenseActive) {
       toast({
-        title: "License Active",
-        description: "You already have an active license.",
+        title: "License Already Active",
+        description: "You already have an active license and don't need to activate another one.",
       });
       navigate('/dashboard');
     }
@@ -48,6 +48,16 @@ export const LicenseActivation = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Double check user doesn't already have an active license
+    if (user?.licenseActive) {
+      toast({
+        title: "License Already Active",
+        description: "You already have an active license and don't need to activate another one.",
+      });
+      navigate('/dashboard');
+      return;
+    }
     
     const trimmedKey = licenseKey.trim();
     if (!trimmedKey || trimmedKey.length < 19) { // Checking for full license key (4 blocks of 4 chars + 3 dashes)

@@ -58,8 +58,12 @@ export const DashboardContent = () => {
       setIsLoading(true);
       setError(null);
       try {
+        console.log('Fetching chats for user ID:', user.id);
         const userChats = await getUserChats(user.id);
-        setChats(userChats);
+        console.log('Fetched chats:', userChats);
+        
+        // Ensure we have an array, even if the API returns null or undefined
+        setChats(Array.isArray(userChats) ? userChats : []);
       } catch (error) {
         console.error('Error fetching chats:', error);
         setError(error instanceof Error ? error : new Error('Failed to load your chats'));
@@ -68,6 +72,8 @@ export const DashboardContent = () => {
           description: "Failed to load your chats",
           variant: "destructive"
         });
+        // Set empty array to prevent undefined errors
+        setChats([]);
       } finally {
         setIsLoading(false);
       }
@@ -75,11 +81,13 @@ export const DashboardContent = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchChats();
-  }, [fetchChats]);
+    if (user) {
+      fetchChats();
+    }
+  }, [fetchChats, user]);
 
   useEffect(() => {
-    if (!chats.length) {
+    if (!chats || !chats.length) {
       setSortedChats([]);
       return;
     }
