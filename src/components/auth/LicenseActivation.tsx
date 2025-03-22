@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { KeyRound, MailPlus, ArrowRight } from 'lucide-react';
+import { KeyRound, MailPlus, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const LicenseActivation = () => {
@@ -88,41 +88,46 @@ export const LicenseActivation = () => {
     <div className="w-full max-w-md mx-auto">
       {!showRequestForm ? (
         <form onSubmit={handleSubmit} className="w-full">
-          <Card className="glass-panel shadow-xl border-0 animate-fade-in">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <KeyRound className="h-6 w-6 text-primary" />
+          <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+            <CardHeader className="text-center bg-gradient-to-b from-white to-slate-50 pb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4 shadow-md">
+                <KeyRound className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-2xl font-medium">Activate License</CardTitle>
-              <CardDescription>Enter your license key to access the platform</CardDescription>
+              <CardTitle className="text-2xl font-semibold text-slate-800">Activate License</CardTitle>
+              <CardDescription className="text-slate-500">
+                Enter your license key to access the platform
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-4">
+            <CardContent className="space-y-6 pt-4 px-6">
               <div className="space-y-2">
-                <Label htmlFor="licenseKey">License Key</Label>
+                <Label htmlFor="licenseKey" className="text-sm font-medium">License Key</Label>
                 <Input
                   id="licenseKey"
                   placeholder="XXXX-XXXX-XXXX-XXXX"
                   value={licenseKey}
                   onChange={handleLicenseKeyChange}
-                  className="bg-white/50 dark:bg-black/10 border-0 subtle-ring-focus transition-apple text-center tracking-wider font-mono uppercase"
+                  className="bg-white shadow-sm border-slate-200 text-center tracking-wider font-mono uppercase transition-all focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                   maxLength={19}
                   required
                 />
-                <p className="text-xs text-muted-foreground text-center mt-2">
+                <p className="text-xs text-center text-slate-500 mt-2">
                   For demo, use: FREE-1234-5678-9ABC
                 </p>
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-3">
+            <CardFooter className="flex flex-col space-y-4 px-6 py-5 bg-slate-50 border-t border-slate-100">
               <Button 
                 type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 transition-apple"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mx-auto"></div>
                 ) : (
-                  'Activate License'
+                  <div className="flex items-center justify-center">
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Activate License
+                  </div>
                 )}
               </Button>
               {error && (
@@ -131,13 +136,13 @@ export const LicenseActivation = () => {
               
               <div className="relative w-full py-2">
                 <Separator className="absolute inset-0 m-auto" />
-                <span className="relative bg-background dark:bg-background-dark px-2 text-xs text-muted-foreground mx-auto flex">OR</span>
+                <span className="relative bg-slate-50 px-2 text-xs text-slate-400 mx-auto flex">OR</span>
               </div>
               
               <Button
                 type="button"
                 variant="outline"
-                className="w-full transition-all hover:bg-primary/5"
+                className="w-full border-slate-200 hover:bg-slate-100 hover:text-indigo-600 transition-all"
                 onClick={() => setShowRequestForm(true)}
               >
                 <MailPlus className="mr-2 h-4 w-4" />
@@ -148,43 +153,48 @@ export const LicenseActivation = () => {
         </form>
       ) : (
         <form onSubmit={handleRequestLicense} className="w-full">
-          <Card className="glass-panel shadow-xl border-0 animate-fade-in">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <MailPlus className="h-6 w-6 text-primary" />
+          <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+            <CardHeader className="text-center bg-gradient-to-b from-white to-slate-50 pb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-md">
+                <MailPlus className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-2xl font-medium">Request License</CardTitle>
-              <CardDescription>Submit a license request to administrators</CardDescription>
+              <CardTitle className="text-2xl font-semibold text-slate-800">Request License</CardTitle>
+              <CardDescription className="text-slate-500">
+                Submit a license request to administrators
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-4">
+            <CardContent className="space-y-6 pt-4 px-6">
               <div className="space-y-2">
-                <Label htmlFor="requestMessage">Message (Optional)</Label>
+                <Label htmlFor="requestMessage" className="text-sm font-medium">Message (Optional)</Label>
                 <Input
                   id="requestMessage"
                   placeholder="Why you need access..."
                   value={requestMessage}
                   onChange={(e) => setRequestMessage(e.target.value)}
-                  className="bg-white/50 dark:bg-black/10 border-0 subtle-ring-focus transition-apple"
+                  className="bg-white shadow-sm border-slate-200 transition-all focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-3">
+            <CardFooter className="flex flex-col space-y-4 px-6 py-5 bg-slate-50 border-t border-slate-100">
               <Button 
                 type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 transition-apple"
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mx-auto"></div>
                 ) : (
-                  'Submit Request'
+                  <div className="flex items-center justify-center">
+                    <MailPlus className="mr-2 h-5 w-5" />
+                    Submit Request
+                  </div>
                 )}
               </Button>
               
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full transition-all"
+                className="w-full text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-all"
                 onClick={() => setShowRequestForm(false)}
               >
                 <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
