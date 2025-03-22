@@ -1,7 +1,7 @@
-
 import { Company, CompanyInvitation, UserWithCompany, CompanyMember } from './companyTypes';
 import { database } from './firebase';
 import { ref, set, get, push, remove, update } from 'firebase/database';
+import { updateDashboardCustomization } from './api';
 
 // Company management
 export const createCompany = async (companyData: Partial<Company>, userId: string): Promise<Company> => {
@@ -22,8 +22,8 @@ export const createCompany = async (companyData: Partial<Company>, userId: strin
     updatedAt: new Date().toISOString(),
     branding: {
       primaryColor: companyData.branding?.primaryColor || '#646cff',
-      approved: userId.includes('admin'), // Auto-approve for admins
-      ...companyData.branding
+      logo: companyData.branding?.logo || '',
+      approved: userId.includes('admin') // Auto-approve for admins
     },
     members: [userId]
   };
@@ -37,6 +37,16 @@ export const createCompany = async (companyData: Partial<Company>, userId: strin
     role: 'admin',
     joinedAt: new Date().toISOString(),
     invitedBy: userId
+  });
+  
+  // Update user's customization settings
+  await updateDashboardCustomization(userId, {
+    companyName: newCompany.name,
+    companyId: companyId,
+    primaryColor: newCompany.branding?.primaryColor,
+    logo: newCompany.branding?.logo,
+    approved: true,
+    isCompanyMember: false
   });
   
   return newCompany;
@@ -107,11 +117,107 @@ export const updateCompany = async (companyId: string, companyData: Partial<Comp
   }
   
   await update(companyRef, updatedCompany);
+  
+  // Update all company members' customization
+  const updatedBranding = updatedCompany.branding;
+  const memberRefs = ref(database, `companyMembers/${companyId}`);
+  const membersSnapshot = await get(memberRefs);
+  
+  if (membersSnapshot.exists()) {
+    const updatePromises: Promise<any>[] = [];
+    
+    membersSnapshot.forEach((childSnapshot) => {
+      const member = childSnapshot.val() as CompanyMember;
+      
+      updatePromises.push(
+        updateDashboardCustomization(member.userId, {
+          companyName: updatedCompany.name,
+          companyId: companyId,
+          primaryColor: updatedBranding?.primaryColor,
+          logo: updatedBranding?.logo,
+          approved: true
+        })
+      );
+    });
+    
+    await Promise.all(updatePromises);
+  }
+  
+  return updatedCompany;
+};
+
+export const updateCompanyLogo = async (companyId: string, logoUrl: string): Promise<Company> => {
+  console.log('Updating company logo:', companyId, logoUrl);
+  
+  const companyRef = ref(database, `companies/${companyId}`);
+  const snapshot = await get(companyRef);
+  
+  if (!snapshot.exists()) {
+    throw new Error(`Company with ID ${companyId} not found`);
+  }
+  
+  const currentCompany = snapshot.val() as Company;
+  
+  // Update the logo in the branding
+  const updatedCompany = {
+    ...currentCompany,
+    branding: {
+      ...currentCompany.branding,
+      logo: logoUrl
+    },
+    updatedAt: new Date().toISOString()
+  };
+  
+  await update(companyRef, updatedCompany);
+  
+  // Update all company members' customization with the new logo
+  const memberRefs = ref(database, `companyMembers/${companyId}`);
+  const membersSnapshot = await get(memberRefs);
+  
+  if (membersSnapshot.exists()) {
+    const updatePromises: Promise<any>[] = [];
+    
+    membersSnapshot.forEach((childSnapshot) => {
+      const member = childSnapshot.val() as CompanyMember;
+      
+      updatePromises.push(
+        updateDashboardCustomization(member.userId, {
+          logo: logoUrl
+        })
+      );
+    });
+    
+    await Promise.all(updatePromises);
+  }
+  
   return updatedCompany;
 };
 
 export const deleteCompany = async (companyId: string): Promise<boolean> => {
   console.log('Deleting company:', companyId);
+  
+  // Get company data first to get all members
+  const companyRef = ref(database, `companies/${companyId}`);
+  const companySnapshot = await get(companyRef);
+  
+  if (!companySnapshot.exists()) {
+    throw new Error(`Company with ID ${companyId} not found`);
+  }
+  
+  const company = companySnapshot.val() as Company;
+  
+  // Update all members' customization
+  const memberPromises = company.members.map(async (memberId) => {
+    await updateDashboardCustomization(memberId, {
+      companyName: undefined,
+      companyId: undefined,
+      isCompanyMember: false,
+      primaryColor: undefined,
+      logo: undefined
+    });
+  });
+  
+  await Promise.all(memberPromises);
   
   // Delete company
   await remove(ref(database, `companies/${companyId}`));
@@ -225,6 +331,16 @@ export const addCompanyMember = async (companyId: string, userId: string, role: 
     await update(companyRef, { members: company.members });
   }
   
+  // Update member's customization
+  await updateDashboardCustomization(userId, {
+    companyName: company.name,
+    companyId: companyId,
+    primaryColor: company.branding?.primaryColor,
+    logo: company.branding?.logo,
+    isCompanyMember: true,
+    approved: true
+  });
+  
   return true;
 };
 
@@ -243,6 +359,15 @@ export const removeCompanyMember = async (companyId: string, userId: string): Pr
     const updatedMembers = company.members.filter(id => id !== userId);
     await update(companyRef, { members: updatedMembers });
   }
+  
+  // Clear user's company customization
+  await updateDashboardCustomization(userId, {
+    companyName: undefined,
+    companyId: undefined,
+    primaryColor: undefined,
+    logo: undefined,
+    isCompanyMember: false
+  });
   
   return true;
 };

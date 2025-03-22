@@ -7,6 +7,7 @@ import { User as UserType } from '@/utils/types';
 import { updateDashboardCustomization, updateUser } from '@/utils/api';
 import { Clock, Check, X, Building } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { acceptCompanyInvitation, declineCompanyInvitation } from '@/utils/companyApi';
 
 interface PendingInvitationProps {
   currentUser: UserType;
@@ -20,7 +21,7 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
     return null;
   }
   
-  const { fromUsername, companyName, timestamp, primaryColor } = currentUser.customization.pendingInvitation;
+  const { fromUsername, companyName, timestamp, primaryColor, logo } = currentUser.customization.pendingInvitation;
   const formattedDate = new Date(timestamp).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -30,10 +31,17 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const handleAcceptInvitation = async () => {
     setIsLoading(true);
     try {
+      // Accept the invitation via the API
+      const invitations = await acceptCompanyInvitation(
+        currentUser.customization?.pendingInvitation?.id || '',
+        currentUser.id
+      );
+      
       // Prepare customization without undefined values
       const updatedCustomization = {
         companyName: companyName,
         primaryColor: primaryColor || '#7E69AB',
+        logo: logo || undefined,
         isCompanyMember: true,
         approved: true,
       };
@@ -78,6 +86,12 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
   const handleDeclineInvitation = async () => {
     setIsLoading(true);
     try {
+      // Decline the invitation via the API
+      await declineCompanyInvitation(
+        currentUser.customization?.pendingInvitation?.id || '',
+        currentUser.id
+      );
+      
       // Create a clean copy without pendingInvitation
       const { pendingInvitation, ...restCustomization } = currentUser.customization || {};
       
@@ -115,10 +129,21 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       <CardContent>
         <div className="space-y-3">
           <div className="p-3 bg-background rounded-md border">
-            <p className="font-medium">{companyName}</p>
-            <div className="flex items-center text-sm text-muted-foreground gap-1 mt-1">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Invited by {fromUsername} on {formattedDate}</span>
+            <div className="flex items-center gap-3">
+              {logo && (
+                <img 
+                  src={logo} 
+                  alt={companyName} 
+                  className="h-10 w-10 object-contain rounded"
+                />
+              )}
+              <div>
+                <p className="font-medium">{companyName}</p>
+                <div className="flex items-center text-sm text-muted-foreground gap-1 mt-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Invited by {fromUsername} on {formattedDate}</span>
+                </div>
+              </div>
             </div>
           </div>
           

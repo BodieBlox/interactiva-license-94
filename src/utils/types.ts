@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -23,18 +22,21 @@ export interface DashboardCustomization {
   primaryColor?: string;
   logo?: string;
   companyName?: string;
+  companyId?: string;
   approved?: boolean;
   isCompanyMember?: boolean;
   pendingInvitation?: CompanyInvitation;
-  companyId?: string;
 }
 
 export interface CompanyInvitation {
+  id?: string;
   fromUserId: string;
   fromUsername: string;
   companyName: string;
+  companyId?: string;
   timestamp: string;
   primaryColor?: string;
+  logo?: string;
 }
 
 export interface License {

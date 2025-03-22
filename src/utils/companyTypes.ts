@@ -50,4 +50,5 @@ export interface CompanyInvitation {
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
   primaryColor?: string;
+  logo?: string;
 }

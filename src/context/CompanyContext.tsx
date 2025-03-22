@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { Company, UserWithCompany, CompanyInvitation } from '../utils/companyTypes';
 import { 
@@ -8,7 +8,9 @@ import {
   createCompany, 
   updateCompany,
   getCompanyMembers,
-  getCompanyInvitationsByUser 
+  removeCompanyMember,
+  getCompanyInvitationsByUser,
+  updateCompanyLogo
 } from '../utils/companyApi';
 import { toast } from '@/components/ui/use-toast';
 
@@ -19,7 +21,9 @@ interface CompanyContextType {
   isLoadingCompany: boolean;
   createNewCompany: (companyData: Partial<Company>) => Promise<Company | null>;
   updateCompanyInfo: (companyData: Partial<Company>) => Promise<Company | null>;
+  updateCompanyLogo: (companyId: string, logoUrl: string) => Promise<Company | null>;
   refreshCompanyData: () => Promise<void>;
+  removeMember: (memberId: string) => Promise<boolean>;
   error: Error | null;
 }
 
@@ -34,8 +38,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoadingCompany, setIsLoadingCompany] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch the user's company information
-  useEffect(() => {
+  const fetchCompanyData = useCallback(async () => {
     if (!user) {
       setUserCompany(null);
       setCompanyMembers([]);
@@ -44,48 +47,49 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
 
-    const fetchCompanyData = async () => {
-      setIsLoadingCompany(true);
-      setError(null);
-      try {
-        // Check if user is part of a company
-        const companyId = user.customization?.companyName; // This will be changed to a proper ID in the real implementation
+    setIsLoadingCompany(true);
+    setError(null);
+    try {
+      // Check if user is part of a company
+      const companyId = user.customization?.companyId || user.customization?.companyName; // Support both companyId and legacy companyName
+      
+      if (companyId) {
+        const company = await getCompanyById(companyId);
+        setUserCompany(company);
         
-        if (companyId) {
-          const company = await getCompanyById(companyId);
-          setUserCompany(company);
-          
-          if (company) {
-            const members = await getCompanyMembers(company.id);
-            setCompanyMembers(members);
-          }
+        if (company) {
+          const members = await getCompanyMembers(company.id);
+          setCompanyMembers(members);
         }
-        
-        // Fetch pending invitations
-        const invitations = await getCompanyInvitationsByUser(user.id);
-        setPendingInvitations(invitations);
-      } catch (err) {
-        console.error('Error fetching company data:', err);
-        setError(err instanceof Error ? err : new Error('Failed to load company data'));
-        toast({
-          title: "Error",
-          description: "Failed to load company data",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoadingCompany(false);
       }
-    };
-
-    fetchCompanyData();
+      
+      // Fetch pending invitations
+      const invitations = await getCompanyInvitationsByUser(user.id);
+      setPendingInvitations(invitations);
+    } catch (err) {
+      console.error('Error fetching company data:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load company data'));
+      toast({
+        title: "Error",
+        description: "Failed to load company data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingCompany(false);
+    }
   }, [user]);
+
+  // Fetch the user's company information
+  useEffect(() => {
+    fetchCompanyData();
+  }, [fetchCompanyData]);
 
   const createNewCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     if (!user) return null;
     
     try {
       const newCompany = await createCompany(companyData, user.id);
-      setUserCompany(newCompany);
+      await fetchCompanyData(); // Refresh data after creating
       return newCompany;
     } catch (err) {
       console.error('Error creating company:', err);
@@ -104,7 +108,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       const updatedCompany = await updateCompany(userCompany.id, companyData);
-      setUserCompany(updatedCompany);
+      await fetchCompanyData(); // Refresh data after updating
       return updatedCompany;
     } catch (err) {
       console.error('Error updating company:', err);
@@ -118,33 +122,48 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const refreshCompanyData = async (): Promise<void> => {
-    if (!user) return;
-    
-    setIsLoadingCompany(true);
-    setError(null);
+  const updateCompanyLogoFn = async (companyId: string, logoUrl: string): Promise<Company | null> => {
     try {
-      // Fetch all data again
-      const companyId = user.customization?.companyName;
-      
-      if (companyId) {
-        const company = await getCompanyById(companyId);
-        setUserCompany(company);
-        
-        if (company) {
-          const members = await getCompanyMembers(company.id);
-          setCompanyMembers(members);
-        }
-      }
-      
-      const invitations = await getCompanyInvitationsByUser(user.id);
-      setPendingInvitations(invitations);
+      const updatedCompany = await updateCompanyLogo(companyId, logoUrl);
+      await fetchCompanyData(); // Refresh data after updating logo
+      return updatedCompany;
     } catch (err) {
-      console.error('Error refreshing company data:', err);
-      setError(err instanceof Error ? err : new Error('Failed to refresh company data'));
-    } finally {
-      setIsLoadingCompany(false);
+      console.error('Error updating company logo:', err);
+      setError(err instanceof Error ? err : new Error('Failed to update company logo'));
+      toast({
+        title: "Error",
+        description: "Failed to update company logo",
+        variant: "destructive"
+      });
+      return null;
     }
+  };
+
+  const removeMember = async (memberId: string): Promise<boolean> => {
+    if (!userCompany) return false;
+    
+    try {
+      await removeCompanyMember(userCompany.id, memberId);
+      await fetchCompanyData(); // Refresh data after removing member
+      toast({
+        title: "Member Removed",
+        description: "The member has been removed from the company."
+      });
+      return true;
+    } catch (err) {
+      console.error('Error removing member:', err);
+      setError(err instanceof Error ? err : new Error('Failed to remove member'));
+      toast({
+        title: "Error",
+        description: "Failed to remove member from company",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const refreshCompanyData = async (): Promise<void> => {
+    await fetchCompanyData();
   };
 
   return (
@@ -155,7 +174,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       isLoadingCompany,
       createNewCompany,
       updateCompanyInfo,
+      updateCompanyLogo: updateCompanyLogoFn,
       refreshCompanyData,
+      removeMember,
       error
     }}>
       {children}
