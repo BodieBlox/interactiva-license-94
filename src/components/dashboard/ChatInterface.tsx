@@ -3,12 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
 import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
-import { generateAIResponse } from '@/utils/openai';
+import { generateAIResponse, fetchDatabaseForAdmin } from '@/utils/openai';
 import { generateChatTitle, updateChatPin } from '@/utils/chatUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
+import { UserCircle, Bot, Send, ArrowLeft, Database } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
@@ -21,6 +21,8 @@ export const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDatabase, setShowDatabase] = useState(false);
+  const [databaseInfo, setDatabaseInfo] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -115,9 +117,11 @@ export const ChatInterface = () => {
         }
       }
       
+      const conversationHistory = currentChat.messages || [];
+      
       const aiMessage = isAdminAction && adminActionResult 
         ? adminActionResult
-        : await generateAIResponse(userMessageContent, isAdmin);
+        : await generateAIResponse(userMessageContent, conversationHistory, isAdmin);
       
       const messageParams: any = {
         content: aiMessage,
@@ -257,6 +261,23 @@ export const ChatInterface = () => {
     }
   };
 
+  const fetchDatabaseInfo = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setShowDatabase(true);
+      const dbInfo = await fetchDatabaseForAdmin();
+      setDatabaseInfo(dbInfo);
+    } catch (error) {
+      console.error('Error fetching database info:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch database information",
+        variant: "destructive"
+      });
+    }
+  };
+
   const renderMessageContent = (content: string, isAdminAction?: boolean) => {
     if (isAdminAction && content.includes('|')) {
       const lines = content.split('\n');
@@ -364,14 +385,41 @@ export const ChatInterface = () => {
           <h1 className="text-xl font-medium truncate">{chat?.title || "New conversation"}</h1>
         </div>
         
-        {isAdmin && (
-          <div className="flex items-center">
-            <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-              Admin Mode
-            </Badge>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={fetchDatabaseInfo}
+              >
+                <Database className="h-4 w-4" />
+                <span className="hidden md:inline">Database</span>
+              </Button>
+              <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                Admin Mode
+              </Badge>
+            </>
+          )}
+        </div>
       </div>
+      
+      {showDatabase && isAdmin && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">Database Information</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowDatabase(false)}>Close</Button>
+            </div>
+            <div className="p-4 overflow-auto flex-grow">
+              <pre className="text-xs whitespace-pre-wrap bg-gray-100 dark:bg-gray-900 p-4 rounded-md">
+                {databaseInfo || 'Loading database information...'}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-950">
         {!hasMessages ? (
