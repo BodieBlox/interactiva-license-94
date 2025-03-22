@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { createLicense, generateLicense } from '@/utils/api';
+import { generateLicense } from '@/utils/api';
 import { KeyRound, Copy, Wand, Shield, Calendar, Infinity, Check } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';

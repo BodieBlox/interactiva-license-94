@@ -146,6 +146,34 @@ export const createLicense = async (licenseData: Partial<License>): Promise<Lice
   return newLicense;
 };
 
+export const generateLicense = async (
+  licenseType: 'basic' | 'premium' | 'enterprise' | 'standard', 
+  expirationDays?: number
+): Promise<License> => {
+  // Convert UI license type to internal type if needed
+  const internalLicenseType: 'basic' | 'premium' | 'enterprise' = 
+    licenseType === 'standard' ? 'basic' : licenseType as 'basic' | 'premium' | 'enterprise';
+  
+  // Generate license data
+  const licenseData: Partial<License> = {
+    key: generateLicenseKey(),
+    type: internalLicenseType,
+    isActive: true,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+  };
+  
+  // Add expiration date if specified
+  if (expirationDays !== undefined) {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expirationDays);
+    licenseData.expiresAt = expiryDate.toISOString();
+  }
+  
+  // Create the license in the database
+  return createLicense(licenseData);
+};
+
 const generateLicenseKey = (): string => {
   // Generate a random license key
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -545,8 +573,8 @@ export const getLoginLogs = async (): Promise<LoginLog[]> => {
 };
 
 export const forceUserLogout = async (userId: string): Promise<void> => {
-  // Update a flag in the user's record to indicate they should be logged out
-  await updateUser(userId, { forcedLogout: true });
+  // Update the forcedLogout property with a timestamp string instead of boolean
+  await updateUser(userId, { forcedLogout: new Date().toISOString() });
 };
 
 // Chat related functions
