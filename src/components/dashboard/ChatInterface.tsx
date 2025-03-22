@@ -92,7 +92,7 @@ export const ChatInterface = () => {
           {
             id: loadingMessageId,
             content: "Thinking...",
-            role: 'assistant' as 'assistant',
+            role: 'assistant' as const,
             timestamp: new Date().toISOString(),
             isLoading: true
           }
@@ -137,14 +137,14 @@ export const ChatInterface = () => {
           prevChat.messages.filter(msg => msg.id !== loadingMessageId) : [];
         
         if (aiResponseMessage) {
-          updatedMessages.push(aiResponseMessage);
+          updatedMessages.push(aiResponseMessage as ChatMessage);
         }
         
         return {
           ...prevChat,
           messages: updatedMessages,
           updatedAt: new Date().toISOString()
-        };
+        } as Chat;
       });
       
       const updatedChat = await getChatById(currentChat.id);
@@ -213,13 +213,13 @@ export const ChatInterface = () => {
       setChat(prevChat => {
         if (!prevChat) return targetChat;
         
-        const updatedMessages = [...(prevChat.messages || []), sentMessage];
+        const updatedMessages = [...(prevChat.messages || []), sentMessage as ChatMessage];
         
         return {
           ...prevChat,
           messages: updatedMessages,
           updatedAt: new Date().toISOString()
-        };
+        } as Chat;
       });
       
       if (!targetChat.messages || targetChat.messages.length === 0) {
@@ -236,7 +236,7 @@ export const ChatInterface = () => {
             return {
               ...prevChat,
               title: generatedTitle
-            };
+            } as Chat;
           });
         } catch (titleError) {
           console.error('Error generating chat title:', titleError);
