@@ -1,3 +1,4 @@
+
 // This is just the sendMessage function to ensure it's consistent
 export const sendMessage = async (chatId: string, content: string) => {
   try {
@@ -395,6 +396,8 @@ export const forceUserLogout = async (userId: string) => {
 };
 
 // License related functions
+import { License } from './types'; // Import the License type from types.ts
+
 export const createLicense = async (licenseData: any) => {
   try {
     const licenseId = `license_${Date.now()}`;

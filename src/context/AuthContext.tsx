@@ -457,11 +457,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // Update the user record with license info
-        const updatedUser = {
+        const updatedUser: User = {
           ...user,
           licenseActive: true,
           licenseKey: formattedKey,
-          licenseType: 'basic',
+          licenseType: 'basic', // Ensure we're using the literal type
           licenseExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         };
         
@@ -512,6 +512,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
+      // Ensure license.type is one of the allowed enum values
+      const licenseType = (license.type === 'basic' || license.type === 'premium' || license.type === 'enterprise') 
+        ? license.type 
+        : 'basic';
+        
       // License is valid - activate it for this user
       await updateLicense(license.id, {
         isActive: true,
@@ -520,18 +525,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       
       // Update user with license info
-      const updatedUser = {
+      const updatedUser: User = {
         ...user,
         licenseActive: true,
         licenseKey: formattedKey,
-        licenseType: license.type,
+        licenseType: licenseType,
         licenseExpiryDate: license.expiresAt
       };
       
       await updateUser(user.id, {
         licenseActive: true,
         licenseKey: formattedKey,
-        licenseType: license.type,
+        licenseType: licenseType,
         licenseExpiryDate: license.expiresAt
       });
       
