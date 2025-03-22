@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -7,6 +8,10 @@ export interface User {
   licenseActive: boolean;
   licenseKey?: string;
   licenseType?: 'basic' | 'premium' | 'enterprise';
+  licenseId?: string;
+  licenseTier?: string;
+  licenseExpiryDate?: string;
+  createdAt?: string;
   isCompanyAdmin?: boolean;
   warningMessage?: string;
   lastLogin?: LoginLog;

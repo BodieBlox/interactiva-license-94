@@ -1,4 +1,5 @@
 
+
 import { Card, CardContent } from '@/components/ui/card';
 import { User as UserIcon, Mail, Calendar, Shield, AlertCircle } from 'lucide-react';
 import { User } from '@/utils/types';
@@ -20,10 +21,13 @@ export const UserProfile = ({ user }: UserProfileProps) => {
   const licenseExpiry = new Date();
   licenseExpiry.setMonth(licenseExpiry.getMonth() + 6);
   
+  // Get the expiry date, either from user object or fallback to the calculated one
+  const expiryDate = user.licenseExpiryDate ? new Date(user.licenseExpiryDate) : licenseExpiry;
+  
   // Check if license is valid
-  const isLicenseValid = user.status === 'active' && isAfter(new Date(user.licenseExpiryDate || licenseExpiry), new Date());
-  const isExpiringSoon = isLicenseValid && isAfter(new Date(user.licenseExpiryDate || licenseExpiry), new Date()) && 
-                        isAfter(new Date(user.licenseExpiryDate || licenseExpiry), 
+  const isLicenseValid = user.status === 'active' && isAfter(expiryDate, new Date());
+  const isExpiringSoon = isLicenseValid && isAfter(expiryDate, new Date()) && 
+                        isAfter(expiryDate, 
                                 new Date(new Date().setDate(new Date().getDate() + 30)));
   
   return (
@@ -55,7 +59,7 @@ export const UserProfile = ({ user }: UserProfileProps) => {
         <div className="flex items-center text-sm">
           <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
           <span>
-            License valid until: <span className="font-medium">{format(user.licenseExpiryDate || licenseExpiry, 'MMM d, yyyy')}</span>
+            License valid until: <span className="font-medium">{format(expiryDate, 'MMM d, yyyy')}</span>
             {!isExpiringSoon && (
               <Badge variant="outline" className="ml-2 text-amber-500 border-amber-500 px-1.5 py-0 text-[10px]">
                 <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
@@ -92,11 +96,11 @@ export const UserProfile = ({ user }: UserProfileProps) => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tier:</span>
-                <span>{user.licenseTier || 'Standard'}</span>
+                <span>{user.licenseType || user.licenseTier || 'Standard'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Issue Date:</span>
-                <span>{format(new Date(user.createdAt || new Date()), 'MMM d, yyyy')}</span>
+                <span>{user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : format(new Date(), 'MMM d, yyyy')}</span>
               </div>
             </div>
           )}
@@ -105,3 +109,4 @@ export const UserProfile = ({ user }: UserProfileProps) => {
     </Card>
   );
 };
+
