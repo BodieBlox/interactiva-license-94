@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { LicenseRequest } from '@/utils/types';
 import { getLicenseRequests, approveLicenseRequest, rejectLicenseRequest } from '@/utils/api';
@@ -31,7 +30,6 @@ export const LicenseRequests = () => {
     try {
       const allRequests = await getLicenseRequests();
       
-      // Sort by creation date, most recent first
       const sortedRequests = allRequests.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -75,14 +73,14 @@ export const LicenseRequests = () => {
     setIsProcessing(true);
     try {
       if (actionType === 'approve') {
-        await approveLicenseRequest(selectedRequest.id);
+        await approveLicenseRequest(selectedRequest.id, '');
         toast({
           title: "Success",
           description: `License request from ${selectedRequest.username} has been approved`,
           variant: "success"
         });
       } else {
-        await rejectLicenseRequest(selectedRequest.id);
+        await rejectLicenseRequest(selectedRequest.id, 'Request rejected by admin');
         toast({
           title: "Success",
           description: `License request from ${selectedRequest.username} has been rejected`,
@@ -90,7 +88,6 @@ export const LicenseRequests = () => {
         });
       }
       
-      // Update local state
       setRequests(prevRequests => 
         prevRequests.map(req => 
           req.id === selectedRequest.id

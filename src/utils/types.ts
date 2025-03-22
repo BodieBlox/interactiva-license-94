@@ -15,6 +15,7 @@ export interface User {
   warningMessage?: string;
   lastLogin?: LoginLog;
   forcedLogout?: string;
+  password?: string;
   customization?: DashboardCustomization;
 }
 
@@ -48,8 +49,9 @@ export interface License {
   activatedAt?: string;
   suspendedAt?: string;
   expiresAt?: string;
-  status: 'active' | 'inactive' | 'revoked';
+  status: 'active' | 'inactive' | 'revoked' | 'suspended';
   type: 'basic' | 'premium' | 'enterprise';
+  assignedTo?: string;
 }
 
 export interface ChatMessage {

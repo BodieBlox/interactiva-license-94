@@ -1,4 +1,3 @@
-
 import { User, DashboardCustomization, License, LicenseRequest, ChatMessage, Chat, LoginLog } from './types';
 import { database } from './firebase';
 import { ref, set, get, push, remove, update, query, orderByChild, equalTo } from 'firebase/database';
@@ -50,9 +49,17 @@ export const createUser = async (userData: Partial<User>): Promise<User> => {
     status: userData.status || 'active',
     createdAt: new Date().toISOString(),
     // Add any other required fields with defaults
-    customization: userData.customization || { theme: 'light' },
+    customization: userData.customization || {},
     licenseActive: false,
   };
+  
+  // Handle password separately for authentication if present
+  const password = userData.password;
+  if (password) {
+    // Here you would normally use Firebase Authentication
+    // This is just a placeholder for the actual auth logic
+    console.log(`Would create auth user with email ${userData.email} and password`);
+  }
   
   const userRef = ref(database, `users/${userId}`);
   await set(userRef, newUser);
@@ -116,22 +123,30 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 // License related functions
-export const createLicense = async (licenseData: License): Promise<License> => {
-  const licenseRef = ref(database, `licenses/${licenseData.id}`);
-  await set(licenseRef, licenseData);
-  return licenseData;
-};
-
-export const generateLicense = async (
-  type: 'basic' | 'premium' | 'enterprise' | 'standard', 
-  expirationDays?: number
-): Promise<License> => {
-  const licenseId = push(ref(database, 'licenses')).key;
+export const createLicense = async (licenseData: Partial<License>): Promise<License> => {
+  const licenseId = licenseData.id || push(ref(database, 'licenses')).key;
   
   if (!licenseId) {
     throw new Error('Failed to generate license ID');
   }
+  
+  const newLicense: License = {
+    id: licenseId,
+    key: licenseData.key || generateLicenseKey(),
+    type: licenseData.type || 'basic',
+    isActive: licenseData.isActive !== undefined ? licenseData.isActive : true,
+    status: licenseData.status || 'active',
+    createdAt: licenseData.createdAt || new Date().toISOString(),
+    expiresAt: licenseData.expiresAt,
+    assignedTo: licenseData.assignedTo,
+  };
+  
+  const licenseRef = ref(database, `licenses/${licenseId}`);
+  await set(licenseRef, newLicense);
+  return newLicense;
+};
 
+const generateLicenseKey = (): string => {
   // Generate a random license key
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let key = '';
@@ -139,28 +154,7 @@ export const generateLicense = async (
     key += characters.charAt(Math.floor(Math.random() * characters.length));
     if ((i + 1) % 4 === 0 && i < 20) key += '-';
   }
-
-  // Calculate expiration date if provided
-  let expiresAt: string | undefined;
-  if (expirationDays) {
-    const date = new Date();
-    date.setDate(date.getDate() + expirationDays);
-    expiresAt = date.toISOString();
-  }
-
-  const newLicense: License = {
-    id: licenseId,
-    key: key,
-    type: type === 'standard' ? 'basic' : type, // Map 'standard' to 'basic' for backward compatibility
-    isActive: true,
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    assignedTo: undefined,
-    expiresAt,
-  };
-
-  await createLicense(newLicense);
-  return newLicense;
+  return key;
 };
 
 export const getLicense = async (licenseId: string): Promise<License | null> => {
@@ -220,7 +214,7 @@ export const suspendLicense = async (licenseKey: string): Promise<License | null
   
   return updateLicense(license.id, { 
     isActive: false, 
-    status: 'suspended' 
+    status: 'suspended' as License['status'] 
   });
 };
 
@@ -552,7 +546,7 @@ export const getLoginLogs = async (): Promise<LoginLog[]> => {
 
 export const forceUserLogout = async (userId: string): Promise<void> => {
   // Update a flag in the user's record to indicate they should be logged out
-  await updateUser(userId, { forceLogout: true });
+  await updateUser(userId, { forcedLogout: true });
 };
 
 // Chat related functions
@@ -652,20 +646,29 @@ export const sendMessage = async (chatId: string, content: string, role: 'user' 
   return messageData;
 };
 
-export const addMessageToChat = async (chatId: string, message: ChatMessage): Promise<ChatMessage> => {
-  if (!message.id) {
-    const newMessageRef = push(ref(database, `chats/${chatId}/messages`));
-    message.id = newMessageRef.key || '';
-  }
+export const addMessageToChat = async (chatId: string, messageData: Partial<ChatMessage>): Promise<ChatMessage> => {
+  const messageRef = push(ref(database, `chats/${chatId}/messages`));
+  const messageId = messageRef.key || '';
   
-  await set(ref(database, `chats/${chatId}/messages/${message.id}`), message);
+  const timestamp = new Date().toISOString();
+  
+  const completeMessage: ChatMessage = {
+    id: messageId,
+    content: messageData.content || '',
+    role: messageData.role || 'assistant',
+    timestamp,
+    isAdminAction: messageData.isAdminAction,
+    adminActionResult: messageData.adminActionResult
+  };
+  
+  await set(messageRef, completeMessage);
   
   // Update the chat's updatedAt timestamp
   await update(ref(database, `chats/${chatId}`), {
-    updatedAt: new Date().toISOString()
+    updatedAt: timestamp
   });
   
-  return message;
+  return completeMessage;
 };
 
 export const clearUserChatHistory = async (userId: string): Promise<void> => {

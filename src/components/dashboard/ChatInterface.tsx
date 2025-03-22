@@ -123,16 +123,11 @@ export const ChatInterface = () => {
         ? adminActionResult
         : await generateAIResponse(userMessageContent, conversationHistory, isAdmin);
       
-      const messageParams: any = {
+      const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
-        role: 'assistant'
-      };
-      
-      if (isAdminAction) {
-        messageParams.isAdminAction = true;
-      }
-      
-      const aiResponseMessage = await addMessageToChat(currentChat.id, messageParams);
+        role: 'assistant',
+        isAdminAction: isAdminAction || undefined
+      });
       
       setChat((prevChat) => {
         if (!prevChat) return null;
@@ -212,7 +207,7 @@ export const ChatInterface = () => {
         navigate(`/chat/${newChat.id}`, { replace: true });
       }
       
-      const sentMessage = await sendMessage(targetChat.id, messageContent);
+      const sentMessage = await sendMessage(targetChat.id, messageContent, 'user');
       
       setChat(prevChat => {
         if (!prevChat) return targetChat;

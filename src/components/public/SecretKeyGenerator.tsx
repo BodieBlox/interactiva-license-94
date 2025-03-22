@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { createLicense } from '@/utils/api';
+import { createLicense, generateLicense } from '@/utils/api';
 import { KeyRound, Copy, Wand, Shield, Calendar, Infinity, Check } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -21,12 +21,11 @@ export const SecretKeyGenerator = () => {
     setIsGenerating(true);
     try {
       // Generate license with selected type and expiration
-      const licenseData = {
-        type: licenseType,
-        ...(showExpiration && { expiresAt: new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString() })
-      };
+      const license = await generateLicense(
+        licenseType, 
+        showExpiration ? expirationDays : undefined
+      );
       
-      const license = await createLicense(licenseData);
       setGeneratedKey(license.key);
       toast({
         title: "Success",

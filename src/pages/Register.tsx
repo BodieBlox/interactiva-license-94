@@ -19,7 +19,6 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form inputs
     if (!username.trim() || !email.trim() || !password || !confirmPassword) {
       toast({
         title: "Error",
@@ -47,7 +46,6 @@ const Register = () => {
       return;
     }
     
-    // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast({
@@ -63,8 +61,11 @@ const Register = () => {
     try {
       await createUser({
         email,
+        username,
         password,
-        username
+        role: 'user',
+        status: 'active',
+        licenseActive: false
       });
       
       toast({
