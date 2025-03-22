@@ -170,7 +170,7 @@ export const getAllLicenses = async (): Promise<License[]> => {
   }
 };
 
-export const generateLicense = async () => {
+export const generateLicense = async (licenseType = 'standard', expirationDays?: number) => {
   try {
     const licenseKey = `KEY-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
     
@@ -179,10 +179,14 @@ export const generateLicense = async () => {
       key: licenseKey,
       isActive: true,
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
-      type: 'standard'
+      type: licenseType
     };
+    
+    // Add expiration date if specified
+    if (expirationDays) {
+      newLicense.expiresAt = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
+    }
     
     await set(ref(database, `licenses/${licenseKey}`), newLicense);
     
@@ -193,8 +197,8 @@ export const generateLicense = async () => {
   }
 };
 
-export const createLicense = async () => {
-  return generateLicense();
+export const createLicense = async (licenseType = 'standard', expirationDays?: number) => {
+  return generateLicense(licenseType, expirationDays);
 };
 
 export const suspendLicense = async (licenseId: string) => {
@@ -212,6 +216,18 @@ export const suspendLicense = async (licenseId: string) => {
     license.suspendedAt = new Date().toISOString();
     
     await update(licenseRef, license);
+    
+    // If this license is assigned to a user, update the user's license status
+    if (license.userId) {
+      const userRef = ref(database, `users/${license.userId}`);
+      const userSnapshot = await get(userRef);
+      
+      if (userSnapshot.exists()) {
+        await update(userRef, {
+          licenseActive: false
+        });
+      }
+    }
     
     return license;
   } catch (error) {
@@ -234,6 +250,19 @@ export const revokeLicense = async (licenseId: string) => {
     license.status = 'revoked';
     
     await update(licenseRef, license);
+    
+    // If this license is assigned to a user, update the user's license status
+    if (license.userId) {
+      const userRef = ref(database, `users/${license.userId}`);
+      const userSnapshot = await get(userRef);
+      
+      if (userSnapshot.exists()) {
+        await update(userRef, {
+          licenseActive: false,
+          licenseKey: null
+        });
+      }
+    }
     
     return license;
   } catch (error) {

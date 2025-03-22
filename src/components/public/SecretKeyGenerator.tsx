@@ -13,7 +13,8 @@ export const SecretKeyGenerator = () => {
   const handleGenerateKey = async () => {
     setIsGenerating(true);
     try {
-      const license = await createLicense();
+      // Generate standard license with 30-day expiration
+      const license = await createLicense('standard', 30);
       setGeneratedKey(license.key);
       toast({
         title: "Success",

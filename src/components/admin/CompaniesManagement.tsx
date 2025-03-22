@@ -8,21 +8,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building, Users, Edit, User, Trash2, Palette, Check } from 'lucide-react';
+import { Building, Users, Edit, User, Trash2, Palette, Check, PlusCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getUsers, updateDashboardCustomization, updateUser } from '@/utils/api';
 import { User as UserType } from '@/utils/types';
+import { 
+  createCompany, 
+  addCompanyMember, 
+  removeCompanyMember, 
+  updateCompany,
+  getCompanyById,
+  getCompanyMembers,
+  sendCompanyInvitation
+} from '@/utils/companyApi';
 
 export default function CompaniesManagement() {
   const [activeTab, setActiveTab] = useState('companies');
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [companyUsers, setCompanyUsers] = useState<UserType[]>([]);
   const [showEditBrandingDialog, setShowEditBrandingDialog] = useState(false);
+  const [showCreateCompanyDialog, setShowCreateCompanyDialog] = useState(false);
+  const [showInviteUserDialog, setShowInviteUserDialog] = useState(false);
   const [editCompanyData, setEditCompanyData] = useState<{
     companyName: string;
     primaryColor: string;
     userId: string;
+    companyId?: string;
   } | null>(null);
+  const [newCompanyData, setNewCompanyData] = useState({
+    name: '',
+    primaryColor: '#6366f1'
+  });
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    companyId: '',
+    companyName: ''
+  });
 
   // Fetch all users
   const { data: users = [], isLoading, refetch } = useQuery({
@@ -31,7 +52,7 @@ export default function CompaniesManagement() {
   });
 
   // Extract unique companies from users
-  const companies = users.reduce((acc: { name: string; adminId: string; primaryColor: string; memberCount: number }[], user) => {
+  const companies = users.reduce((acc: { name: string; adminId: string; primaryColor: string; memberCount: number; id?: string }[], user) => {
     if (user.customization?.companyName && (user.isCompanyAdmin || user.role === 'admin')) {
       const companyExists = acc.find(c => c.name === user.customization.companyName);
       if (!companyExists) {
@@ -42,7 +63,8 @@ export default function CompaniesManagement() {
           memberCount: users.filter(u => 
             u.customization?.companyName === user.customization.companyName || 
             u.customization?.isCompanyMember
-          ).length
+          ).length,
+          id: user.customization?.companyId
         });
       }
     }
@@ -70,12 +92,26 @@ export default function CompaniesManagement() {
   const handleRemoveFromCompany = async (userId: string) => {
     try {
       const user = users.find(u => u.id === userId);
-      if (!user) return;
+      if (!user || !user.customization?.companyName) return;
+      
+      const company = companies.find(c => c.name === user.customization?.companyName);
+      if (!company || !company.id) {
+        toast({
+          title: "Error",
+          description: "Company ID not found",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      // Remove company affiliation
+      // Remove user from company using the API
+      await removeCompanyMember(company.id, userId);
+      
+      // Remove company affiliation from user
       const updatedCustomization = {
         ...user.customization,
         companyName: undefined,
+        companyId: undefined,
         isCompanyMember: false
       };
 
@@ -106,35 +142,44 @@ export default function CompaniesManagement() {
   };
 
   const handleEditBranding = (companyName: string) => {
-    const adminUser = users.find(user => 
-      user.customization?.companyName === companyName && 
-      (user.isCompanyAdmin || user.role === 'admin')
-    );
+    const company = companies.find(c => c.name === companyName);
+    if (!company) return;
     
-    if (adminUser) {
-      setEditCompanyData({
-        companyName: companyName,
-        primaryColor: adminUser.customization?.primaryColor || '#6366f1',
-        userId: adminUser.id
-      });
-      setShowEditBrandingDialog(true);
-    }
+    setEditCompanyData({
+      companyName: companyName,
+      primaryColor: company.primaryColor || '#6366f1',
+      userId: company.adminId,
+      companyId: company.id
+    });
+    setShowEditBrandingDialog(true);
   };
 
   const handleUpdateBranding = async () => {
     if (!editCompanyData) return;
     
     try {
-      const { userId, companyName, primaryColor } = editCompanyData;
+      const { userId, companyName, primaryColor, companyId } = editCompanyData;
       const adminUser = users.find(u => u.id === userId);
       
       if (!adminUser) return;
+      
+      // Update company if it exists in the database
+      if (companyId) {
+        await updateCompany(companyId, {
+          branding: {
+            primaryColor,
+            approved: true
+          },
+          name: companyName
+        });
+      }
       
       // Update admin's customization
       await updateDashboardCustomization(userId, {
         ...adminUser.customization,
         companyName,
-        primaryColor
+        primaryColor,
+        approved: true
       });
       
       // Update all company members
@@ -144,7 +189,8 @@ export default function CompaniesManagement() {
           updateDashboardCustomization(user.id, {
             ...user.customization,
             companyName,
-            primaryColor
+            primaryColor,
+            approved: true
           })
         );
       
@@ -187,6 +233,154 @@ export default function CompaniesManagement() {
     }
   };
 
+  const handleCreateCompany = async () => {
+    try {
+      if (!newCompanyData.name.trim()) {
+        toast({
+          title: "Error",
+          description: "Company name is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create company for the first admin user
+      const adminUser = users.find(user => user.role === 'admin');
+      if (!adminUser) {
+        toast({
+          title: "Error",
+          description: "No admin user found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create the company
+      const newCompany = await createCompany({
+        name: newCompanyData.name,
+        branding: {
+          primaryColor: newCompanyData.primaryColor,
+          approved: true
+        }
+      }, adminUser.id);
+
+      // Update admin user
+      await updateDashboardCustomization(adminUser.id, {
+        companyName: newCompanyData.name,
+        primaryColor: newCompanyData.primaryColor,
+        approved: true,
+        companyId: newCompany.id
+      });
+
+      await updateUser(adminUser.id, { 
+        isCompanyAdmin: true,
+        licenseType: 'enterprise',
+        licenseActive: true
+      });
+
+      toast({
+        title: "Company Created",
+        description: "New company has been created successfully",
+      });
+
+      setShowCreateCompanyDialog(false);
+      setNewCompanyData({ name: '', primaryColor: '#6366f1' });
+      refetch();
+    } catch (error) {
+      console.error('Error creating company:', error);
+      toast({
+        title: "Error",
+        description: `Failed to create company: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleInviteUser = async () => {
+    try {
+      if (!inviteData.email.trim() || !inviteData.companyId) {
+        toast({
+          title: "Error",
+          description: "Email and company are required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Find the user by email
+      const targetUser = users.find(user => user.email === inviteData.email);
+      if (!targetUser) {
+        toast({
+          title: "Error",
+          description: "User not found with this email",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get company data
+      const company = await getCompanyById(inviteData.companyId);
+      if (!company) {
+        toast({
+          title: "Error",
+          description: "Company not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Find company admin
+      const adminUser = users.find(user => user.id === company.adminId);
+      if (!adminUser) {
+        toast({
+          title: "Error",
+          description: "Company admin not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Send invitation
+      await sendCompanyInvitation({
+        fromUserId: adminUser.id,
+        fromUsername: adminUser.username,
+        companyId: company.id,
+        companyName: company.name,
+        toUserId: targetUser.id,
+        toEmail: targetUser.email,
+        primaryColor: company.branding.primaryColor
+      });
+
+      // Update user with pending invitation
+      await updateDashboardCustomization(targetUser.id, {
+        ...targetUser.customization,
+        pendingInvitation: {
+          fromUserId: adminUser.id,
+          fromUsername: adminUser.username,
+          companyName: company.name,
+          timestamp: new Date().toISOString(),
+          primaryColor: company.branding.primaryColor
+        }
+      });
+
+      toast({
+        title: "Invitation Sent",
+        description: `Invitation has been sent to ${targetUser.email}`,
+      });
+
+      setShowInviteUserDialog(false);
+      setInviteData({ email: '', companyId: '', companyName: '' });
+      refetch();
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      toast({
+        title: "Error",
+        description: `Failed to invite user: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -199,6 +393,16 @@ export default function CompaniesManagement() {
         </div>
 
         <TabsContent value="companies" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => setShowCreateCompanyDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Create Company
+            </Button>
+          </div>
+          
           <Card>
             <CardHeader>
               <CardTitle>All Companies</CardTitle>
@@ -243,6 +447,21 @@ export default function CompaniesManagement() {
                             <Button 
                               variant="outline" 
                               size="sm"
+                              onClick={() => {
+                                setInviteData({
+                                  email: '',
+                                  companyId: company.id || '',
+                                  companyName: company.name
+                                });
+                                setShowInviteUserDialog(true);
+                              }}
+                            >
+                              <User className="h-4 w-4 mr-1" /> 
+                              Invite User
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
                               onClick={() => handleSelectCompany(company.name)}
                             >
                               <Users className="h-4 w-4 mr-1" /> 
@@ -266,6 +485,14 @@ export default function CompaniesManagement() {
                 <div className="text-center py-8 text-muted-foreground">
                   <Building className="h-12 w-12 mx-auto mb-3 opacity-20" />
                   <p>No companies found</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setShowCreateCompanyDialog(true)}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create your first company
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -283,9 +510,28 @@ export default function CompaniesManagement() {
                   </CardTitle>
                   <CardDescription>Manage users in this company</CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => setActiveTab('companies')}>
-                  Back to Companies
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const company = companies.find(c => c.name === selectedCompany);
+                      if (company) {
+                        setInviteData({
+                          email: '',
+                          companyId: company.id || '',
+                          companyName: company.name
+                        });
+                        setShowInviteUserDialog(true);
+                      }
+                    }}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Invite User
+                  </Button>
+                  <Button variant="outline" onClick={() => setActiveTab('companies')}>
+                    Back to Companies
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {companyUsers.length > 0 ? (
@@ -347,6 +593,24 @@ export default function CompaniesManagement() {
                   <div className="text-center py-8 text-muted-foreground">
                     <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p>No members found for this company</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        const company = companies.find(c => c.name === selectedCompany);
+                        if (company) {
+                          setInviteData({
+                            email: '',
+                            companyId: company.id || '',
+                            companyName: company.name
+                          });
+                          setShowInviteUserDialog(true);
+                        }
+                      }}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Invite your first member
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -391,7 +655,7 @@ export default function CompaniesManagement() {
                       ...editCompanyData,
                       primaryColor: e.target.value
                     })}
-                    className="w-10 h-10 rounded cursor-pointer"
+                    className="w-10 h-10 rounded cursor-pointer border-0"
                   />
                   <Input
                     value={editCompanyData.primaryColor}
@@ -421,6 +685,112 @@ export default function CompaniesManagement() {
             </Button>
             <Button onClick={handleUpdateBranding}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Company Dialog */}
+      <Dialog open={showCreateCompanyDialog} onOpenChange={setShowCreateCompanyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Company</DialogTitle>
+            <DialogDescription>
+              Create a new company and assign it to an admin user.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newCompanyName">Company Name</Label>
+              <Input
+                id="newCompanyName"
+                value={newCompanyData.name}
+                onChange={(e) => setNewCompanyData({
+                  ...newCompanyData,
+                  name: e.target.value
+                })}
+                placeholder="Enter company name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newBrandColor">Brand Color</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  id="newBrandColor"
+                  value={newCompanyData.primaryColor}
+                  onChange={(e) => setNewCompanyData({
+                    ...newCompanyData,
+                    primaryColor: e.target.value
+                  })}
+                  className="w-10 h-10 rounded cursor-pointer border-0"
+                />
+                <Input
+                  value={newCompanyData.primaryColor}
+                  onChange={(e) => setNewCompanyData({
+                    ...newCompanyData,
+                    primaryColor: e.target.value
+                  })}
+                  placeholder="#000000"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 p-4 bg-secondary/20 rounded-md">
+              <div className="font-medium mb-2">Preview</div>
+              <div 
+                className="h-8 rounded-md" 
+                style={{ backgroundColor: newCompanyData.primaryColor }}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateCompanyDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCompany}>
+              Create Company
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite User Dialog */}
+      <Dialog open={showInviteUserDialog} onOpenChange={setShowInviteUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User to Company</DialogTitle>
+            <DialogDescription>
+              Invite a user to join {inviteData.companyName}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="userEmail">User Email</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                value={inviteData.email}
+                onChange={(e) => setInviteData({
+                  ...inviteData,
+                  email: e.target.value
+                })}
+                placeholder="Enter user email"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteUserDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleInviteUser}>
+              Send Invitation
             </Button>
           </DialogFooter>
         </DialogContent>

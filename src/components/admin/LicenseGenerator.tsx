@@ -20,15 +20,15 @@ export default function LicenseGenerator() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      // Generate license key
-      const licenseKey = await generateLicense();
+      // Generate license key with the selected type
+      const licenseKey = await generateLicense(licenseType, showExpiration ? expirationDays : undefined);
       
       // Set the generated license key
       setGeneratedLicense(licenseKey.key);
       
       toast({
         title: "License Generated",
-        description: `New ${showExpiration ? 'temporary' : 'permanent'} license key has been generated successfully`,
+        description: `New ${licenseType} ${showExpiration ? 'temporary' : 'permanent'} license key has been generated successfully`,
       });
     } catch (error) {
       console.error('Error generating license:', error);
