@@ -427,6 +427,23 @@ export const createLicense = async (licenseData: any) => {
 
 export const generateLicense = async (type = 'standard', expiryDays?: number) => {
   try {
+    // Generate a formatted license key with proper format
+    const generateFormattedKey = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded similar looking characters
+      let result = '';
+      
+      // Create four groups of four characters separated by dashes
+      for (let group = 0; group < 4; group++) {
+        for (let i = 0; i < 4; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        if (group < 3) result += '-';
+      }
+      
+      return result;
+    };
+    
+    const licenseKey = generateFormattedKey();
     let expiresAt = undefined;
     
     if (expiryDays) {
@@ -435,9 +452,28 @@ export const generateLicense = async (type = 'standard', expiryDays?: number) =>
       expiresAt = expiryDate.toISOString();
     }
     
+    // Map standard/premium/enterprise to the expected type values
+    let normalizedType: 'basic' | 'premium' | 'enterprise';
+    
+    switch (type.toLowerCase()) {
+      case 'standard':
+        normalizedType = 'basic';
+        break;
+      case 'premium':
+        normalizedType = 'premium';
+        break;
+      case 'enterprise':
+        normalizedType = 'enterprise';
+        break;
+      default:
+        normalizedType = 'basic';
+    }
+    
     return await createLicense({
-      type,
-      expiresAt
+      key: licenseKey,
+      type: normalizedType,
+      expiresAt,
+      status: 'active'
     });
   } catch (error) {
     console.error('Error generating license:', error);
@@ -521,52 +557,60 @@ export const assignLicenseToUser = async (userId: string, licenseKey: string) =>
   }
 };
 
-export const suspendLicense = async (userId: string) => {
+export const suspendLicense = async (licenseKey: string) => {
   try {
-    const user = await updateUser(userId, {
-      licenseActive: false
+    const license = await getLicenseByKey(licenseKey);
+    
+    if (!license) {
+      throw new Error('License not found');
+    }
+    
+    await updateLicense(license.id, {
+      status: 'inactive',
+      isActive: false,
+      suspendedAt: new Date().toISOString()
     });
     
-    // If user has a license, update it too
-    if (user.licenseId) {
-      await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenses/${user.licenseId}.json`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'inactive',
-          suspendedAt: new Date().toISOString()
-        }),
+    // If the license is assigned to a user, update their status
+    if (license.userId) {
+      await updateUser(license.userId, {
+        licenseActive: false
       });
     }
     
-    return { success: true };
+    return true;
   } catch (error) {
     console.error('Error suspending license:', error);
     throw error;
   }
 };
 
-export const revokeLicense = async (userId: string) => {
+export const revokeLicense = async (licenseKey: string) => {
   try {
-    const user = await updateUser(userId, {
-      licenseActive: false,
-      licenseKey: null,
-      licenseType: null,
-      licenseId: null,
-      licenseExpiryDate: null
+    const license = await getLicenseByKey(licenseKey);
+    
+    if (!license) {
+      throw new Error('License not found');
+    }
+    
+    await updateLicense(license.id, {
+      status: 'revoked',
+      isActive: false,
+      userId: null,
+      suspendedAt: new Date().toISOString()
     });
     
-    // If user had a license, update it too
-    if (user.licenseId) {
-      await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenses/${user.licenseId}.json`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'revoked',
-          userId: null
-        }),
+    // If the license is assigned to a user, update their status
+    if (license.userId) {
+      await updateUser(license.userId, {
+        licenseActive: false,
+        licenseKey: null,
+        licenseType: null,
+        licenseExpiryDate: null
       });
     }
     
-    return { success: true };
+    return true;
   } catch (error) {
     console.error('Error revoking license:', error);
     throw error;
@@ -574,9 +618,9 @@ export const revokeLicense = async (userId: string) => {
 };
 
 // License request functions
-export const createLicenseRequest = async (userId: string, username: string, email: string, message = '', requestType = 'extension') => {
+export const createLicenseRequest = async (userId: string, username: string, email: string, message?: string) => {
   try {
-    const requestId = `request_${Date.now()}`;
+    const requestId = `req_${Date.now()}`;
     const timestamp = new Date().toISOString();
     
     const newRequest = {
@@ -584,10 +628,10 @@ export const createLicenseRequest = async (userId: string, username: string, ema
       userId,
       username,
       email,
-      message,
-      requestType,
+      message: message || '',
       status: 'pending',
-      createdAt: timestamp
+      createdAt: timestamp,
+      requestType: 'extension'
     };
     
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests/${requestId}.json`, {
@@ -644,7 +688,13 @@ export const approveLicenseRequest = async (requestId: string) => {
       throw new Error('License request not found');
     }
     
-    // Update request status
+    // Generate a new license
+    const license = await generateLicense('basic', 30); // 30-day basic license
+    
+    // Assign the license to the user
+    await assignLicenseToUser(request.userId, license.key);
+    
+    // Update the request status
     await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests/${requestId}.json`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -653,13 +703,7 @@ export const approveLicenseRequest = async (requestId: string) => {
       }),
     });
     
-    // Generate a new license
-    const license = await generateLicense(request.requestType === 'upgrade' ? 'premium' : 'standard', 30);
-    
-    // Assign license to user
-    await assignLicenseToUser(request.userId, license.key);
-    
-    return { success: true };
+    return { request, license };
   } catch (error) {
     console.error('Error approving license request:', error);
     throw error;
@@ -668,6 +712,7 @@ export const approveLicenseRequest = async (requestId: string) => {
 
 export const rejectLicenseRequest = async (requestId: string) => {
   try {
+    // Update the request status
     await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests/${requestId}.json`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -676,7 +721,7 @@ export const rejectLicenseRequest = async (requestId: string) => {
       }),
     });
     
-    return { success: true };
+    return true;
   } catch (error) {
     console.error('Error rejecting license request:', error);
     throw error;
@@ -725,6 +770,34 @@ export const approveDashboardCustomization = async (userId: string) => {
     return updateDashboardCustomization(userId, { approved: true });
   } catch (error) {
     console.error('Error approving dashboard customization:', error);
+    throw error;
+  }
+};
+
+export const getLicenseByKey = async (licenseKey: string) => {
+  try {
+    const licenses = await getAllLicenses();
+    return licenses.find(license => license.key === licenseKey);
+  } catch (error) {
+    console.error('Error fetching license by key:', error);
+    throw error;
+  }
+};
+
+export const updateLicense = async (licenseId: string, updateData: Partial<License>) => {
+  try {
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenses/${licenseId}.json`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update license');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating license:', error);
     throw error;
   }
 };

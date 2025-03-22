@@ -11,7 +11,7 @@ import { generateLicense } from '@/utils/api';
 import { Key, Copy, Calendar, Infinity, Shield, UserCog } from 'lucide-react';
 
 export default function LicenseGenerator() {
-  const [licenseType, setLicenseType] = useState('standard');
+  const [licenseType, setLicenseType] = useState<'basic' | 'premium' | 'enterprise'>('basic');
   const [expirationDays, setExpirationDays] = useState(30);
   const [showExpiration, setShowExpiration] = useState(true);
   const [generatedLicense, setGeneratedLicense] = useState('');
@@ -20,8 +20,14 @@ export default function LicenseGenerator() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
+      // Convert UI license type to API compatible types
+      const apiLicenseType = licenseType === 'basic' ? 'standard' : licenseType;
+      
       // Generate license key with the selected type and expiration
-      const licenseKey = await generateLicense(licenseType, showExpiration ? expirationDays : undefined);
+      const licenseKey = await generateLicense(
+        apiLicenseType, 
+        showExpiration ? expirationDays : undefined
+      );
       
       // Set the generated license key
       setGeneratedLicense(licenseKey.key);
@@ -67,16 +73,16 @@ export default function LicenseGenerator() {
             <Label htmlFor="licenseType" className="text-sm font-medium">License Type</Label>
             <Select
               value={licenseType}
-              onValueChange={setLicenseType}
+              onValueChange={(value) => setLicenseType(value as 'basic' | 'premium' | 'enterprise')}
             >
               <SelectTrigger id="licenseType" className="bg-white">
                 <SelectValue placeholder="Select license type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">
+                <SelectItem value="basic">
                   <div className="flex items-center gap-2">
                     <Key className="h-4 w-4 text-blue-500" />
-                    <span>Standard</span>
+                    <span>Basic</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="premium">
@@ -124,7 +130,7 @@ export default function LicenseGenerator() {
                 type="number" 
                 min="1"
                 value={expirationDays} 
-                onChange={(e) => setExpirationDays(parseInt(e.target.value))}
+                onChange={(e) => setExpirationDays(parseInt(e.target.value) || 30)}
                 className="bg-white"
               />
             </div>

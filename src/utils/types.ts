@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -46,7 +47,7 @@ export interface License {
   suspendedAt?: string;
   expiresAt?: string;
   status: 'active' | 'inactive' | 'revoked';
-  type: string;
+  type: 'basic' | 'premium' | 'enterprise';
 }
 
 export interface ChatMessage {

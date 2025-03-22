@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { KeyRound, MailPlus, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { KeyRound, MailPlus, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const LicenseActivation = () => {
   const [licenseKey, setLicenseKey] = useState('');
   const [requestMessage, setRequestMessage] = useState('');
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, activateUserLicense, requestLicense, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
@@ -22,8 +23,9 @@ export const LicenseActivation = () => {
     // Remove all non-alphanumeric characters
     let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     
-    // Insert dashes after every 4 characters
-    if (value.length > 4) {
+    // Format with dashes after every 4 characters
+    if (value.length > 0) {
+      // Split into chunks of 4 and join with dashes
       value = value.match(/.{1,4}/g)?.join('-') || value;
     }
     
@@ -47,17 +49,19 @@ export const LicenseActivation = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!licenseKey.trim()) {
+    const trimmedKey = licenseKey.trim();
+    if (!trimmedKey || trimmedKey.length < 19) { // Checking for full license key (4 blocks of 4 chars + 3 dashes)
       toast({
-        title: "Error",
-        description: "Please enter a license key",
+        title: "Invalid License Key",
+        description: "Please enter a valid license key",
         variant: "destructive"
       });
       return;
     }
     
+    setIsSubmitting(true);
     try {
-      await activateUserLicense(licenseKey);
+      await activateUserLicense(trimmedKey);
       toast({
         title: "Success",
         description: "License key activated successfully",
@@ -66,11 +70,14 @@ export const LicenseActivation = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('License activation error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRequestLicense = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       await requestLicense(requestMessage);
       setShowRequestForm(false);
@@ -81,6 +88,8 @@ export const LicenseActivation = () => {
       });
     } catch (error) {
       console.error('License request error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -114,14 +123,21 @@ export const LicenseActivation = () => {
                   For demo, use: FREE-1234-5678-9ABC
                 </p>
               </div>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4 px-6 py-5 bg-slate-50 border-t border-slate-100">
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md"
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mx-auto"></div>
                 ) : (
                   <div className="flex items-center justify-center">
@@ -130,9 +146,6 @@ export const LicenseActivation = () => {
                   </div>
                 )}
               </Button>
-              {error && (
-                <p className="text-sm text-red-500 animate-fade-in">{error}</p>
-              )}
               
               <div className="relative w-full py-2">
                 <Separator className="absolute inset-0 m-auto" />
@@ -144,6 +157,7 @@ export const LicenseActivation = () => {
                 variant="outline"
                 className="w-full border-slate-200 hover:bg-slate-100 hover:text-indigo-600 transition-all"
                 onClick={() => setShowRequestForm(true)}
+                disabled={isLoading || isSubmitting}
               >
                 <MailPlus className="mr-2 h-4 w-4" />
                 Request a License
@@ -174,14 +188,21 @@ export const LicenseActivation = () => {
                   className="bg-white shadow-sm border-slate-200 transition-all focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                 />
               </div>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4 px-6 py-5 bg-slate-50 border-t border-slate-100">
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md"
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mx-auto"></div>
                 ) : (
                   <div className="flex items-center justify-center">
@@ -196,6 +217,7 @@ export const LicenseActivation = () => {
                 variant="ghost"
                 className="w-full text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-all"
                 onClick={() => setShowRequestForm(false)}
+                disabled={isLoading || isSubmitting}
               >
                 <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
                 Back to Activation
