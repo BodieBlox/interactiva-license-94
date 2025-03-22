@@ -26,7 +26,8 @@ interface CompanyContextType {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const [userCompany, setUserCompany] = useState<Company | null>(null);
   const [companyMembers, setCompanyMembers] = useState<UserWithCompany[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<CompanyInvitation[]>([]);

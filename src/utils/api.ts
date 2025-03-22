@@ -1,3 +1,4 @@
+import { User, DashboardCustomization, License } from './types';
 
 // This is just the sendMessage function to ensure it's consistent
 export const sendMessage = async (chatId: string, content: string) => {
@@ -396,8 +397,6 @@ export const forceUserLogout = async (userId: string) => {
 };
 
 // License related functions
-import { License } from './types'; // Import the License type from types.ts
-
 export const createLicense = async (licenseData: any) => {
   try {
     const licenseId = `license_${Date.now()}`;
@@ -804,3 +803,4 @@ export const updateLicense = async (licenseId: string, updateData: Partial<Licen
     throw error;
   }
 };
+
