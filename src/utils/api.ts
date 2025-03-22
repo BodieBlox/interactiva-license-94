@@ -1,7 +1,9 @@
-import { User, DashboardCustomization, License, LicenseRequest } from './types';
+
+import { User, DashboardCustomization, License, LicenseRequest, ChatMessage, Chat, LoginLog } from './types';
 import { database } from './firebase';
 import { ref, set, get, push, remove, update, query, orderByChild, equalTo } from 'firebase/database';
 
+// User related functions
 export const getUsers = async (): Promise<User[]> => {
   const usersRef = ref(database, 'users');
   const snapshot = await get(usersRef);
@@ -9,7 +11,7 @@ export const getUsers = async (): Promise<User[]> => {
   if (snapshot.exists()) {
     const users: User[] = [];
     snapshot.forEach((childSnapshot) => {
-      users.push(childSnapshot.val() as User);
+      users.push({ ...childSnapshot.val(), id: childSnapshot.key } as User);
     });
     return users;
   } else {
@@ -17,15 +19,45 @@ export const getUsers = async (): Promise<User[]> => {
   }
 };
 
+export const getAllUsers = async (): Promise<User[]> => {
+  return getUsers(); // Alias for getUsers for backward compatibility
+};
+
 export const getUser = async (userId: string): Promise<User | null> => {
   const userRef = ref(database, `users/${userId}`);
   const snapshot = await get(userRef);
 
   if (snapshot.exists()) {
-    return snapshot.val() as User;
+    return { ...snapshot.val(), id: snapshot.key } as User;
   } else {
     return null;
   }
+};
+
+export const createUser = async (userData: Partial<User>): Promise<User> => {
+  // Generate a unique ID if not provided
+  const userId = userData.id || push(ref(database, 'users')).key;
+  
+  if (!userId) {
+    throw new Error('Failed to generate user ID');
+  }
+  
+  const newUser: User = {
+    id: userId,
+    username: userData.username || '',
+    email: userData.email || '',
+    role: userData.role || 'user',
+    status: userData.status || 'active',
+    createdAt: new Date().toISOString(),
+    // Add any other required fields with defaults
+    customization: userData.customization || { theme: 'light' },
+    licenseActive: false,
+  };
+  
+  const userRef = ref(database, `users/${userId}`);
+  await set(userRef, newUser);
+  
+  return newUser;
 };
 
 export const updateUser = async (userId: string, data: Partial<User>): Promise<User> => {
@@ -35,10 +67,27 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<U
   // Fetch the updated user data
   const updatedUserSnapshot = await get(userRef);
   if (updatedUserSnapshot.exists()) {
-    return updatedUserSnapshot.val() as User;
+    return { ...updatedUserSnapshot.val(), id: updatedUserSnapshot.key } as User;
   } else {
     throw new Error('Failed to fetch updated user data');
   }
+};
+
+export const updateUsername = async (userId: string, username: string): Promise<User> => {
+  return updateUser(userId, { username });
+};
+
+export const updateUserStatus = async (userId: string, status: User['status'], warningMessage?: string): Promise<User> => {
+  const updates: Partial<User> = { status };
+  
+  if (warningMessage) {
+    updates.warningMessage = warningMessage;
+  } else if (status === 'active') {
+    // Clear warning message if activating the user
+    updates.warningMessage = '';
+  }
+  
+  return updateUser(userId, updates);
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
@@ -46,10 +95,72 @@ export const deleteUser = async (userId: string): Promise<void> => {
   await remove(userRef);
 };
 
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  if (!email) return null;
+  
+  const usersRef = ref(database, 'users');
+  const userQuery = query(usersRef, orderByChild('email'), equalTo(email));
+  const snapshot = await get(userQuery);
+
+  if (snapshot.exists()) {
+    // Get the first match (there should be only one user with this email)
+    let user: User | null = null;
+    snapshot.forEach((childSnapshot) => {
+      user = { ...childSnapshot.val(), id: childSnapshot.key } as User;
+      return true; // Break the forEach loop after the first match
+    });
+    return user;
+  } else {
+    return null;
+  }
+};
+
+// License related functions
 export const createLicense = async (licenseData: License): Promise<License> => {
   const licenseRef = ref(database, `licenses/${licenseData.id}`);
   await set(licenseRef, licenseData);
   return licenseData;
+};
+
+export const generateLicense = async (
+  type: 'basic' | 'premium' | 'enterprise' | 'standard', 
+  expirationDays?: number
+): Promise<License> => {
+  const licenseId = push(ref(database, 'licenses')).key;
+  
+  if (!licenseId) {
+    throw new Error('Failed to generate license ID');
+  }
+
+  // Generate a random license key
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let key = '';
+  for (let i = 0; i < 24; i++) {
+    key += characters.charAt(Math.floor(Math.random() * characters.length));
+    if ((i + 1) % 4 === 0 && i < 20) key += '-';
+  }
+
+  // Calculate expiration date if provided
+  let expiresAt: string | undefined;
+  if (expirationDays) {
+    const date = new Date();
+    date.setDate(date.getDate() + expirationDays);
+    expiresAt = date.toISOString();
+  }
+
+  const newLicense: License = {
+    id: licenseId,
+    key: key,
+    type: type === 'standard' ? 'basic' : type, // Map 'standard' to 'basic' for backward compatibility
+    isActive: true,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    assignedTo: undefined,
+    expiresAt,
+  };
+
+  await createLicense(newLicense);
+  return newLicense;
 };
 
 export const getLicense = async (licenseId: string): Promise<License | null> => {
@@ -57,7 +168,7 @@ export const getLicense = async (licenseId: string): Promise<License | null> => 
   const snapshot = await get(licenseRef);
 
   if (snapshot.exists()) {
-    return snapshot.val() as License;
+    return { ...snapshot.val(), id: snapshot.key } as License;
   } else {
     return null;
   }
@@ -95,10 +206,72 @@ export const updateLicense = async (licenseId: string, data: Partial<License>): 
   // Fetch the updated license data
   const updatedLicenseSnapshot = await get(licenseRef);
   if (updatedLicenseSnapshot.exists()) {
-    return updatedLicenseSnapshot.val() as License;
+    return { ...updatedLicenseSnapshot.val(), id: updatedLicenseSnapshot.key } as License;
   } else {
     throw new Error('Failed to fetch updated license data');
   }
+};
+
+export const suspendLicense = async (licenseKey: string): Promise<License | null> => {
+  const license = await getLicenseByKey(licenseKey);
+  if (!license) {
+    throw new Error('License not found');
+  }
+  
+  return updateLicense(license.id, { 
+    isActive: false, 
+    status: 'suspended' 
+  });
+};
+
+export const revokeLicense = async (licenseKey: string): Promise<void> => {
+  const license = await getLicenseByKey(licenseKey);
+  if (!license) {
+    throw new Error('License not found');
+  }
+  
+  // If license is assigned to a user, update the user's license info
+  if (license.assignedTo) {
+    await updateUser(license.assignedTo, {
+      licenseActive: false,
+      licenseKey: undefined,
+      licenseType: undefined,
+      licenseExpiryDate: undefined
+    });
+  }
+  
+  // Delete the license
+  await deleteLicense(license.id);
+};
+
+export const assignLicenseToUser = async (userId: string, licenseKey: string): Promise<User> => {
+  // Get the license by key
+  const license = await getLicenseByKey(licenseKey);
+  if (!license) {
+    throw new Error('License not found');
+  }
+  
+  // Get the user
+  const user = await getUser(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  // Update the license to assign it to the user
+  await updateLicense(license.id, {
+    assignedTo: userId,
+    isActive: true,
+    status: 'active'
+  });
+  
+  // Update the user with the license information
+  return updateUser(userId, {
+    licenseKey: license.key,
+    licenseId: license.id,
+    licenseType: license.type,
+    licenseActive: true,
+    licenseExpiryDate: license.expiresAt
+  });
 };
 
 export const getLicenses = async (): Promise<License[]> => {
@@ -108,7 +281,7 @@ export const getLicenses = async (): Promise<License[]> => {
   if (snapshot.exists()) {
     const licenses: License[] = [];
     snapshot.forEach((childSnapshot) => {
-      licenses.push(childSnapshot.val() as License);
+      licenses.push({ ...childSnapshot.val(), id: childSnapshot.key } as License);
     });
     return licenses;
   } else {
@@ -116,6 +289,16 @@ export const getLicenses = async (): Promise<License[]> => {
   }
 };
 
+export const getAllLicenses = async (): Promise<License[]> => {
+  return getLicenses(); // Alias for getLicenses for backward compatibility
+};
+
+export const deleteLicense = async (licenseId: string): Promise<void> => {
+  const licenseRef = ref(database, `licenses/${licenseId}`);
+  await remove(licenseRef);
+};
+
+// License request related functions
 export const createLicenseRequest = async (
   userId: string, 
   username: string, 
@@ -152,7 +335,7 @@ export const getLicenseRequests = async (): Promise<LicenseRequest[]> => {
   if (snapshot.exists()) {
     const requests: LicenseRequest[] = [];
     snapshot.forEach((childSnapshot) => {
-      requests.push(childSnapshot.val() as LicenseRequest);
+      requests.push({ ...childSnapshot.val(), id: childSnapshot.key } as LicenseRequest);
     });
     return requests;
   } else {
@@ -165,7 +348,7 @@ export const getLicenseRequest = async (requestId: string): Promise<LicenseReque
   const snapshot = await get(requestRef);
 
   if (snapshot.exists()) {
-    return snapshot.val() as LicenseRequest;
+    return { ...snapshot.val(), id: snapshot.key } as LicenseRequest;
   } else {
     return null;
   }
@@ -178,7 +361,7 @@ export const updateLicenseRequest = async (requestId: string, data: Partial<Lice
   // Fetch the updated request data
   const updatedRequestSnapshot = await get(requestRef);
   if (updatedRequestSnapshot.exists()) {
-    return updatedRequestSnapshot.val() as LicenseRequest;
+    return { ...updatedRequestSnapshot.val(), id: updatedRequestSnapshot.key } as LicenseRequest;
   } else {
     throw new Error('Failed to fetch updated license request data');
   }
@@ -189,6 +372,7 @@ export const deleteLicenseRequest = async (requestId: string): Promise<void> => 
   await remove(requestRef);
 };
 
+// Dashboard customization
 export const updateDashboardCustomization = async (userId: string, customization: DashboardCustomization): Promise<User> => {
   const userRef = ref(database, `users/${userId}/customization`);
   await update(userRef, customization);
@@ -196,12 +380,17 @@ export const updateDashboardCustomization = async (userId: string, customization
   // Fetch the updated user data
   const updatedUserSnapshot = await get(ref(database, `users/${userId}`));
   if (updatedUserSnapshot.exists()) {
-    return updatedUserSnapshot.val() as User;
+    return { ...updatedUserSnapshot.val(), id: updatedUserSnapshot.key } as User;
   } else {
     throw new Error('Failed to fetch updated user data');
   }
 };
 
+export const approveDashboardCustomization = async (userId: string): Promise<User> => {
+  return updateDashboardCustomization(userId, { approved: true });
+};
+
+// License approval
 export const approveLicenseRequest = async (requestId: string, reason?: string) => {
   try {
     const requestRef = ref(database, `licenseRequests/${requestId}`);
@@ -309,26 +498,7 @@ export const rejectLicenseRequest = async (requestId: string, reason: string) =>
   }
 };
 
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-  if (!email) return null;
-  
-  const usersRef = ref(database, 'users');
-  const userQuery = query(usersRef, orderByChild('email'), equalTo(email));
-  const snapshot = await get(userQuery);
-
-  if (snapshot.exists()) {
-    // Get the first match (there should be only one user with this email)
-    let user: User | null = null;
-    snapshot.forEach((childSnapshot) => {
-      user = { ...childSnapshot.val(), id: childSnapshot.key } as User;
-      return true; // Break the forEach loop after the first match
-    });
-    return user;
-  } else {
-    return null;
-  }
-};
-
+// Login logs
 export const logUserLogin = async (userId: string, loginData: { ip: string, userAgent: string }) => {
   const loginRef = push(ref(database, `loginLogs/${userId}`));
   const loginId = loginRef.key;
@@ -353,4 +523,159 @@ export const logUserLogin = async (userId: string, loginData: { ip: string, user
   });
 
   return loginLog;
+};
+
+export const getLoginLogs = async (): Promise<LoginLog[]> => {
+  // Fetch login logs for all users
+  const logsRef = ref(database, 'loginLogs');
+  const snapshot = await get(logsRef);
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  const logs: LoginLog[] = [];
+  
+  // Iterate through all user IDs
+  snapshot.forEach(userSnapshot => {
+    // Iterate through all logs for this user
+    userSnapshot.forEach(logSnapshot => {
+      logs.push({ ...logSnapshot.val(), id: logSnapshot.key } as LoginLog);
+    });
+  });
+  
+  // Sort by timestamp, most recent first
+  return logs.sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+};
+
+export const forceUserLogout = async (userId: string): Promise<void> => {
+  // Update a flag in the user's record to indicate they should be logged out
+  await updateUser(userId, { forceLogout: true });
+};
+
+// Chat related functions
+export const createChat = async (userId: string, title?: string): Promise<Chat> => {
+  const chatRef = push(ref(database, 'chats'));
+  const chatId = chatRef.key;
+  
+  if (!chatId) {
+    throw new Error('Failed to generate chat ID');
+  }
+  
+  const chatData: Chat = {
+    id: chatId,
+    userId,
+    title: title || 'New Chat',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    messages: []
+  };
+  
+  await set(chatRef, chatData);
+  return chatData;
+};
+
+export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  const chatRef = ref(database, `chats/${chatId}`);
+  const snapshot = await get(chatRef);
+  
+  if (snapshot.exists()) {
+    return { ...snapshot.val(), id: snapshot.key } as Chat;
+  } else {
+    return null;
+  }
+};
+
+export const getUserChats = async (userId: string): Promise<Chat[]> => {
+  const chatsRef = ref(database, 'chats');
+  const userChatsQuery = query(chatsRef, orderByChild('userId'), equalTo(userId));
+  const snapshot = await get(userChatsQuery);
+  
+  if (!snapshot.exists()) {
+    return [];
+  }
+  
+  const chats: Chat[] = [];
+  snapshot.forEach(chatSnapshot => {
+    chats.push({ ...chatSnapshot.val(), id: chatSnapshot.key } as Chat);
+  });
+  
+  // Sort by updatedAt, most recent first
+  return chats.sort((a, b) => 
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+};
+
+export const getAllChats = async (): Promise<Chat[]> => {
+  const chatsRef = ref(database, 'chats');
+  const snapshot = await get(chatsRef);
+  
+  if (!snapshot.exists()) {
+    return [];
+  }
+  
+  const chats: Chat[] = [];
+  snapshot.forEach(chatSnapshot => {
+    chats.push({ ...chatSnapshot.val(), id: chatSnapshot.key } as Chat);
+  });
+  
+  return chats;
+};
+
+export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant'): Promise<ChatMessage> => {
+  const messageRef = push(ref(database, `chats/${chatId}/messages`));
+  const messageId = messageRef.key;
+  
+  if (!messageId) {
+    throw new Error('Failed to generate message ID');
+  }
+  
+  const timestamp = new Date().toISOString();
+  
+  const messageData: ChatMessage = {
+    id: messageId,
+    content,
+    role,
+    timestamp
+  };
+  
+  // Add the message to the chat
+  await set(messageRef, messageData);
+  
+  // Update the chat's updatedAt timestamp
+  await update(ref(database, `chats/${chatId}`), {
+    updatedAt: timestamp
+  });
+  
+  return messageData;
+};
+
+export const addMessageToChat = async (chatId: string, message: ChatMessage): Promise<ChatMessage> => {
+  if (!message.id) {
+    const newMessageRef = push(ref(database, `chats/${chatId}/messages`));
+    message.id = newMessageRef.key || '';
+  }
+  
+  await set(ref(database, `chats/${chatId}/messages/${message.id}`), message);
+  
+  // Update the chat's updatedAt timestamp
+  await update(ref(database, `chats/${chatId}`), {
+    updatedAt: new Date().toISOString()
+  });
+  
+  return message;
+};
+
+export const clearUserChatHistory = async (userId: string): Promise<void> => {
+  // Get all chats for the user
+  const userChats = await getUserChats(userId);
+  
+  // Delete each chat
+  const deletePromises = userChats.map(chat => 
+    remove(ref(database, `chats/${chat.id}`))
+  );
+  
+  await Promise.all(deletePromises);
 };
