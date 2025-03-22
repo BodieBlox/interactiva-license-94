@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -10,6 +9,7 @@ import {
   logUserLogin, 
   createLicenseRequest, 
   getLicenseByKey, 
+  getLicense, 
   updateLicense, 
   updateUser 
 } from '@/utils/api';
@@ -49,7 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (userFromDB) {
             console.log("User found in API database:", userFromDB.email);
             
-            // Check license validity if user has one
             if (userFromDB.licenseActive && userFromDB.licenseKey) {
               const needsLicenseUpdate = await checkLicenseExpiry(userFromDB.licenseKey);
               if (needsLicenseUpdate) {
@@ -66,7 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }
             
-            // Check for forced logout
             if (userFromDB.forcedLogout) {
               await updateUser(userFromDB.id, {
                 forcedLogout: null
@@ -151,17 +149,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const checkLicenseExpiry = async (licenseKey: string): Promise<boolean> => {
     try {
-      // First try to get license from the API
       const license = await getLicenseByKey(licenseKey);
       
       if (!license) {
-        // Fallback to Firebase direct check if API fails
         const licenseRef = ref(database, `licenses/${licenseKey}`);
         const licenseSnapshot = await get(licenseRef);
         
         if (!licenseSnapshot.exists()) {
           console.log("License not found:", licenseKey);
-          return true; // License doesn't exist
+          return true;
         }
         
         const licenseData = licenseSnapshot.val();
@@ -184,7 +180,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Check if license is active and not expired
       if (license.status !== 'active' || !license.isActive) {
         console.log("License is not active:", license.key);
         return true;
@@ -203,7 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } catch (error) {
       console.error('Error checking license expiry:', error);
-      return false; // In case of error, don't block the user
+      return false;
     }
   };
 
@@ -211,11 +206,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user || !user.licenseKey) return true;
     
     try {
-      // Try to get license from the API
       const license = await getLicenseByKey(user.licenseKey);
       
       if (!license) {
-        // If license not found through API, check directly in Firebase
         const licenseRef = ref(database, `licenses/${user.licenseKey}`);
         const licenseSnapshot = await get(licenseRef);
         
@@ -292,7 +285,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Check the license properties
       if (license.status !== 'active' || !license.isActive) {
         await updateUser(user.id, {
           licenseActive: false
@@ -355,9 +347,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
       
-      // License is valid
       if (!user.licenseActive) {
-        // Update user if license is valid but user's status doesn't reflect that
         await updateUser(user.id, {
           licenseActive: true,
           licenseType: license.type,
@@ -375,7 +365,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } catch (error) {
       console.error('Error checking license validity:', error);
-      return false; // In case of error, don't block the user
+      return false;
     }
   };
 
@@ -426,21 +416,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Normalize license key format
       const normalizedKey = licenseKey.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      
-      // Format with dashes for storage and display
       const formattedKey = normalizedKey.match(/.{1,4}/g)?.join('-') || normalizedKey;
       
-      // Handle demo license key
       if (formattedKey === 'FREE-1234-5678-9ABC' || normalizedKey === 'FREE12345678-9ABC' || normalizedKey === 'FREE123456789ABC') {
         console.log("Activating demo license key");
         
-        // Check if this demo license already exists, create it if not
         const existingLicense = await getLicenseByKey(formattedKey);
         
         if (!existingLicense) {
-          // Create a demo license in the licenses collection
           const demoLicense: Partial<License> = {
             key: formattedKey,
             isActive: true,
@@ -448,20 +432,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             type: 'basic',
             createdAt: new Date().toISOString(),
             activatedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
           };
           
-          // Store the license in Firebase
           const licenseRef = ref(database, `licenses/demo_license`);
           await set(licenseRef, demoLicense);
         }
         
-        // Update the user record with license info
         const updatedUser: User = {
           ...user,
           licenseActive: true,
           licenseKey: formattedKey,
-          licenseType: 'basic', // Ensure we're using the literal type
+          licenseType: 'basic',
           licenseExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         };
         
@@ -477,7 +459,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Not a demo key - check if the license exists
       const license = await getLicenseByKey(formattedKey);
       
       if (!license) {
@@ -486,21 +467,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Validate the license status
       if (license.status !== 'active' || !license.isActive) {
         setError('This license is not active');
         setIsLoading(false);
         return;
       }
       
-      // Check if license is already assigned to a different user
       if (license.userId && license.userId !== user.id) {
         setError('This license key is already activated by another user');
         setIsLoading(false);
         return;
       }
       
-      // Check if license has expired
       if (license.expiresAt) {
         const expiryDate = new Date(license.expiresAt);
         const now = new Date();
@@ -512,19 +490,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // Ensure license.type is one of the allowed enum values
       const licenseType = (license.type === 'basic' || license.type === 'premium' || license.type === 'enterprise') 
         ? license.type 
         : 'basic';
         
-      // License is valid - activate it for this user
       await updateLicense(license.id, {
         isActive: true,
         userId: user.id,
         activatedAt: new Date().toISOString()
       });
       
-      // Update user with license info
       const updatedUser: User = {
         ...user,
         licenseActive: true,

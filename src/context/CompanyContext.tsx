@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { Company, UserWithCompany, CompanyInvitation } from '../utils/companyTypes';
@@ -79,10 +78,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user]);
 
-  // Fetch the user's company information
   useEffect(() => {
-    fetchCompanyData();
-  }, [fetchCompanyData]);
+    if (user) {
+      fetchCompanyData();
+    }
+  }, [fetchCompanyData, user]);
 
   const createNewCompany = async (companyData: Partial<Company>): Promise<Company | null> => {
     if (!user) return null;

@@ -1,6 +1,6 @@
 import { User, DashboardCustomization, License, LicenseRequest } from './types';
 import { database } from './firebase';
-import { ref, set, get, push, remove, update } from 'firebase/database';
+import { ref, set, get, push, remove, update, query, orderByChild, equalTo } from 'firebase/database';
 
 export const getUsers = async (): Promise<User[]> => {
   const usersRef = ref(database, 'users');
@@ -63,6 +63,31 @@ export const getLicense = async (licenseId: string): Promise<License | null> => 
   }
 };
 
+export const getLicenseByKey = async (licenseKey: string): Promise<License | null> => {
+  // First try to get by direct ID in case the key is actually the ID
+  const directLicense = await getLicense(licenseKey);
+  if (directLicense) {
+    return directLicense;
+  }
+  
+  // Otherwise, query licenses by the 'key' field
+  const licensesRef = ref(database, 'licenses');
+  const licenseQuery = query(licensesRef, orderByChild('key'), equalTo(licenseKey));
+  const snapshot = await get(licenseQuery);
+
+  if (snapshot.exists()) {
+    // Get the first match (there should be only one)
+    let license: License | null = null;
+    snapshot.forEach((childSnapshot) => {
+      license = { ...childSnapshot.val(), id: childSnapshot.key } as License;
+      return true; // Break the forEach loop after the first match
+    });
+    return license;
+  } else {
+    return null;
+  }
+};
+
 export const updateLicense = async (licenseId: string, data: Partial<License>): Promise<License> => {
   const licenseRef = ref(database, `licenses/${licenseId}`);
   await update(licenseRef, data);
@@ -91,8 +116,23 @@ export const getLicenses = async (): Promise<License[]> => {
   }
 };
 
-export const createLicenseRequest = async (requestData: LicenseRequest): Promise<LicenseRequest> => {
-  const requestRef = push(ref(database, 'licenseRequests'), requestData);
+export const createLicenseRequest = async (
+  userId: string, 
+  username: string, 
+  email: string, 
+  message?: string
+): Promise<LicenseRequest> => {
+  const requestData: LicenseRequest = {
+    id: '', // Will be set after push
+    userId,
+    username,
+    email,
+    message,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+  
+  const requestRef = push(ref(database, 'licenseRequests'));
   const requestId = requestRef.key;
 
   if (!requestId) {
@@ -162,7 +202,7 @@ export const updateDashboardCustomization = async (userId: string, customization
   }
 };
 
-export const approveLicenseRequest = async (requestId: string) => {
+export const approveLicenseRequest = async (requestId: string, reason?: string) => {
   try {
     const requestRef = ref(database, `licenseRequests/${requestId}`);
     const snapshot = await get(requestRef);
@@ -188,6 +228,9 @@ export const approveLicenseRequest = async (requestId: string) => {
     // Update the request status
     updates[`licenseRequests/${requestId}/status`] = 'approved';
     updates[`licenseRequests/${requestId}/resolvedAt`] = new Date().toISOString();
+    if (reason) {
+      updates[`licenseRequests/${requestId}/approvalReason`] = reason;
+    }
     
     // Handle extension - extend current license by 30 days
     if (requestType === 'extension') {
@@ -264,4 +307,50 @@ export const rejectLicenseRequest = async (requestId: string, reason: string) =>
     console.error('Error rejecting license request:', error);
     throw error;
   }
+};
+
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  if (!email) return null;
+  
+  const usersRef = ref(database, 'users');
+  const userQuery = query(usersRef, orderByChild('email'), equalTo(email));
+  const snapshot = await get(userQuery);
+
+  if (snapshot.exists()) {
+    // Get the first match (there should be only one user with this email)
+    let user: User | null = null;
+    snapshot.forEach((childSnapshot) => {
+      user = { ...childSnapshot.val(), id: childSnapshot.key } as User;
+      return true; // Break the forEach loop after the first match
+    });
+    return user;
+  } else {
+    return null;
+  }
+};
+
+export const logUserLogin = async (userId: string, loginData: { ip: string, userAgent: string }) => {
+  const loginRef = push(ref(database, `loginLogs/${userId}`));
+  const loginId = loginRef.key;
+
+  if (!loginId) {
+    throw new Error('Failed to generate login ID');
+  }
+
+  const loginLog = {
+    id: loginId,
+    userId,
+    ip: loginData.ip,
+    userAgent: loginData.userAgent,
+    timestamp: new Date().toISOString()
+  };
+
+  await set(loginRef, loginLog);
+  
+  // Also update the user's lastLogin
+  await update(ref(database, `users/${userId}`), {
+    lastLogin: loginLog
+  });
+
+  return loginLog;
 };
