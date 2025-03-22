@@ -122,7 +122,7 @@ export const ChatInterface = () => {
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
         role: 'assistant',
-        isAdminAction: isAdminAction
+        ...(isAdminAction && { isAdminAction: isAdminAction })
       });
       
       setChat((prevChat) => {
