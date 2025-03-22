@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -55,6 +54,8 @@ export interface ChatMessage {
   content: string;
   role: 'user' | 'assistant';
   timestamp: string;
+  isAdminAction?: boolean;
+  adminActionResult?: string;
 }
 
 export interface Chat {
@@ -85,4 +86,13 @@ export interface LicenseRequest {
   createdAt: string;
   resolvedAt?: string;
   requestType?: 'extension' | 'upgrade';
+}
+
+export interface AdminAction {
+  type: 'user_list' | 'user_details' | 'suspend_user' | 'warn_user' | 'activate_user' | 'revoke_license' | 'suspend_license';
+  targetUserId?: string;
+  targetUsername?: string;
+  targetEmail?: string;
+  message?: string;
+  result?: string;
 }

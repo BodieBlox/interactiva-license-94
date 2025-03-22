@@ -4,12 +4,14 @@ import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
 import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
 import { generateAIResponse } from '@/utils/openai';
-import { generateChatTitle } from '@/utils/chatUtils';
+import { generateChatTitle, updateChatPin } from '@/utils/chatUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
 
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -24,6 +26,7 @@ export const ChatInterface = () => {
   const isMobile = useIsMobile();
   
   const isNew = chatId === 'new';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -101,11 +104,25 @@ export const ChatInterface = () => {
         };
       });
       
-      const aiMessage = await generateAIResponse(userMessageContent);
+      let adminActionResult: string | null = null;
+      let isAdminAction = false;
+      
+      if (isAdmin) {
+        const adminAction = await parseAdminIntent(userMessageContent);
+        if (adminAction) {
+          isAdminAction = true;
+          adminActionResult = await executeAdminAction(adminAction);
+        }
+      }
+      
+      const aiMessage = isAdminAction && adminActionResult 
+        ? adminActionResult
+        : await generateAIResponse(userMessageContent, isAdmin);
       
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
-        role: 'assistant'
+        role: 'assistant',
+        isAdminAction: isAdminAction
       });
       
       setChat((prevChat) => {
@@ -234,7 +251,52 @@ export const ChatInterface = () => {
     }
   };
 
-  const renderMessageContent = (content: string) => {
+  const renderMessageContent = (content: string, isAdminAction?: boolean) => {
+    if (isAdminAction && content.includes('|')) {
+      const lines = content.split('\n');
+      return (
+        <div className="admin-table">
+          {lines.map((line, i) => {
+            if (line.includes('| --')) {
+              return <hr key={i} className="my-1 border-t border-gray-200 dark:border-gray-700" />;
+            }
+            else if (line.startsWith('| ') && i === 0) {
+              return (
+                <div key={i} className="font-semibold">
+                  {line}
+                </div>
+              );
+            }
+            else {
+              return <div key={i}>{line}</div>;
+            }
+          })}
+        </div>
+      );
+    }
+    
+    if (isAdminAction && content.includes('## User Details')) {
+      return (
+        <div className="admin-user-details whitespace-pre-line">
+          {content.split('\n').map((line, i) => {
+            if (line.startsWith('## ')) {
+              return <h3 key={i} className="text-lg font-bold mt-2 mb-2">{line.replace('## ', '')}</h3>;
+            } else if (line.startsWith('- **')) {
+              const [key, value] = line.replace('- **', '').split('**: ');
+              return (
+                <div key={i} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                  <span className="font-medium">{key}</span>
+                  <span>{value}</span>
+                </div>
+              );
+            } else {
+              return <p key={i}>{line}</p>;
+            }
+          })}
+        </div>
+      );
+    }
+    
     return content.split('\n').map((line, i) => (
       <span key={i}>
         {line}
@@ -295,6 +357,14 @@ export const ChatInterface = () => {
           </Button>
           <h1 className="text-xl font-medium truncate">{chat?.title || "New conversation"}</h1>
         </div>
+        
+        {isAdmin && (
+          <div className="flex items-center">
+            <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              Admin Mode
+            </Badge>
+          </div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-950">
@@ -303,8 +373,25 @@ export const ChatInterface = () => {
             <Bot className="h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-medium">How can I help you today?</h2>
             <p className="text-muted-foreground max-w-md mt-2">
-              Ask me anything! I can help with information, creative content, problem-solving, and more.
+              {isAdmin 
+                ? "As an admin, you can ask me to perform admin actions like listing users, suspending accounts, or managing licenses."
+                : "Ask me anything! I can help with information, creative content, problem-solving, and more."
+              }
             </p>
+            
+            {isAdmin && (
+              <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 max-w-md">
+                <h3 className="font-medium text-purple-800 dark:text-purple-300 mb-2">Admin Command Examples:</h3>
+                <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1 text-left">
+                  <li>• "List all users"</li>
+                  <li>• "Show me users with email containing gmail"</li>
+                  <li>• "Get details for user johnsmith"</li>
+                  <li>• "Suspend user with email user@example.com for violating terms"</li>
+                  <li>• "Issue warning to user alex about inappropriate content"</li>
+                  <li>• "Revoke license for user david@company.com"</li>
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           chat?.messages?.map((msg: ChatMessage) => (
@@ -323,7 +410,9 @@ export const ChatInterface = () => {
                 className={`max-w-[80%] md:max-w-[75%] rounded-2xl p-4 ${
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground'
+                    : msg.isAdminAction
+                      ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100'
+                      : 'bg-secondary text-secondary-foreground'
                 } ${(msg as any).isLoading ? 'opacity-70' : ''} shadow-sm`}
               >
                 {(msg as any).isLoading ? (
@@ -332,7 +421,7 @@ export const ChatInterface = () => {
                     <span>Thinking...</span>
                   </div>
                 ) : (
-                  renderMessageContent(msg.content)
+                  renderMessageContent(msg.content, msg.isAdminAction)
                 )}
               </div>
               {msg.role === 'user' && (
@@ -351,7 +440,10 @@ export const ChatInterface = () => {
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={isAdmin 
+              ? "Type admin command or message..." 
+              : "Type your message..."
+            }
             className="bg-white/50 dark:bg-black/10 border subtle-ring-focus transition-apple shadow-sm"
             disabled={isSending}
           />

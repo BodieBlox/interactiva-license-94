@@ -10,7 +10,7 @@ import { Chat } from './types';
 export const generateChatTitle = async (messageContent: string): Promise<string> => {
   try {
     const prompt = `Based on this message, generate a very concise title (3-5 words max) for this conversation. Just respond with the title, nothing else: "${messageContent}"`;
-    const title = await generateAIResponse(prompt);
+    const title = await generateAIResponse(prompt, false);
     return title.replace(/["']/g, '').trim();
   } catch (error) {
     console.error('Error generating chat title:', error);
