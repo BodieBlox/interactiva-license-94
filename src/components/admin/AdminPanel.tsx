@@ -3,7 +3,18 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, LucideIcon, Shield, Users, MessageSquare, Key, Rotate3D, LayoutDashboard, Building } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  LucideIcon, 
+  Shield, 
+  Users, 
+  MessageSquare, 
+  Key, 
+  Rotate3D, 
+  LayoutDashboard, 
+  Building,
+  ArrowUp
+} from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { LoginLogs } from './LoginLogs';
 import { ChatViewer } from './ChatViewer';
@@ -15,6 +26,7 @@ import ManualLicenseAssignment from './ManualLicenseAssignment';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LicenseManager from './LicenseManager';
 import { CompanyManagementPanel } from './company/CompanyManagementPanel';
+import { UpgradeRequests } from './UpgradeRequests';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 interface NavItem {
@@ -65,6 +77,7 @@ export const AdminPanel = () => {
     { label: 'Users', path: '/admin/users', icon: Users },
     { label: 'Companies', path: '/admin/companies', icon: Building },
     { label: 'License Requests', path: '/admin/license-requests', icon: Rotate3D },
+    { label: 'Upgrade Requests', path: '/admin/upgrade-requests', icon: ArrowUp },
     { label: 'Chats', path: '/admin/chats', icon: MessageSquare },
     { label: 'License Generator', path: '/admin/license-generator', icon: Key },
     { label: 'Manage Licenses', path: '/admin/manage-licenses', icon: Key },
@@ -128,6 +141,7 @@ export const AdminPanel = () => {
               <Route path="/users" element={<UserManagement />} />
               <Route path="/companies" element={<CompanyManagementPanel />} />
               <Route path="/license-requests" element={<LicenseRequests />} />
+              <Route path="/upgrade-requests" element={<UpgradeRequests />} />
               <Route path="/chats" element={<ChatViewer />} />
               <Route path="/license-generator" element={<LicenseGenerator />} />
               <Route path="/manage-licenses" element={<LicenseManager />} />
@@ -182,6 +196,15 @@ const AdminDashboard = () => {
         <Button 
           variant="outline" 
           className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5"
+          onClick={() => navigate('/admin/upgrade-requests')}
+        >
+          <ArrowUp className="h-8 w-8 text-purple-500" />
+          <span>Upgrade Requests</span>
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5"
           onClick={() => navigate('/admin/license-generator')}
         >
           <Key className="h-8 w-8 text-purple-500" />
@@ -195,15 +218,6 @@ const AdminDashboard = () => {
         >
           <MessageSquare className="h-8 w-8 text-green-500" />
           <span>View Chat History</span>
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5"
-          onClick={() => navigate('/admin/login-logs')}
-        >
-          <Users className="h-8 w-8 text-red-500" />
-          <span>Login Logs</span>
         </Button>
       </div>
     </div>

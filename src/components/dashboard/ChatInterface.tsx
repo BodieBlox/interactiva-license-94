@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
 import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
 import { generateAIResponse } from '@/utils/openai';
+import { generateChatTitle } from '@/utils/chatUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserCircle, Bot, Send, ArrowLeft } from 'lucide-react';
@@ -197,6 +198,27 @@ export const ChatInterface = () => {
           updatedAt: new Date().toISOString()
         };
       });
+      
+      if (!targetChat.messages || targetChat.messages.length === 0) {
+        try {
+          const generatedTitle = await generateChatTitle(messageContent);
+          
+          await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${targetChat.id}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({ title: generatedTitle }),
+          });
+          
+          setChat(prevChat => {
+            if (!prevChat) return null;
+            return {
+              ...prevChat,
+              title: generatedTitle
+            };
+          });
+        } catch (titleError) {
+          console.error('Error generating chat title:', titleError);
+        }
+      }
       
       await handleAIResponse(messageContent, targetChat);
       

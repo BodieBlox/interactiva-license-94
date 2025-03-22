@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -22,7 +21,7 @@ export interface DashboardCustomization {
   approved?: boolean;
   isCompanyMember?: boolean;
   pendingInvitation?: CompanyInvitation;
-  companyId?: string; // Added this property to fix the TypeScript error
+  companyId?: string;
 }
 
 export interface CompanyInvitation {
@@ -49,17 +48,18 @@ export interface License {
 export interface ChatMessage {
   id: string;
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   timestamp: string;
 }
 
 export interface Chat {
   id: string;
-  title: string;
   userId: string;
+  title: string;
+  messages?: ChatMessage[];
   createdAt: string;
   updatedAt: string;
-  messages: ChatMessage[];
+  isPinned?: boolean;
 }
 
 export interface LoginLog {
@@ -75,8 +75,9 @@ export interface LicenseRequest {
   userId: string;
   username: string;
   email: string;
-  status: 'pending' | 'approved' | 'rejected';
   message?: string;
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   resolvedAt?: string;
+  requestType?: 'extension' | 'upgrade';
 }

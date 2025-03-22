@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/utils/types';
@@ -18,7 +18,9 @@ import {
   MessagesSquare, 
   User, 
   Plus, 
-  Filter 
+  Filter,
+  Sparkles,
+  ArrowUp
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +28,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardStats } from './DashboardStats';
 import { UserProfile } from './UserProfile';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type SortOption = 'newest' | 'oldest' | 'alphabetical' | 'messages';
 
@@ -36,6 +42,10 @@ export const DashboardContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeType, setUpgradeType] = useState<'extension' | 'upgrade'>('extension');
+  const [upgradeReason, setUpgradeReason] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -43,7 +53,7 @@ export const DashboardContent = () => {
     '--primary': user.customization.primaryColor || '#7E69AB',
   } as React.CSSProperties : {};
 
-  const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
     if (user) {
       setIsLoading(true);
       setError(null);
@@ -62,11 +72,11 @@ export const DashboardContent = () => {
         setIsLoading(false);
       }
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchChats();
-  }, [user]);
+  }, [fetchChats]);
 
   useEffect(() => {
     if (!chats.length) {
@@ -100,6 +110,62 @@ export const DashboardContent = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleOpenUpgradeDialog = (type: 'extension' | 'upgrade') => {
+    setUpgradeType(type);
+    setUpgradeDialogOpen(true);
+  };
+
+  const handleSubmitUpgradeRequest = async () => {
+    if (!upgradeReason.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a reason for your request",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      // Submit the upgrade/extension request to Firebase
+      const response = await fetch('https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests.json', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user?.id,
+          username: user?.username,
+          email: user?.email,
+          requestType: upgradeType,
+          message: upgradeReason,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit request');
+      }
+
+      toast({
+        title: "Request submitted",
+        description: upgradeType === 'extension' 
+          ? "Your license extension request has been submitted for review" 
+          : "Your license upgrade request has been submitted for review",
+      });
+
+      setUpgradeDialogOpen(false);
+      setUpgradeReason('');
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit your request. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   const companyName = user?.customization?.approved && user.customization.companyName 
@@ -152,6 +218,22 @@ export const DashboardContent = () => {
                       Settings
                     </Button>
                   </Link>
+                  <Button 
+                    className="w-full justify-start text-sm bg-transparent hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                    variant="ghost"
+                    onClick={() => handleOpenUpgradeDialog('extension')}
+                  >
+                    <CalendarClock className="mr-2 h-4 w-4" /> 
+                    Request License Extension
+                  </Button>
+                  <Button 
+                    className="w-full justify-start text-sm bg-transparent hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:text-purple-700"
+                    variant="ghost"
+                    onClick={() => handleOpenUpgradeDialog('upgrade')}
+                  >
+                    <ArrowUp className="mr-2 h-4 w-4" /> 
+                    Request Tier Upgrade
+                  </Button>
                   {user?.role === 'admin' && (
                     <Link to="/admin" className="w-full">
                       <Button 
@@ -172,22 +254,41 @@ export const DashboardContent = () => {
           <div className="md:col-span-9">
             {/* Create New Conversation Button - mobile only */}
             {isMobile && (
-              <Link to="/chat/new" className="block mb-6">
-                <Button className="w-full py-6 text-lg flex items-center gap-3 font-medium
-                  bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary
-                  shadow-lg shadow-primary/20 border-none transition-all duration-300">
-                  <MessageSquarePlus className="h-5 w-5" />
-                  <span>Create New Conversation</span>
-                </Button>
-              </Link>
+              <div className="flex flex-col space-y-3 mb-6">
+                <Link to="/chat/new" className="block">
+                  <Button className="w-full py-6 text-lg flex items-center gap-3 font-medium
+                    bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary
+                    shadow-lg shadow-primary/20 border-none transition-all duration-300">
+                    <MessageSquarePlus className="h-5 w-5" />
+                    <span>Create New Conversation</span>
+                  </Button>
+                </Link>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1 py-3 items-center gap-2 bg-amber-500/90 hover:bg-amber-500 text-white"
+                    onClick={() => handleOpenUpgradeDialog('extension')}
+                  >
+                    <CalendarClock className="h-4 w-4" />
+                    <span>Extend License</span>
+                  </Button>
+                  <Button 
+                    className="flex-1 py-3 items-center gap-2 bg-purple-500/90 hover:bg-purple-500 text-white"
+                    onClick={() => handleOpenUpgradeDialog('upgrade')}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span>Upgrade Tier</span>
+                  </Button>
+                </div>
+              </div>
             )}
 
             {/* Desktop New Chat Button */}
             {!isMobile && (
               <Link to="/chat/new">
                 <Button className="mb-6 py-5 px-6 text-base flex items-center gap-3 font-medium
-                  bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary
-                  shadow-lg shadow-primary/20 border-none transition-all duration-300">
+                  bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
+                  shadow-lg shadow-blue-500/20 border-none transition-all duration-300">
                   <MessageSquarePlus className="h-5 w-5" />
                   <span>Create New Conversation</span>
                 </Button>
@@ -238,12 +339,73 @@ export const DashboardContent = () => {
                   isLoading={isLoading}
                   error={error}
                   onRetry={fetchChats}
+                  onUpdate={fetchChats}
                 />
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* License Upgrade/Extension Dialog */}
+      <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {upgradeType === 'extension' 
+                ? 'Request License Extension' 
+                : 'Request License Tier Upgrade'}
+            </DialogTitle>
+            <DialogDescription>
+              {upgradeType === 'extension'
+                ? 'Submit a request to extend your current license period.'
+                : 'Submit a request to upgrade your license to a higher tier with more features.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {upgradeType === 'upgrade' && (
+            <RadioGroup defaultValue="premium" className="my-4">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="premium" id="premium" />
+                <Label htmlFor="premium">Premium Tier</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="enterprise" id="enterprise" />
+                <Label htmlFor="enterprise">Enterprise Tier</Label>
+              </div>
+            </RadioGroup>
+          )}
+          
+          <div className="mt-2 space-y-2">
+            <Label htmlFor="reason">Reason for request</Label>
+            <Textarea 
+              id="reason" 
+              placeholder="Please explain why you need this change..." 
+              value={upgradeReason}
+              onChange={(e) => setUpgradeReason(e.target.value)}
+              className="h-32"
+            />
+          </div>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitUpgradeRequest}
+              disabled={isSubmittingRequest || !upgradeReason.trim()}
+              className={upgradeType === 'extension' 
+                ? 'bg-amber-500 hover:bg-amber-600' 
+                : 'bg-purple-500 hover:bg-purple-600'}
+            >
+              {isSubmittingRequest ? (
+                <div className="h-4 w-4 rounded-full border-2 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin mr-2"></div>
+              ) : null}
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

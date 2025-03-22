@@ -1,22 +1,57 @@
-
 import { Link } from 'react-router-dom';
 import { Chat } from '@/utils/types';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare, RefreshCw, ArrowRight } from 'lucide-react';
+import { MessageSquare, RefreshCw, ArrowRight, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { updateChatPin } from '@/utils/chatUtils';
+import { toast } from '@/components/ui/use-toast';
 
 interface ChatListProps {
   chats: Chat[];
   isLoading: boolean;
   error: Error | null;
   onRetry?: () => void;
+  onUpdate?: () => void;
 }
 
-export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) => {
+export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatListProps) => {
+  const [isPinning, setIsPinning] = useState<string | null>(null);
+
   const handleRetry = useCallback(() => {
     if (onRetry) onRetry();
   }, [onRetry]);
+
+  const handlePinToggle = async (e: React.MouseEvent, chat: Chat) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isPinning === chat.id) return;
+    
+    setIsPinning(chat.id);
+    try {
+      const newPinState = !chat.isPinned;
+      await updateChatPin(chat.id, newPinState);
+      
+      toast({
+        title: newPinState ? "Conversation pinned" : "Conversation unpinned",
+        description: newPinState ? "This conversation will stay at the top of your list" : "This conversation has been unpinned",
+      });
+      
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (error) {
+      console.error('Error toggling pin status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update pin status",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPinning(null);
+    }
+  };
 
   // Show loading state
   if (isLoading) {
@@ -71,10 +106,20 @@ export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) =>
     );
   }
 
+  // Sort chats to show pinned ones first
+  const sortedChats = [...chats].sort((a, b) => {
+    // First sort by pinned status
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    
+    // Then sort by date
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+
   // Show chats list
   return (
     <ul className="space-y-3 animate-fade-in">
-      {chats.map((chat, index) => {
+      {sortedChats.map((chat, index) => {
         // Ensure messages is an array and get its length
         const messages = Array.isArray(chat.messages) ? chat.messages : [];
         const messageCount = messages.length;
@@ -83,8 +128,13 @@ export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) =>
           <li key={chat.id} style={{ animationDelay: `${index * 0.05}s` }} className="animate-fade-in">
             <Link
               to={`/chat/${chat.id}`}
-              className="block rounded-lg hover:bg-primary/5 transition-all duration-300 ease-apple border border-transparent hover:border-primary/20 hover:shadow-sm"
+              className="block rounded-lg hover:bg-primary/5 transition-all duration-300 ease-apple border border-transparent hover:border-primary/20 hover:shadow-sm relative"
             >
+              {chat.isPinned && (
+                <div className="absolute top-2 right-2 bg-primary/10 rounded-full p-1">
+                  <Pin className="h-3 w-3 text-primary" />
+                </div>
+              )}
               <div className="flex justify-between items-center p-4">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div className="bg-primary/10 min-w-10 h-10 rounded-full flex items-center justify-center shadow-inner transition-all duration-300 group-hover:bg-primary/20">
@@ -103,7 +153,24 @@ export const ChatList = ({ chats, isLoading, error, onRetry }: ChatListProps) =>
                   </div>
                 </div>
                 
-                <ArrowRight className="h-5 w-5 text-primary/40 transition-all duration-300 hover:text-primary" />
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-8 w-8 rounded-full hover:bg-primary/10"
+                    onClick={(e) => handlePinToggle(e, chat)}
+                    disabled={isPinning === chat.id}
+                  >
+                    {isPinning === chat.id ? (
+                      <div className="h-4 w-4 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                    ) : chat.isPinned ? (
+                      <PinOff className="h-4 w-4 text-primary/70" />
+                    ) : (
+                      <Pin className="h-4 w-4 text-primary/70" />
+                    )}
+                  </Button>
+                  <ArrowRight className="h-5 w-5 text-primary/40 transition-all duration-300 hover:text-primary" />
+                </div>
               </div>
             </Link>
           </li>
