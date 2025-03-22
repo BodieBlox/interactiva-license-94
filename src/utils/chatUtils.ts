@@ -26,6 +26,7 @@ export const generateChatTitle = async (messageContent: string): Promise<string>
  */
 export const updateChatPin = async (chatId: string, isPinned: boolean): Promise<void> => {
   try {
+    console.log(`Updating chat ${chatId} pin status to ${isPinned}`);
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`, {
       method: 'PATCH',
       body: JSON.stringify({ isPinned }),
@@ -35,9 +36,29 @@ export const updateChatPin = async (chatId: string, isPinned: boolean): Promise<
       throw new Error('Failed to update chat pin status');
     }
     
+    console.log('Chat pin status updated successfully');
     return;
   } catch (error) {
     console.error('Error updating chat pin status:', error);
     throw error;
   }
+};
+
+/**
+ * Ensures that a chat object has all required properties
+ * @param chat The chat object to validate/normalize
+ * @returns A chat object with all required properties
+ */
+export const normalizeChatObject = (chat: any): Chat => {
+  if (!chat) return null as unknown as Chat;
+  
+  return {
+    id: chat.id || '',
+    userId: chat.userId || '',
+    title: chat.title || 'Untitled Conversation',
+    messages: Array.isArray(chat.messages) ? chat.messages : [],
+    createdAt: chat.createdAt || new Date().toISOString(),
+    updatedAt: chat.updatedAt || new Date().toISOString(),
+    isPinned: Boolean(chat.isPinned)
+  };
 };

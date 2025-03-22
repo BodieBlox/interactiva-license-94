@@ -62,8 +62,13 @@ export const DashboardContent = () => {
         const userChats = await getUserChats(user.id);
         console.log('Fetched chats:', userChats);
         
-        // Ensure we have an array, even if the API returns null or undefined
-        setChats(Array.isArray(userChats) ? userChats : []);
+        // Initialize as empty array even if API returns null/undefined
+        if (!userChats || !Array.isArray(userChats)) {
+          console.log('No chats found or invalid response, setting empty array');
+          setChats([]);
+        } else {
+          setChats(userChats);
+        }
       } catch (error) {
         console.error('Error fetching chats:', error);
         setError(error instanceof Error ? error : new Error('Failed to load your chats'));

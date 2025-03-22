@@ -587,14 +587,21 @@ export const createChat = async (userId: string, title: string): Promise<Chat> =
     messages: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    isPinned: false // Added this field as it's used in the UI
   };
 
+  console.log('Creating new chat:', newChat);
   const chatRef = ref(database, `chats/${newChat.id}`);
   await set(chatRef, newChat);
   return newChat;
 };
 
 export const getUserChats = async (userId: string): Promise<Chat[]> => {
+  if (!userId) {
+    console.error('getUserChats called with empty userId');
+    return [];
+  }
+  
   try {
     // Query the chats by userId
     console.log('Querying chats for userId:', userId);
@@ -610,6 +617,16 @@ export const getUserChats = async (userId: string): Promise<Chat[]> => {
     const chats: Chat[] = [];
     snapshot.forEach((childSnapshot) => {
       const chat = childSnapshot.val();
+      // Ensure the chat has an id property
+      if (!chat.id && childSnapshot.key) {
+        chat.id = childSnapshot.key;
+      }
+      
+      // Ensure messages is an array
+      if (!chat.messages) {
+        chat.messages = [];
+      }
+      
       chats.push(chat);
     });
     
@@ -623,19 +640,45 @@ export const getUserChats = async (userId: string): Promise<Chat[]> => {
 
 export const getAllChats = async (): Promise<Chat[]> => {
   try {
+    console.log('Fetching all chats');
     const chatsRef = ref(database, 'chats');
     const snapshot = await get(chatsRef);
     
     if (!snapshot.exists()) {
+      console.log('No chats found in the database');
       return [];
     }
     
     const chats: Chat[] = [];
     snapshot.forEach((childSnapshot) => {
       const chat = childSnapshot.val();
+      // Ensure the chat has an id property
+      if (!chat.id && childSnapshot.key) {
+        chat.id = childSnapshot.key;
+      }
+      
+      // Ensure messages is an array
+      if (!chat.messages) {
+        chat.messages = [];
+      } else if (!Array.isArray(chat.messages)) {
+        // In Firebase, if messages is an object with keys, convert to array
+        const messagesArray: ChatMessage[] = [];
+        Object.keys(chat.messages).forEach(key => {
+          const message = chat.messages[key];
+          if (!message.id) {
+            message.id = key;
+          }
+          messagesArray.push(message);
+        });
+        chat.messages = messagesArray.sort((a, b) => {
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
+      }
+      
       chats.push(chat);
     });
     
+    console.log(`Found ${chats.length} total chats`);
     return chats;
   } catch (error) {
     console.error('Error fetching all chats:', error);
@@ -644,15 +687,47 @@ export const getAllChats = async (): Promise<Chat[]> => {
 };
 
 export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  if (!chatId) {
+    console.error('getChatById called with empty chatId');
+    return null;
+  }
+  
   try {
+    console.log('Fetching chat by ID:', chatId);
     const chatRef = ref(database, `chats/${chatId}`);
     const snapshot = await get(chatRef);
     
     if (!snapshot.exists()) {
+      console.log('Chat not found:', chatId);
       return null;
     }
     
-    return snapshot.val() as Chat;
+    const chat = snapshot.val();
+    // Ensure the chat has an id property
+    if (!chat.id) {
+      chat.id = snapshot.key;
+    }
+    
+    // Ensure messages is an array
+    if (!chat.messages) {
+      chat.messages = [];
+    } else if (!Array.isArray(chat.messages)) {
+      // In Firebase, if messages is an object with keys, convert to array
+      const messagesArray: ChatMessage[] = [];
+      Object.keys(chat.messages).forEach(key => {
+        const message = chat.messages[key];
+        if (!message.id) {
+          message.id = key;
+        }
+        messagesArray.push(message);
+      });
+      chat.messages = messagesArray.sort((a, b) => {
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      });
+    }
+    
+    console.log('Chat retrieved successfully:', chat.id);
+    return chat;
   } catch (error) {
     console.error('Error fetching chat by ID:', error);
     return null;

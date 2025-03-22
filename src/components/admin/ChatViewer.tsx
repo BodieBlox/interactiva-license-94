@@ -33,6 +33,7 @@ export const ChatViewer = () => {
     const fetchUsers = async () => {
       try {
         const allUsers = await getUsers();
+        console.log('Fetched users:', allUsers);
         setUsers(allUsers);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -63,6 +64,7 @@ export const ChatViewer = () => {
     
     try {
       const chats = await getAllChats();
+      console.log('Fetched all chats:', chats);
       setUserChats(Array.isArray(chats) ? chats : []);
     } catch (error) {
       console.error('Error fetching all chats:', error);
@@ -84,8 +86,10 @@ export const ChatViewer = () => {
     setViewMode('user');
     
     try {
+      console.log('Fetching chats for user ID:', userId);
       // Fetch chats for the selected user
       const chats = await getUserChats(userId);
+      console.log('Fetched user chats:', chats);
       setUserChats(Array.isArray(chats) ? chats : []);
     } catch (error) {
       console.error('Error fetching user chats:', error);
@@ -102,8 +106,10 @@ export const ChatViewer = () => {
 
   const handleChatSelect = async (chat: Chat) => {
     try {
+      console.log('Fetching complete chat by ID:', chat.id);
       // Get the full chat with all messages
       const fullChat = await getChatById(chat.id);
+      console.log('Fetched full chat:', fullChat);
       if (fullChat) {
         setSelectedChat(fullChat);
       } else {
