@@ -22,6 +22,7 @@ export interface DashboardCustomization {
   approved?: boolean;
   isCompanyMember?: boolean;
   pendingInvitation?: CompanyInvitation;
+  companyId?: string; // Added this property to fix the TypeScript error
 }
 
 export interface CompanyInvitation {
