@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,10 +21,12 @@ export const SecretKeyGenerator = () => {
     setIsGenerating(true);
     try {
       // Generate license with selected type and expiration
-      const license = await createLicense(
-        licenseType, 
-        showExpiration ? expirationDays : undefined
-      );
+      const licenseData = {
+        type: licenseType,
+        ...(showExpiration && { expiresAt: new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString() })
+      };
+      
+      const license = await createLicense(licenseData);
       setGeneratedKey(license.key);
       toast({
         title: "Success",

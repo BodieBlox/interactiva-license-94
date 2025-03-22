@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -57,6 +56,7 @@ export interface ChatMessage {
   timestamp: string;
   isAdminAction?: boolean;
   adminActionResult?: string;
+  isLoading?: boolean;
 }
 
 export interface Chat {

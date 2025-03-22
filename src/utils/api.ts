@@ -1,4 +1,3 @@
-
 // This is just the sendMessage function to ensure it's consistent
 export const sendMessage = async (chatId: string, content: string) => {
   try {
@@ -60,7 +59,7 @@ export const getUsers = async () => {
 
 export const getAllUsers = getUsers; // Alias for getUsers
 
-export const createUser = async (userData) => {
+export const createUser = async (userData: any) => {
   try {
     // Generate a user ID
     const userId = `user_${Date.now()}`;
@@ -90,7 +89,7 @@ export const createUser = async (userData) => {
   }
 };
 
-export const updateUser = async (userId, userData) => {
+export const updateUser = async (userId: string, userData: any) => {
   try {
     // First get the current user data
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/users/${userId}.json`);
@@ -124,7 +123,7 @@ export const updateUser = async (userId, userData) => {
   }
 };
 
-export const updateUserStatus = async (userId, status, warningMessage = '') => {
+export const updateUserStatus = async (userId: string, status: string, warningMessage = '') => {
   try {
     const userData = {
       status,
@@ -138,7 +137,7 @@ export const updateUserStatus = async (userId, status, warningMessage = '') => {
   }
 };
 
-export const updateUsername = async (userId, username) => {
+export const updateUsername = async (userId: string, username: string) => {
   try {
     return await updateUser(userId, { username });
   } catch (error) {
@@ -147,7 +146,7 @@ export const updateUsername = async (userId, username) => {
   }
 };
 
-export const getUserByEmail = async (email) => {
+export const getUserByEmail = async (email: string) => {
   try {
     const users = await getUsers();
     return users.find(user => user.email === email);
@@ -158,7 +157,7 @@ export const getUserByEmail = async (email) => {
 };
 
 // Chat related functions
-export const getUserChats = async (userId) => {
+export const getUserChats = async (userId: string) => {
   try {
     const response = await fetch('https://orgid-f590b-default-rtdb.firebaseio.com/chats.json');
     
@@ -206,7 +205,7 @@ export const getAllChats = async () => {
   }
 };
 
-export const getChatById = async (chatId) => {
+export const getChatById = async (chatId: string) => {
   try {
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`);
     
@@ -240,7 +239,7 @@ export const getChatById = async (chatId) => {
   }
 };
 
-export const createChat = async (userId, title = 'New conversation') => {
+export const createChat = async (userId: string, title = 'New conversation') => {
   try {
     const chatId = `chat_${Date.now()}`;
     const timestamp = new Date().toISOString();
@@ -273,7 +272,7 @@ export const createChat = async (userId, title = 'New conversation') => {
   }
 };
 
-export const addMessageToChat = async (chatId, message) => {
+export const addMessageToChat = async (chatId: string, message: any) => {
   try {
     const messageId = message.id || `msg_${Date.now()}`;
     const timestamp = message.timestamp || new Date().toISOString();
@@ -309,7 +308,7 @@ export const addMessageToChat = async (chatId, message) => {
   }
 };
 
-export const clearUserChatHistory = async (userId) => {
+export const clearUserChatHistory = async (userId: string) => {
   try {
     const chats = await getUserChats(userId);
     
@@ -351,7 +350,7 @@ export const getLoginLogs = async () => {
   }
 };
 
-export const logUserLogin = async (userId, ip, userAgent) => {
+export const logUserLogin = async (userId: string, loginData: { ip: string, userAgent: string }) => {
   try {
     const logId = `log_${Date.now()}`;
     const timestamp = new Date().toISOString();
@@ -359,8 +358,8 @@ export const logUserLogin = async (userId, ip, userAgent) => {
     const newLog = {
       id: logId,
       userId,
-      ip,
-      userAgent,
+      ip: loginData.ip,
+      userAgent: loginData.userAgent,
       timestamp
     };
     
@@ -383,7 +382,7 @@ export const logUserLogin = async (userId, ip, userAgent) => {
   }
 };
 
-export const forceUserLogout = async (userId) => {
+export const forceUserLogout = async (userId: string) => {
   try {
     // Set a forced logout timestamp on the user
     return await updateUser(userId, { 
@@ -396,7 +395,7 @@ export const forceUserLogout = async (userId) => {
 };
 
 // License related functions
-export const createLicense = async (licenseData) => {
+export const createLicense = async (licenseData: any) => {
   try {
     const licenseId = `license_${Date.now()}`;
     const timestamp = new Date().toISOString();
@@ -426,9 +425,9 @@ export const createLicense = async (licenseData) => {
   }
 };
 
-export const generateLicense = async (type = 'standard', expiryDays = undefined) => {
+export const generateLicense = async (type = 'standard', expiryDays?: number) => {
   try {
-    let expiresAt = null;
+    let expiresAt = undefined;
     
     if (expiryDays) {
       const expiryDate = new Date();
@@ -469,7 +468,7 @@ export const getAllLicenses = async () => {
   }
 };
 
-export const deleteLicense = async (licenseId) => {
+export const deleteLicense = async (licenseId: string) => {
   try {
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenses/${licenseId}.json`, {
       method: 'DELETE'
@@ -486,7 +485,7 @@ export const deleteLicense = async (licenseId) => {
   }
 };
 
-export const assignLicenseToUser = async (userId, licenseKey) => {
+export const assignLicenseToUser = async (userId: string, licenseKey: string) => {
   try {
     // Find the license by key
     const licenses = await getAllLicenses();
@@ -522,7 +521,7 @@ export const assignLicenseToUser = async (userId, licenseKey) => {
   }
 };
 
-export const suspendLicense = async (userId) => {
+export const suspendLicense = async (userId: string) => {
   try {
     const user = await updateUser(userId, {
       licenseActive: false
@@ -546,7 +545,7 @@ export const suspendLicense = async (userId) => {
   }
 };
 
-export const revokeLicense = async (userId) => {
+export const revokeLicense = async (userId: string) => {
   try {
     const user = await updateUser(userId, {
       licenseActive: false,
@@ -575,7 +574,7 @@ export const revokeLicense = async (userId) => {
 };
 
 // License request functions
-export const createLicenseRequest = async (userId, username, email, message = '', requestType = 'extension') => {
+export const createLicenseRequest = async (userId: string, username: string, email: string, message = '', requestType = 'extension') => {
   try {
     const requestId = `request_${Date.now()}`;
     const timestamp = new Date().toISOString();
@@ -630,7 +629,7 @@ export const getLicenseRequests = async () => {
   }
 };
 
-export const approveLicenseRequest = async (requestId) => {
+export const approveLicenseRequest = async (requestId: string) => {
   try {
     // Get the request
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests/${requestId}.json`);
@@ -667,7 +666,7 @@ export const approveLicenseRequest = async (requestId) => {
   }
 };
 
-export const rejectLicenseRequest = async (requestId) => {
+export const rejectLicenseRequest = async (requestId: string) => {
   try {
     await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests/${requestId}.json`, {
       method: 'PATCH',
@@ -685,7 +684,7 @@ export const rejectLicenseRequest = async (requestId) => {
 };
 
 // Dashboard customization functions
-export const updateDashboardCustomization = async (userId, customizationData) => {
+export const updateDashboardCustomization = async (userId: string, customizationData: any) => {
   try {
     // First get current user
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/users/${userId}.json`);
@@ -721,7 +720,7 @@ export const updateDashboardCustomization = async (userId, customizationData) =>
   }
 };
 
-export const approveDashboardCustomization = async (userId) => {
+export const approveDashboardCustomization = async (userId: string) => {
   try {
     return updateDashboardCustomization(userId, { approved: true });
   } catch (error) {
@@ -729,4 +728,3 @@ export const approveDashboardCustomization = async (userId) => {
     throw error;
   }
 };
-

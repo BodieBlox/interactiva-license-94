@@ -92,10 +92,10 @@ export const ChatInterface = () => {
           {
             id: loadingMessageId,
             content: "Thinking...",
-            role: 'assistant',
+            role: 'assistant' as 'assistant',
             timestamp: new Date().toISOString(),
             isLoading: true
-          } as any
+          }
         ];
         
         return {
@@ -119,11 +119,16 @@ export const ChatInterface = () => {
         ? adminActionResult
         : await generateAIResponse(userMessageContent, isAdmin);
       
-      const aiResponseMessage = await addMessageToChat(currentChat.id, {
+      const messageParams: any = {
         content: aiMessage,
-        role: 'assistant',
-        ...(isAdminAction && { isAdminAction: isAdminAction })
-      });
+        role: 'assistant'
+      };
+      
+      if (isAdminAction) {
+        messageParams.isAdminAction = true;
+      }
+      
+      const aiResponseMessage = await addMessageToChat(currentChat.id, messageParams);
       
       setChat((prevChat) => {
         if (!prevChat) return null;
@@ -150,13 +155,14 @@ export const ChatInterface = () => {
     } catch (error) {
       console.error('Error generating AI response:', error);
       
-      setChat((prevChat) => {
+      setChat((prevChat: Chat | null) => {
         if (!prevChat) return null;
         
         return {
           ...prevChat,
-          messages: prevChat.messages ? prevChat.messages.filter(msg => !('isLoading' in msg)) : []
-        };
+          messages: prevChat.messages ? 
+            prevChat.messages.filter(msg => !('isLoading' in msg)) : []
+        } as Chat;
       });
       
       if (currentChat && currentChat.id) {

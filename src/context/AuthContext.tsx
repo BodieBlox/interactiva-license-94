@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update } from 'firebase/database';
@@ -33,7 +32,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       if (firebaseUser) {
         try {
-          // First try to get the user from our own database
           console.log("Fetching user from database:", firebaseUser.email);
           const userFromDB = await getUserByEmail(firebaseUser.email || '').catch((err) => {
             console.log("Error fetching user, will check Firebase DB:", err);
@@ -87,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               console.error("Error logging login:", e);
             }
           } else {
-            // If not found in our database, check Firebase realtime database
             console.log("Checking Firebase DB for user:", firebaseUser.uid);
             const userRef = ref(database, `users/${firebaseUser.uid}`);
             const snapshot = await get(userRef);
@@ -107,7 +104,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.error("Error logging login:", e);
               }
             } else {
-              // User not found anywhere, create a new one
               console.log("Creating new user in Firebase DB");
               const newUser: User = {
                 id: firebaseUser.uid,
@@ -257,7 +253,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Login attempt with:", email);
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("Firebase login success:", result.user?.email);
-      // We don't set isLoading to false here - it will be handled by the auth state change listener
     } catch (error) {
       console.error('Login error:', error);
       setError((error as Error).message);
@@ -374,7 +369,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await createLicenseRequest(user.id, message);
+      await createLicenseRequest(user.id, user.username, user.email, message);
       toast({
         title: "License Requested",
         description: "Your license request has been submitted successfully",
