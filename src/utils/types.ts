@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'user' | 'staff';
 
 export interface User {
@@ -20,6 +21,14 @@ export interface User {
   passwordResetToken?: string | null;
   passwordResetExpires?: string | null;
   profileImageUrl?: string | null;
+  
+  // Add missing properties
+  customization?: DashboardCustomization;
+  isCompanyAdmin?: boolean;
+  licenseId?: string;
+  licenseExpiryDate?: string;
+  forcedLogout?: string;
+  password?: string; // Only used during user creation, not stored
 }
 
 export interface DashboardCustomization {
@@ -41,6 +50,9 @@ export interface CompanyInvitation {
   timestamp: string;
   primaryColor?: string;
   logo?: string;
+  status?: 'pending' | 'accepted' | 'declined';
+  toUserId?: string;
+  toEmail?: string;
 }
 
 export interface License {

@@ -20,6 +20,7 @@ export interface Company {
 
 export interface UserWithCompany extends User {
   companyRole?: 'admin' | 'member';
+  isCompanyAdmin?: boolean; // Add this property to match User interface
   // Remove the 'company' property that was causing issues
 }
 
