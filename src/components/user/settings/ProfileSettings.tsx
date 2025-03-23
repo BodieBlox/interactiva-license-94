@@ -38,10 +38,10 @@ export const ProfileSettings = () => {
       const updatedUser = await updateUser(user.id, userData);
       
       // Update the user in context with new username
-      if (user && updatedUser) {
+      if (user) {
         setUser({
           ...user,
-          username: updatedUser.username || newUsername
+          username: newUsername
         });
       }
       

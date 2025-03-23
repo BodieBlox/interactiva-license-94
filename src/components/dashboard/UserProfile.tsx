@@ -1,5 +1,4 @@
 
-
 import { Card, CardContent } from '@/components/ui/card';
 import { User as UserIcon, Mail, Calendar, Shield, AlertCircle } from 'lucide-react';
 import { User } from '@/utils/types';
@@ -16,19 +15,16 @@ export const UserProfile = ({ user }: UserProfileProps) => {
   const [showDetails, setShowDetails] = useState(false);
   
   if (!user) return null;
-
-  // Create a date 6 months from now (dummy license data)
-  const licenseExpiry = new Date();
-  licenseExpiry.setMonth(licenseExpiry.getMonth() + 6);
   
-  // Get the expiry date, either from user object or fallback to the calculated one
-  const expiryDate = user.licenseExpiryDate ? new Date(user.licenseExpiryDate) : licenseExpiry;
+  // Get the expiry date from user object
+  const expiryDate = user.licenseExpiryDate ? new Date(user.licenseExpiryDate) : null;
   
   // Check if license is valid
-  const isLicenseValid = user.status === 'active' && isAfter(expiryDate, new Date());
-  const isExpiringSoon = isLicenseValid && isAfter(expiryDate, new Date()) && 
-                        isAfter(expiryDate, 
-                                new Date(new Date().setDate(new Date().getDate() + 30)));
+  const isLicenseValid = user.licenseActive && expiryDate && isAfter(expiryDate, new Date());
+  
+  // Check if expiring soon (within 30 days)
+  const isExpiringSoon = isLicenseValid && expiryDate && 
+    !isAfter(expiryDate, new Date(new Date().setDate(new Date().getDate() + 30)));
   
   return (
     <Card className="overflow-hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-primary/10 shadow-md hover:shadow-lg transition-all duration-300">
@@ -39,7 +35,7 @@ export const UserProfile = ({ user }: UserProfileProps) => {
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-lg truncate">{user.username}</h3>
           <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground truncate">{user.role}</p>
+            <p className="text-sm text-muted-foreground truncate">{user.role || 'User'}</p>
             {user.role === 'admin' && (
               <Badge variant="outline" className="text-amber-500 border-amber-500 px-1.5 py-0 text-[10px]">
                 <Shield className="h-2.5 w-2.5 mr-0.5" />
@@ -56,18 +52,20 @@ export const UserProfile = ({ user }: UserProfileProps) => {
           <span className="truncate">{user.email}</span>
         </div>
         
-        <div className="flex items-center text-sm">
-          <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-          <span>
-            License valid until: <span className="font-medium">{format(expiryDate, 'MMM d, yyyy')}</span>
-            {!isExpiringSoon && (
-              <Badge variant="outline" className="ml-2 text-amber-500 border-amber-500 px-1.5 py-0 text-[10px]">
-                <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
-                EXPIRES SOON
-              </Badge>
-            )}
-          </span>
-        </div>
+        {expiryDate && (
+          <div className="flex items-center text-sm">
+            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+            <span>
+              License valid until: <span className="font-medium">{format(expiryDate, 'MMM d, yyyy')}</span>
+              {isExpiringSoon && (
+                <Badge variant="outline" className="ml-2 text-amber-500 border-amber-500 px-1.5 py-0 text-[10px]">
+                  <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
+                  EXPIRES SOON
+                </Badge>
+              )}
+            </span>
+          </div>
+        )}
         
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between">
@@ -92,15 +90,15 @@ export const UserProfile = ({ user }: UserProfileProps) => {
             <div className="mt-3 text-xs space-y-2 bg-primary/5 p-3 rounded-md">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">License ID:</span>
-                <span className="font-mono">{user.licenseId || 'LIC-' + Math.random().toString(36).substring(2, 10).toUpperCase()}</span>
+                <span className="font-mono">{user.licenseId || user.licenseKey || 'Not available'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tier:</span>
-                <span>{user.licenseType || user.licenseTier || 'Standard'}</span>
+                <span>{user.licenseType || 'Standard'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Issue Date:</span>
-                <span>{user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : format(new Date(), 'MMM d, yyyy')}</span>
+                <span>{user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : 'Not available'}</span>
               </div>
             </div>
           )}
@@ -109,4 +107,3 @@ export const UserProfile = ({ user }: UserProfileProps) => {
     </Card>
   );
 };
-
