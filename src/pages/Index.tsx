@@ -21,13 +21,13 @@ import {
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-primary/5 to-background dark:from-background dark:via-primary/10 dark:to-background/80">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-primary/5 to-background dark:from-slate-950 dark:via-primary/10 dark:to-background/80">
       {/* Header */}
-      <header className="py-6 px-6 border-b border-border/30">
+      <header className="py-6 px-6 shadow-sm border-b border-border/30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
             <Sparkles className="h-6 w-6 text-primary mr-2" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">LicenseAI</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">LicenseAI</span>
           </div>
           <div className="flex gap-3">
             <Link to="/login">
@@ -50,20 +50,20 @@ const Index = () => {
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-3xl mx-auto text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="p-3 rounded-full bg-primary/10 animate-pulse-soft">
+            <div className="p-3 rounded-full bg-primary/10 animate-pulse">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent">
             Welcome to <span className="font-extrabold">LicenseAI</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+          <p className="text-xl text-foreground/80 mb-8 leading-relaxed max-w-2xl mx-auto">
             Enterprise-grade licensing system with AI-powered conversations,
             team management, and customizable branding.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/login">
-              <Button size="lg" className="flex items-center gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-white">
+              <Button size="lg" className="flex items-center gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
                 <LogIn className="h-5 w-5" />
                 Login
               </Button>
@@ -83,14 +83,14 @@ const Index = () => {
       </div>
 
       {/* Features Section */}
-      <div className="container mx-auto px-4 py-16 md:py-24">
-        <h2 className="text-3xl font-bold text-center mb-16 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent flex items-center justify-center">
+      <div className="container mx-auto px-4 py-16 md:py-24 bg-slate-50/50 dark:bg-slate-900/30">
+        <h2 className="text-3xl font-bold text-center mb-16 bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent flex items-center justify-center">
           <Lightbulb className="h-6 w-6 mr-2 text-primary" />
           Key Features
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Feature 1 */}
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-500 
+          <Card className="border border-primary/10 shadow-xl hover:shadow-2xl transition-all duration-500 
             bg-gradient-to-br from-white/80 via-white/70 to-primary/5 backdrop-blur-sm 
             dark:from-gray-900/80 dark:via-gray-900/70 dark:to-primary/10
             hover:-translate-y-1 overflow-hidden group">
@@ -109,7 +109,7 @@ const Index = () => {
           </Card>
 
           {/* Feature 2 */}
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-500 
+          <Card className="border border-amber-500/10 shadow-xl hover:shadow-2xl transition-all duration-500 
             bg-gradient-to-br from-white/80 via-white/70 to-amber-500/5 backdrop-blur-sm 
             dark:from-gray-900/80 dark:via-gray-900/70 dark:to-amber-500/10
             hover:-translate-y-1 overflow-hidden group">
@@ -128,7 +128,7 @@ const Index = () => {
           </Card>
 
           {/* Feature 3 */}
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-500 
+          <Card className="border border-teal-500/10 shadow-xl hover:shadow-2xl transition-all duration-500 
             bg-gradient-to-br from-white/80 via-white/70 to-teal-500/5 backdrop-blur-sm 
             dark:from-gray-900/80 dark:via-gray-900/70 dark:to-teal-500/10
             hover:-translate-y-1 overflow-hidden group">
@@ -149,14 +149,14 @@ const Index = () => {
       </div>
 
       {/* Benefits Section - New Section */}
-      <div className="container mx-auto px-4 py-16 md:py-24 bg-gradient-to-br from-background/50 to-muted/20">
-        <h2 className="text-3xl font-bold text-center mb-16 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+      <div className="container mx-auto px-4 py-16 md:py-24">
+        <h2 className="text-3xl font-bold text-center mb-16 bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent">
           Why Choose LicenseAI?
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl mx-auto">
           {/* Left column - image or illustration */}
-          <div className="rounded-xl overflow-hidden shadow-2xl">
+          <div className="rounded-xl overflow-hidden shadow-2xl border border-primary/10">
             <img 
               src="/lovable-uploads/bc5ad575-6834-4d61-93cd-0a3b288aee9a.png" 
               alt="Dashboard preview" 
@@ -166,7 +166,7 @@ const Index = () => {
           
           {/* Right column - benefits */}
           <div className="flex flex-col justify-center space-y-6">
-            <div className="flex gap-4 items-start">
+            <div className="flex gap-4 items-start animate-fade-in" style={{animationDelay: "0.1s"}}>
               <div className="bg-blue-500/10 p-3 rounded-full">
                 <ShieldCheck className="h-6 w-6 text-blue-600" />
               </div>
@@ -176,7 +176,7 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="flex gap-4 items-start">
+            <div className="flex gap-4 items-start animate-fade-in" style={{animationDelay: "0.2s"}}>
               <div className="bg-purple-500/10 p-3 rounded-full">
                 <Zap className="h-6 w-6 text-purple-600" />
               </div>
@@ -186,7 +186,7 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="flex gap-4 items-start">
+            <div className="flex gap-4 items-start animate-fade-in" style={{animationDelay: "0.3s"}}>
               <div className="bg-amber-500/10 p-3 rounded-full">
                 <Globe className="h-6 w-6 text-amber-600" />
               </div>
@@ -196,7 +196,7 @@ const Index = () => {
               </div>
             </div>
             
-            <Link to="/register" className="w-fit">
+            <Link to="/register" className="w-fit animate-fade-in" style={{animationDelay: "0.4s"}}>
               <Button className="mt-4 group" size="lg">
                 Get Started
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -207,14 +207,14 @@ const Index = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="container mx-auto px-4 py-16 md:py-24">
-        <Card className="border-0 shadow-2xl 
-          bg-gradient-to-br from-primary/15 via-primary/10 to-transparent backdrop-blur-sm">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 to-purple-500/50"></div>
+      <div className="container mx-auto px-4 py-16 md:py-24 bg-slate-50/50 dark:bg-slate-900/30">
+        <Card className="border border-primary/10 shadow-2xl 
+          bg-gradient-to-br from-primary/15 via-primary/10 to-transparent backdrop-blur-sm animate-scale-in">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-purple-500"></div>
           <CardContent className="p-8 md:p-12">
             <div className="max-w-3xl mx-auto text-center">
               <div className="flex justify-center mb-6">
-                <div className="p-3 rounded-full bg-primary/10 animate-float">
+                <div className="p-3 rounded-full bg-primary/10 animate-pulse">
                   <Rocket className="h-8 w-8 text-primary" />
                 </div>
               </div>
@@ -224,7 +224,7 @@ const Index = () => {
               </p>
               <div className="flex flex-wrap justify-center gap-4">
                 <Link to="/register">
-                  <Button size="lg" className="flex items-center gap-2 bg-primary/90 hover:bg-primary shadow-lg shadow-primary/10">
+                  <Button size="lg" className="flex items-center gap-2 bg-primary hover:bg-primary shadow-lg shadow-primary/10">
                     <Zap className="h-5 w-5" />
                     Create Your Account
                   </Button>
@@ -242,17 +242,19 @@ const Index = () => {
       </div>
 
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-12 border-t border-border/40 mt-16">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <Sparkles className="h-5 w-5 text-primary mr-2" />
-            <span className="font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">LicenseAI</span>
-          </div>
-          <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} LicenseAI. All rights reserved.</p>
-          <div className="flex gap-4 mt-4 md:mt-0">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Terms</Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Privacy</Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Contact</Button>
+      <footer className="bg-white dark:bg-slate-950 shadow-md border-t border-border/40">
+        <div className="container mx-auto px-4 py-12">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <Sparkles className="h-5 w-5 text-primary mr-2" />
+              <span className="font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">LicenseAI</span>
+            </div>
+            <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} LicenseAI. All rights reserved.</p>
+            <div className="flex gap-4 mt-4 md:mt-0">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Terms</Button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Privacy</Button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Contact</Button>
+            </div>
           </div>
         </div>
       </footer>

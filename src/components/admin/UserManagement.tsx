@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
 import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense, forceUserLogout } from '@/utils/api';
@@ -5,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, Key, ClipboardX } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, Key, ClipboardX, Calendar } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { sanitizeUserData } from '@/utils/companyTypes';
+import { format } from 'date-fns';
 
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -27,6 +29,7 @@ export const UserManagement = () => {
     const fetchUsers = async () => {
       try {
         const allUsers = await getUsers();
+        console.log('Fetched users:', allUsers);
         setUsers(allUsers);
         setFilteredUsers(allUsers);
       } catch (error) {
@@ -48,8 +51,8 @@ export const UserManagement = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const filtered = users.filter(user => 
-        user.username.toLowerCase().includes(query) || 
-        user.email.toLowerCase().includes(query)
+        user.username?.toLowerCase().includes(query) || 
+        user.email?.toLowerCase().includes(query)
       );
       setFilteredUsers(filtered);
     } else {
@@ -89,28 +92,34 @@ export const UserManagement = () => {
               return;
           }
           
-          const message = actionType !== 'activate' ? warningMessage.trim() : undefined;
-          const userData = sanitizeUserData({
-            status,
-            warningMessage: message || null
-          });
+          const message = actionType !== 'activate' ? warningMessage.trim() : null;
+          console.log(`Updating user ${selectedUser.id} status to ${status} with message:`, message);
           
-          const updatedUser = await updateUserStatus(selectedUser.id, status, message);
-          
-          if (status === 'warned' || status === 'suspended') {
-            await forceUserLogout(selectedUser.id);
-            console.log(`User ${selectedUser.id} has been forced to logout due to ${status} status`);
+          try {
+            const updatedUser = await updateUserStatus(selectedUser.id, status, message);
+            console.log('User status updated:', updatedUser);
+            
+            if (status === 'warned' || status === 'suspended') {
+              await forceUserLogout(selectedUser.id);
+              console.log(`User ${selectedUser.id} has been forced to logout due to ${status} status`);
+            }
+            
+            setUsers(prevUsers => prevUsers.map(user => 
+              user.id === updatedUser.id ? updatedUser : user
+            ));
+            
+            toast({
+              title: "Success",
+              description: `User ${updatedUser.username} has been ${actionType}${actionType === 'activate' ? 'd' : 'ed'}`,
+            });
+          } catch (error) {
+            console.error('Error updating user status:', error);
+            toast({
+              title: "Error",
+              description: `Failed to ${actionType} user: ${(error as Error).message}`,
+              variant: "destructive"
+            });
           }
-          
-          setUsers(prevUsers => prevUsers.map(user => 
-            user.id === updatedUser.id ? updatedUser : user
-          ));
-          
-          toast({
-            title: "Success",
-            description: `User ${updatedUser.username} has been ${actionType}${actionType === 'activate' ? 'd' : 'ed'}`,
-            variant: "success",
-          });
           break;
         }
         case 'clearChats': {
@@ -118,7 +127,6 @@ export const UserManagement = () => {
           toast({
             title: "Success",
             description: `Chat history for ${selectedUser.username} has been cleared`,
-            variant: "success",
           });
           break;
         }
@@ -137,7 +145,6 @@ export const UserManagement = () => {
             toast({
               title: "Success",
               description: `License for ${selectedUser.username} has been suspended`,
-              variant: "success",
             });
           } else {
             toast({
@@ -165,7 +172,6 @@ export const UserManagement = () => {
               toast({
                 title: "Success",
                 description: `License for ${selectedUser.username} has been revoked`,
-                variant: "success",
               });
             } catch (error) {
               console.error('Error revoking license:', error);
@@ -202,11 +208,13 @@ export const UserManagement = () => {
   const renderStatusBadge = (status: User['status']) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default" className="bg-green-500">Active</Badge>;
+        return <Badge variant="default" className="bg-green-500 animate-pulse-soft">Active</Badge>;
       case 'warned':
-        return <Badge variant="outline" className="border-amber-500 text-amber-500">Warned</Badge>;
+        return <Badge variant="outline" className="border-amber-500 text-amber-500 animate-pulse-soft">Warned</Badge>;
       case 'suspended':
-        return <Badge variant="outline" className="border-red-500 text-red-500">Suspended</Badge>;
+        return <Badge variant="outline" className="border-red-500 text-red-500 animate-pulse-soft">Suspended</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
   };
 
@@ -242,6 +250,7 @@ export const UserManagement = () => {
                   <th className="text-left p-4 font-medium">Email</th>
                   <th className="text-left p-4 font-medium">Status</th>
                   <th className="text-left p-4 font-medium">License</th>
+                  <th className="text-left p-4 font-medium">License Date</th>
                   <th className="text-left p-4 font-medium">Role</th>
                   <th className="text-right p-4 font-medium">Actions</th>
                 </tr>
@@ -249,13 +258,13 @@ export const UserManagement = () => {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-4 text-center text-muted-foreground">
                       No users found
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map(user => (
-                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30 transition-apple">
+                  filteredUsers.map((user, index) => (
+                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30 transition-apple animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
                       <td className="p-4">{user.username}</td>
                       <td className="p-4">{user.email}</td>
                       <td className="p-4">{renderStatusBadge(user.status)}</td>
@@ -264,6 +273,16 @@ export const UserManagement = () => {
                           <Badge variant="default" className="bg-primary">Active</Badge>
                         ) : (
                           <Badge variant="outline">Inactive</Badge>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        {user.licenseIssuedDate ? (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(new Date(user.licenseIssuedDate), 'MMM dd, yyyy')}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Not issued</span>
                         )}
                       </td>
                       <td className="p-4">
@@ -374,10 +393,10 @@ export const UserManagement = () => {
               <span>
                 {actionType === 'warn' && 'Issue Warning'}
                 {actionType === 'suspend' && 'Suspend User'}
-                {actionType === 'activate' && `Restore full access for ${selectedUser?.username}.`}
-                {actionType === 'clearChats' && `This will permanently delete all chats for ${selectedUser?.username}. This action cannot be undone.`}
-                {actionType === 'suspendLicense' && `This will suspend the license for ${selectedUser?.username}. They will lose access to premium features.`}
-                {actionType === 'revokeLicense' && `This will completely revoke the license for ${selectedUser?.username}. The license key will be reset and can be reassigned.`}
+                {actionType === 'activate' && 'Restore User Access'}
+                {actionType === 'clearChats' && 'Clear Chat History'}
+                {actionType === 'suspendLicense' && 'Suspend License'}
+                {actionType === 'revokeLicense' && 'Revoke License'}
               </span>
             </DialogTitle>
             <DialogDescription>

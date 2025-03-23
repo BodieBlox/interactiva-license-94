@@ -42,6 +42,8 @@ export const executeAdminAction = async (
   }
   
   try {
+    console.log(`Executing admin action: ${intent} for user: ${userId}`);
+    
     const userRef = ref(database, `users/${userId}`);
     const snapshot = await get(userRef);
     
@@ -57,65 +59,90 @@ export const executeAdminAction = async (
       case 'suspend': {
         // Suspend user with a proper warning message
         const message = data?.message || defaultWarningMessage;
-        console.log(`Attempting to suspend user ${userId} with message: ${message}`);
+        console.log(`Suspending user ${userId} with message: ${message}`);
         
-        // Update user status in the database
-        await updateUserStatus(userId, 'suspended', message);
-        
-        // Force logout immediately
-        await forceUserLogout(userId);
-        
-        console.log(`User ${userId} has been suspended and forced to logout`);
-        return true;
+        try {
+          // Update user status in the database
+          await updateUserStatus(userId, 'suspended', message);
+          console.log(`User status updated to suspended`);
+          
+          // Force logout immediately
+          await forceUserLogout(userId);
+          console.log(`User ${userId} has been forced to logout`);
+          
+          return true;
+        } catch (error) {
+          console.error(`Error suspending user:`, error);
+          return false;
+        }
       }
         
       case 'activate': {
-        console.log(`Attempting to activate user ${userId}`);
+        console.log(`Activating user ${userId}`);
         
-        // Activate user - clear warning message
-        await updateUserStatus(userId, 'active', null);
-        
-        console.log(`User ${userId} has been activated`);
-        return true;
+        try {
+          // Activate user - clear warning message
+          await updateUserStatus(userId, 'active', null);
+          console.log(`User ${userId} has been activated successfully`);
+          return true;
+        } catch (error) {
+          console.error(`Error activating user:`, error);
+          return false;
+        }
       }
         
       case 'warn': {
         // Warn user with a proper warning message
         const message = data?.message || defaultWarningMessage;
-        console.log(`Attempting to warn user ${userId} with message: ${message}`);
+        console.log(`Warning user ${userId} with message: ${message}`);
         
-        // Update user status in the database
-        await updateUserStatus(userId, 'warned', message);
-        
-        // Force logout immediately
-        await forceUserLogout(userId);
-        
-        console.log(`User ${userId} has been warned and forced to logout`);
-        return true;
+        try {
+          // Update user status in the database
+          await updateUserStatus(userId, 'warned', message);
+          console.log(`User status updated to warned`);
+          
+          // Force logout immediately
+          await forceUserLogout(userId);
+          console.log(`User ${userId} has been forced to logout`);
+          
+          return true;
+        } catch (error) {
+          console.error(`Error warning user:`, error);
+          return false;
+        }
       }
         
       case 'revoke': {
-        console.log(`Attempting to revoke license for user ${userId}`);
+        console.log(`Revoking license for user ${userId}`);
         
-        // Revoke license
-        await updateUser(userId, { licenseActive: false });
-        
-        console.log(`License for user ${userId} has been revoked`);
-        return true;
+        try {
+          // Revoke license
+          await updateUser(userId, { licenseActive: false });
+          console.log(`License for user ${userId} has been revoked`);
+          return true;
+        } catch (error) {
+          console.error(`Error revoking license:`, error);
+          return false;
+        }
       }
         
       case 'grant': {
         const licenseType = data?.type || 'basic';
-        console.log(`Attempting to grant ${licenseType} license to user ${userId}`);
+        console.log(`Granting ${licenseType} license to user ${userId}`);
         
-        // Grant license
-        await updateUser(userId, { 
-          licenseActive: true,
-          licenseType: licenseType
-        });
-        
-        console.log(`License for user ${userId} has been granted (${licenseType})`);
-        return true;
+        try {
+          // Grant license
+          await updateUser(userId, { 
+            licenseActive: true,
+            licenseType: licenseType
+          });
+          
+          console.log(`License for user ${userId} has been granted (${licenseType})`);
+          return true;
+        } catch (error) {
+          console.error(`Error granting license:`, error);
+          return false;
+        }
       }
         
       default:

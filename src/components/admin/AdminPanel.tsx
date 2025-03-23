@@ -13,7 +13,8 @@ import {
   Rotate3D, 
   LayoutDashboard, 
   Building,
-  ArrowUp
+  ArrowUp,
+  Activity
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { LoginLogs } from './LoginLogs';
@@ -47,8 +48,10 @@ export const AdminPanel = () => {
   // Get the active section from the current path
   const getActiveSection = () => {
     const path = location.pathname;
-    const section = path.split('/admin/')[1] || '';
-    return section;
+    // Extract the section after /admin/
+    if (path === '/admin') return '';
+    const section = path.split('/admin/')[1];
+    return section || '';
   };
   
   const [activeSection, setActiveSection] = useState<string>(getActiveSection());
@@ -61,10 +64,13 @@ export const AdminPanel = () => {
   if (!user || user.role !== 'admin') {
     return (
       <div className="container mx-auto p-8 text-center">
-        <Shield className="h-12 w-12 mx-auto text-red-500 mb-4" />
+        <Shield className="h-12 w-12 mx-auto text-red-500 mb-4 animate-pulse" />
         <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
         <p className="text-muted-foreground mb-6">You don't have permission to access the admin panel.</p>
-        <Button onClick={() => navigate('/dashboard')}>
+        <Button 
+          onClick={() => navigate('/dashboard')}
+          className="animate-scale-in"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
@@ -81,8 +87,8 @@ export const AdminPanel = () => {
     { label: 'Chats', path: '/admin/chats', icon: MessageSquare },
     { label: 'License Generator', path: '/admin/license-generator', icon: Key },
     { label: 'Manage Licenses', path: '/admin/manage-licenses', icon: Key },
-    { label: 'Login Logs', path: '/admin/login-logs', icon: Users },
-    { label: 'Branding Approval', path: '/admin/branding-approval', icon: Users },
+    { label: 'Login Logs', path: '/admin/login-logs', icon: Activity },
+    { label: 'Branding Approval', path: '/admin/branding-approval', icon: Shield },
     { label: 'Create User', path: '/admin/create-user', icon: Users },
     { label: 'Assign License', path: '/admin/assign-license', icon: Key },
   ];
@@ -92,16 +98,16 @@ export const AdminPanel = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <div className="container mx-auto px-4 py-6 max-w-6xl animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-medium">CentralAI Admin</h1>
+          <h1 className="text-3xl font-medium bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">LicenseAI Admin</h1>
           <p className="text-muted-foreground">Manage users, licenses, and system settings</p>
         </div>
         <Button 
           variant="outline" 
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 hover:bg-primary/10 hover:text-primary transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Dashboard</span>
@@ -118,23 +124,24 @@ export const AdminPanel = () => {
               className={`
                 ${isMobile 
                   ? 'flex-shrink-0 mr-2 px-3 h-10' 
-                  : 'w-full justify-start mb-1'
+                  : 'w-full justify-start mb-1 overflow-hidden'
                 }
                 ${activeSection === (item.path.split('/admin/')[1] || '')
-                  ? 'bg-centralai-purple text-white'
-                  : 'hover:bg-muted'
+                  ? 'bg-primary text-white hover:bg-primary/90'
+                  : 'hover:bg-muted transition-colors'
                 }
+                transition-all duration-300
               `}
               onClick={() => handleNavigation(item.path)}
             >
               <item.icon className={`${isMobile ? 'mr-0' : 'mr-2'} h-4 w-4`} />
-              {!isMobile && <span>{item.label}</span>}
+              {!isMobile && <span className="truncate">{item.label}</span>}
             </Button>
           ))}
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 bg-card rounded-lg border shadow-sm p-4 md:p-6">
+        <div className="flex-1 bg-card rounded-lg border shadow-sm p-4 md:p-6 transition-all duration-300 hover:shadow-md">
           <QueryClientProvider client={queryClient}>
             <Routes>
               <Route path="/" element={<AdminDashboard />} />
@@ -163,30 +170,33 @@ const AdminDashboard = () => {
   return (
     <div className="animate-fade-in">
       <h2 className="text-xl font-medium mb-4">Admin Dashboard</h2>
-      <p className="text-muted-foreground mb-6">Welcome to the CentralAI admin panel. Use the navigation to manage the system.</p>
+      <p className="text-muted-foreground mb-6">Welcome to the LicenseAI admin panel. Use the navigation to manage the system.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-centralai-accent/20 hover:border-centralai-accent/40 hover:bg-centralai-accent/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.1s"}}
           onClick={() => navigate('/admin/users')}
         >
-          <Users className="h-8 w-8 text-centralai-purple" />
+          <Users className="h-8 w-8 text-primary" />
           <span>Manage Users</span>
         </Button>
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-centralai-accent/20 hover:border-centralai-accent/40 hover:bg-centralai-accent/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.2s"}}
           onClick={() => navigate('/admin/companies')}
         >
-          <Building className="h-8 w-8 text-centralai-purple" />
+          <Building className="h-8 w-8 text-primary" />
           <span>Manage Companies</span>
         </Button>
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.3s"}}
           onClick={() => navigate('/admin/license-requests')}
         >
           <Rotate3D className="h-8 w-8 text-amber-500" />
@@ -195,7 +205,8 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.4s"}}
           onClick={() => navigate('/admin/upgrade-requests')}
         >
           <ArrowUp className="h-8 w-8 text-purple-500" />
@@ -204,7 +215,8 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.5s"}}
           onClick={() => navigate('/admin/license-generator')}
         >
           <Key className="h-8 w-8 text-purple-500" />
@@ -213,7 +225,8 @@ const AdminDashboard = () => {
         
         <Button 
           variant="outline" 
-          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-green-500/20 hover:border-green-500/40 hover:bg-green-500/5"
+          className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-green-500/20 hover:border-green-500/40 hover:bg-green-500/5 transition-all duration-300 animate-scale-in"
+          style={{animationDelay: "0.6s"}}
           onClick={() => navigate('/admin/chats')}
         >
           <MessageSquare className="h-8 w-8 text-green-500" />

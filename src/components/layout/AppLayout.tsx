@@ -1,307 +1,189 @@
 
-import { ReactNode, useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { SideNav } from './SideNav';
 import { useAuth } from '@/context/AuthContext';
-import { NotificationBanner } from '@/components/ui/NotificationBanner';
-import { toast } from '@/components/ui/use-toast';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle 
-} from '@/components/ui/alert-dialog';
-import { ShieldAlert, AlertTriangle, Key, Lock, LogOut, RefreshCw } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, ShieldAlert, AlertTriangle, XCircle, MessageSquare, Mail } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { updateUserStatus } from '@/utils/api';
 
 interface AppLayoutProps {
-  children: ReactNode;
-  requireAuth?: boolean;
-  requireAdmin?: boolean;
-  requireLicense?: boolean;
+  children: React.ReactNode;
 }
 
-export const AppLayout = ({
-  children,
-  requireAuth = false,
-  requireAdmin = false,
-  requireLicense = false
-}: AppLayoutProps) => {
-  const { user, isLoading, logout, checkLicenseValidity, checkForcedLogout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [showWarning, setShowWarning] = useState(false);
-  const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
-  const [showLicenseDialog, setShowLicenseDialog] = useState(false);
+export const AppLayout = ({ children }: AppLayoutProps) => {
+  const { user, loading, logout } = useAuth();
+  const isMobile = useIsMobile();
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
+  const [showContentDelay, setShowContentDelay] = useState(false);
 
-  // Define checkLicense function first before using it
-  const checkLicense = async () => {
-    if (!user) return false;
-    
-    // Already on activation page, don't show license dialog
-    if (location.pathname === '/activate') {
-      console.log("Already on activation page, skipping license check");
-      return false;
-    }
-    
-    // Skip license check for admin users
-    if (user.role === 'admin') {
-      console.log("User is admin, skipping license check");
-      return false;
-    }
-    
-    // Skip license check for users who are company members
-    if (user.customization?.isCompanyMember) {
-      console.log("User is company member, skipping license check");
-      return false;
-    }
-    
-    console.log("Checking license for user:", user.id, "License active:", user.licenseActive);
-    
-    // If user has an active license, no need to show dialog
-    if (user.licenseActive === true) {
-      console.log("User has active license");
-      return false;
-    }
-    
-    // User doesn't have a license, show dialog
-    console.log("User needs to activate license");
-    setShowLicenseDialog(true);
-    return true;
-  };
-
-  // Add status polling to detect forced logout
+  // For smoother animations, delay showing content
   useEffect(() => {
-    if (!user) return;
+    const timer = setTimeout(() => {
+      setShowContentDelay(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
-    // Check for forced logout or status changes every 15 seconds (more frequent)
-    const statusCheckInterval = setInterval(async () => {
-      // Check if user has been forced to logout
-      const wasForceLoggedOut = await checkForcedLogout();
-      
-      if (wasForceLoggedOut) {
-        clearInterval(statusCheckInterval);
+  // Effect to check the user's status and show warning dialog if needed
+  useEffect(() => {
+    if (user && (user.status === 'warned' || user.status === 'suspended')) {
+      setIsWarningDialogOpen(true);
+    } else {
+      setIsWarningDialogOpen(false);
+    }
+    
+    // Setup a regular check for status changes
+    const statusCheck = setInterval(() => {
+      // This will trigger a revalidation of the user data
+      if (user) {
+        console.log('Checking user status:', user.status);
       }
-    }, 15000); // Every 15 seconds
-
-    // Cleanup on unmount
-    return () => clearInterval(statusCheckInterval);
-  }, [user, checkForcedLogout]);
-
-  // Run immediate forced logout check on mount
-  useEffect(() => {
-    if (user) {
-      checkForcedLogout();
-    }
-  }, [user, checkForcedLogout]);
-
-  useEffect(() => {
-    // Only run redirects if we're not loading
-    if (isLoading) return;
-
-    // Log current state for debugging
-    console.log("AppLayout effect running:", {
-      user: user?.id, 
-      path: location.pathname,
-      requireAuth, 
-      requireAdmin, 
-      requireLicense,
-      licenseActive: user?.licenseActive,
-      isCompanyMember: user?.customization?.isCompanyMember,
-      userRole: user?.role
-    });
-
-    if (requireAuth && !user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please login to access this page",
-      });
-      navigate('/login', { state: { from: location } });
-      return;
-    }
-
-    if (requireAdmin && user?.role !== 'admin') {
-      toast({
-        title: "Access Denied",
-        description: "Admin privileges required to access this page",
-        variant: "destructive"
-      });
-      navigate('/dashboard');
-      return;
-    }
-
-    // Skip license check for admin users going to admin pages, and company members
-    const isAdminRoute = location.pathname.startsWith('/admin');
-    const isActivationRoute = location.pathname === '/activate';
-    const isAdminUser = user?.role === 'admin';
-    const isUserCompanyMember = user?.customization?.isCompanyMember === true;
-    const hasActiveLicense = user?.licenseActive === true;
+    }, 15000); // Check every 15 seconds
     
-    console.log("License check conditions:", {
-      requireLicense,
-      isAdminRoute,
-      isActivationRoute,
-      isAdminUser,
-      isUserCompanyMember,
-      licenseActive: user?.licenseActive,
-      hasActiveLicense
-    });
-    
-    // Only check license if we require it, not already on activation page, not an admin route, not an admin user, and not a company member
-    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isAdminUser && !isUserCompanyMember && !hasActiveLicense) {
-      checkLicense();
-    }
-
-    // Handle suspended users - they can't access the system
-    if (user && user.status === 'suspended') {
-      setShowSuspendedDialog(true);
-      return;
-    }
-
-    // Handle warned users - they can access the system but see a warning
+    return () => clearInterval(statusCheck);
+  }, [user]);
+  
+  const handleWarningAcknowledge = async () => {
+    // If it's just a warning, clear it and set status back to active
     if (user && user.status === 'warned') {
-      setShowWarningDialog(true);
+      try {
+        await updateUserStatus(user.id, 'active', null);
+        setIsWarningDialogOpen(false);
+      } catch (error) {
+        console.error('Error acknowledging warning:', error);
+      }
     }
-
-    // If we're on login page and already authenticated, redirect to dashboard
-    if (location.pathname === '/login' && user && user.licenseActive) {
-      navigate('/dashboard');
-      return;
-    }
-
-    // Show warning notification if the user has a warning
-    if (user && user.status === 'warned') {
-      setShowWarning(true);
-    }
-  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location]);
-
-  const handleWarningContinue = () => {
-    setShowWarningDialog(false);
-  };
-
-  const handleSuspendedLogout = () => {
-    setShowSuspendedDialog(false);
-    logout();
-  };
-
-  const handleLicenseActivate = () => {
-    setShowLicenseDialog(false);
-    navigate('/activate');
   };
   
-  const handleContactSupport = () => {
-    // Open email client with support email
-    window.location.href = 'mailto:support@example.com?subject=Account%20Suspension%20Inquiry';
+  const handleLogout = () => {
+    logout();
+    setIsWarningDialogOpen(false);
   };
 
-  // Only show loader if authentication is in progress AND we need auth for this page
-  if (isLoading && (requireAuth || requireAdmin || requireLicense)) {
+  // Show loading state
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-16 w-16 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  const isSuspended = user.status === 'suspended';
+  const isWarned = user.status === 'warned';
+
   return (
-    <>
-      {/* Warning Banner */}
-      {showWarning && user?.warningMessage && (
-        <NotificationBanner 
-          type="warning" 
-          message={user.warningMessage}
-          onClose={() => setShowWarning(false)}
-        />
-      )}
+    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/20 ${showContentDelay ? 'animate-fade-in' : 'opacity-0'}`}>
+      {!isMobile && <SideNav />}
       
-      {/* Warning Dialog for warned users */}
-      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
-        <AlertDialogContent className="glass-panel border-0">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <span>Account Warning</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
-              {user?.warningMessage || "Your account has received a warning from an administrator."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleWarningContinue} className="bg-amber-500 hover:bg-amber-600">
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* License Dialog for users without a license */}
-      <AlertDialog open={showLicenseDialog} onOpenChange={setShowLicenseDialog}>
-        <AlertDialogContent className="glass-panel border-0">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" />
-              <span>License Required</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
-              You need an active license to access this content. Please activate your license to continue.
-              <p className="mt-2">If you don't have a license key, you can request one from an administrator.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleLicenseActivate} className="bg-primary hover:bg-primary/90">
-              Activate License
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Suspended Dialog for suspended users */}
-      <AlertDialog open={showSuspendedDialog} onOpenChange={setShowSuspendedDialog}>
-        <AlertDialogContent className="glass-panel border-0 max-w-md">
-          <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-              <Lock className="h-8 w-8 text-red-500" />
-            </div>
-          </div>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-xl">
-              Account Suspended
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-base">
-              {user?.warningMessage || "Your account has been suspended by an administrator."}
-              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-100 dark:border-red-900/20">
-                <p className="text-sm text-red-700 dark:text-red-300">
-                  If you believe this is an error, please contact support for assistance.
+      <main className={`flex-1 transition-all duration-300 ${!isMobile ? 'ml-[260px]' : ''}`}>
+        {children}
+      </main>
+      
+      {isMobile && <SideNav />}
+      
+      {/* Account Suspension/Warning Dialog */}
+      <Dialog 
+        open={isWarningDialogOpen} 
+        onOpenChange={setIsWarningDialogOpen}
+        defaultOpen={isWarningDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md animate-scale-in border-destructive">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              {isSuspended ? (
+                <>
+                  <ShieldAlert className="h-5 w-5" />
+                  Account Suspended
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-5 w-5" />
+                  Account Warning
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-base">
+              {isSuspended ? (
+                <>
+                  Your account has been suspended by an administrator.
+                  <div className="mt-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
+                    <p className="font-medium text-destructive">Reason:</p>
+                    <p className="mt-1">{user.warningMessage || "No reason provided."}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  You have received a warning from an administrator.
+                  <div className="mt-4 p-3 bg-amber-500/10 rounded-md border border-amber-500/20">
+                    <p className="font-medium text-amber-500">Reason:</p>
+                    <p className="mt-1">{user.warningMessage || "No reason provided."}</p>
+                  </div>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-center my-2">
+            {isSuspended ? (
+              <div className="w-full p-4 rounded-md bg-muted/50 flex flex-col items-center">
+                <ShieldAlert className="h-10 w-10 text-destructive mb-3 animate-pulse" />
+                <p className="text-center mb-2">
+                  Please contact support for assistance with your account suspension.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-2 w-full border-destructive/30 hover:bg-destructive/10 text-destructive"
+                  onClick={() => window.open('mailto:support@license-ai.com')}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Contact Support
+                </Button>
+              </div>
+            ) : (
+              <div className="w-full p-4 rounded-md bg-muted/50 flex flex-col items-center">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mb-3" />
+                <p className="text-center mb-2">
+                  Please acknowledge this warning to continue using your account.
                 </p>
               </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-center mt-4">
-            <Button 
-              variant="outline" 
-              onClick={handleContactSupport}
-              className="w-full sm:w-auto border-red-200 text-red-600 hover:bg-red-50"
+            )}
+          </div>
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleLogout}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Contact Support
+              <XCircle className="mr-2 h-4 w-4" />
+              Logout
             </Button>
-            <AlertDialogAction 
-              onClick={handleSuspendedLogout} 
-              className="w-full sm:w-auto bg-red-500 hover:bg-red-600"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <div className="min-h-screen">
-        {!showSuspendedDialog && children}
-      </div>
-    </>
+            
+            {!isSuspended && (
+              <Button
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleWarningAcknowledge}
+              >
+                I Understand
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
