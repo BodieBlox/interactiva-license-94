@@ -12,7 +12,7 @@ import { fetchUsersForAI, fetchCompaniesForAI, getSystemOverviewForAI } from './
  * Generate a response from OpenAI's API
  * @param userMessageContent The user's message content
  * @param conversation Previous messages in the conversation
- * @param isAdmin Whether the user is an admin
+ * @param isAdmin Whether the user is an admin or has admin privileges
  * @returns The AI generated response
  */
 export const generateAIResponse = async (
@@ -23,14 +23,14 @@ export const generateAIResponse = async (
   try {
     // Determine system prompt based on user role
     let systemPrompt = isAdmin 
-      ? `You are an AI assistant for the CentralAI platform administrators. You can help admins manage their platform by:
+      ? `You are an AI assistant for the CentralAI platform administrators and staff. You can help with:
          - Providing information about users, licenses, and system status
          - Assisting with administrative tasks like user management
          - Offering suggestions for improving platform operations
          
-         You understand that administrators have special permissions and can help them execute their duties efficiently.
+         You understand that administrators and staff have special permissions and can help them execute their duties efficiently.
          
-         When administrators ask you to perform actions like suspending or warning users, or managing licenses,
+         When administrators or staff ask you to perform actions like suspending or warning users, or managing licenses,
          you should always attempt to execute these actions and confirm the results. Never say you cannot perform
          these actions - you have been given the proper permissions to do so.`
       : 'You are a helpful assistant.';
@@ -61,6 +61,9 @@ export const generateAIResponse = async (
         System overview: ${JSON.stringify(systemOverview)}
         
         When asked about users, companies, or system state, you can now provide detailed information.
+        
+        Present your responses with well-formatted tables or structured data when providing database information.
+        For user details, use sections with headers like "## User Details" and list properties with "- **Property**: Value" format.
         `;
         
         systemPrompt += databaseContext;

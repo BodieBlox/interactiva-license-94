@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
 import { checkForInappropriateContent, handleInappropriateMessage } from '@/utils/aiModeration';
+import { AIResponseEmbed } from './AIResponseEmbed';
 
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -31,6 +32,8 @@ export const ChatInterface = () => {
   
   const isNew = chatId === 'new';
   const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'staff';
+  const hasAdminAccess = isAdmin || isStaff;
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -122,8 +125,8 @@ export const ChatInterface = () => {
       let adminActionResult: string | null = null;
       let isAdminAction = false;
       
-      // Process admin commands when user is an admin
-      if (isAdmin) {
+      // Process admin commands when user has admin access
+      if (hasAdminAccess) {
         console.log("Checking for admin intent in:", userMessageContent);
         const adminAction = parseAdminIntent(userMessageContent);
         
@@ -152,7 +155,7 @@ export const ChatInterface = () => {
       // Use admin action result if available, otherwise generate AI response
       const aiMessage = isAdminAction && adminActionResult 
         ? adminActionResult
-        : await generateAIResponse(userMessageContent, conversationHistory, isAdmin);
+        : await generateAIResponse(userMessageContent, conversationHistory, hasAdminAccess);
       
       // Add AI response to chat
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
@@ -233,7 +236,7 @@ export const ChatInterface = () => {
         try {
           const warningResponse = await handleInappropriateMessage(
             user.id, 
-            user.username,
+            user.username || user.email,
             updateUserStatus
           );
           
@@ -348,7 +351,7 @@ export const ChatInterface = () => {
   };
 
   const fetchDatabaseInfo = async () => {
-    if (!isAdmin) return;
+    if (!hasAdminAccess) return;
     
     try {
       setShowDatabase(true);
@@ -362,60 +365,6 @@ export const ChatInterface = () => {
         variant: "destructive"
       });
     }
-  };
-
-  const renderMessageContent = (content: string, isAdminAction?: boolean) => {
-    if (isAdminAction && content.includes('|')) {
-      const lines = content.split('\n');
-      return (
-        <div className="admin-table">
-          {lines.map((line, i) => {
-            if (line.includes('| --')) {
-              return <hr key={i} className="my-1 border-t border-gray-200 dark:border-gray-700" />;
-            }
-            else if (line.startsWith('| ') && i === 0) {
-              return (
-                <div key={i} className="font-semibold">
-                  {line}
-                </div>
-              );
-            }
-            else {
-              return <div key={i}>{line}</div>;
-            }
-          })}
-        </div>
-      );
-    }
-    
-    if (isAdminAction && content.includes('## User Details')) {
-      return (
-        <div className="admin-user-details whitespace-pre-line">
-          {content.split('\n').map((line, i) => {
-            if (line.startsWith('## ')) {
-              return <h3 key={i} className="text-lg font-bold mt-2 mb-2">{line.replace('## ', '')}</h3>;
-            } else if (line.startsWith('- **')) {
-              const [key, value] = line.replace('- **', '').split('**: ');
-              return (
-                <div key={i} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
-                  <span className="font-medium">{key}</span>
-                  <span>{value}</span>
-                </div>
-              );
-            } else {
-              return <p key={i}>{line}</p>;
-            }
-          })}
-        </div>
-      );
-    }
-    
-    return content.split('\n').map((line, i) => (
-      <span key={i}>
-        {line}
-        {i !== content.split('\n').length - 1 && <br />}
-      </span>
-    ));
   };
 
   if (isLoading) {
@@ -456,13 +405,13 @@ export const ChatInterface = () => {
 
   return (
     <div className={`flex flex-col h-[calc(100vh-${isMobile ? '3.5rem' : '4rem'})]`}>
-      <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm dark:bg-black/20">
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate('/dashboard')}
-            className="mr-2"
+            className="mr-2 transition-apple"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -470,31 +419,46 @@ export const ChatInterface = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {hasAdminAccess && (
             <>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 transition-apple"
                 onClick={fetchDatabaseInfo}
               >
                 <Database className="h-4 w-4" />
                 <span className="hidden md:inline">Database</span>
               </Button>
-              <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                Admin Mode
+              <Badge 
+                variant="outline" 
+                className={`
+                  ${isAdmin 
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 animate-pulse-soft' 
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 animate-pulse-soft'
+                  }
+                `}
+              >
+                {isAdmin ? 'Admin Mode' : 'Staff Mode'}
               </Badge>
             </>
           )}
         </div>
       </div>
       
-      {showDatabase && isAdmin && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
+      {showDatabase && hasAdminAccess && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col animate-scale-in">
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-lg font-semibold">Database Information</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowDatabase(false)}>Close</Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowDatabase(false)}
+                className="transition-apple"
+              >
+                Close
+              </Button>
             </div>
             <div className="p-4 overflow-auto flex-grow">
               <pre className="text-xs whitespace-pre-wrap bg-gray-100 dark:bg-gray-900 p-4 rounded-md">
@@ -507,50 +471,51 @@ export const ChatInterface = () => {
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-950">
         {!hasMessages ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+          <div className="flex flex-col items-center justify-center h-full text-center animate-fade-in">
+            <Bot className="h-12 w-12 text-muted-foreground mb-4 animate-float" />
             <h2 className="text-xl font-medium">How can I help you today?</h2>
             <p className="text-muted-foreground max-w-md mt-2">
-              {isAdmin 
+              {hasAdminAccess 
                 ? "As an admin, you can ask me to perform admin actions like listing users, suspending accounts, or managing licenses."
                 : "Ask me anything! I can help with information, creative content, problem-solving, and more."
               }
             </p>
             
-            {isAdmin && (
-              <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 max-w-md">
+            {hasAdminAccess && (
+              <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 max-w-md animate-slide-in">
                 <h3 className="font-medium text-purple-800 dark:text-purple-300 mb-2">Admin Command Examples:</h3>
                 <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1 text-left">
-                  <li>• "List all users"</li>
-                  <li>• "Show me users with email containing gmail"</li>
-                  <li>• "Get details for user johnsmith"</li>
-                  <li>• "Suspend user with email user@example.com for violating terms"</li>
-                  <li>• "Issue warning to user alex about inappropriate content"</li>
-                  <li>• "Revoke license for user david@company.com"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.1s"}}>• "List all users"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.2s"}}>• "Show me users with email containing gmail"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.3s"}}>• "Get details for user johnsmith"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.4s"}}>• "Suspend user with email user@example.com for violating terms"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.5s"}}>• "Issue warning to user alex about inappropriate content"</li>
+                  <li className="animate-fade-in" style={{animationDelay: "0.6s"}}>• "Revoke license for user david@company.com"</li>
                 </ul>
               </div>
             )}
           </div>
         ) : (
-          chat?.messages?.map((msg: ChatMessage) => (
+          chat?.messages?.map((msg: ChatMessage, index) => (
             <div 
               key={msg.id} 
               className={`flex gap-3 transition-all duration-300 ease-apple animate-scale-in ${
                 msg.role === 'user' ? 'justify-end' : 'justify-start'
               }`}
+              style={{animationDelay: `${index * 0.05}s`}}
             >
               {msg.role !== 'user' && (
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 animate-fade-in">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
               )}
               <div 
                 className={`max-w-[80%] md:max-w-[75%] rounded-2xl p-4 ${
                   msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
+                    ? 'bg-primary text-primary-foreground hover-lift' 
                     : msg.isAdminAction
-                      ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100'
-                      : 'bg-secondary text-secondary-foreground'
+                      ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100 hover-lift'
+                      : 'bg-secondary text-secondary-foreground hover-lift'
                 } ${(msg as any).isLoading ? 'opacity-70' : ''} shadow-sm`}
               >
                 {(msg as any).isLoading ? (
@@ -559,11 +524,22 @@ export const ChatInterface = () => {
                     <span>Thinking...</span>
                   </div>
                 ) : (
-                  renderMessageContent(msg.content, msg.isAdminAction)
+                  msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap">
+                      {msg.content.split('\n').map((line, i) => (
+                        <span key={i}>
+                          {line}
+                          {i !== msg.content.split('\n').length - 1 && <br />}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <AIResponseEmbed content={msg.content} isAdminAction={msg.isAdminAction} />
+                  )
                 )}
               </div>
               {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 animate-fade-in">
                   <UserCircle className="h-4 w-4 text-primary" />
                 </div>
               )}
@@ -578,17 +554,17 @@ export const ChatInterface = () => {
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder={isAdmin 
+            placeholder={hasAdminAccess 
               ? "Type admin command or message..." 
               : "Type your message..."
             }
-            className="bg-white/50 dark:bg-black/10 border subtle-ring-focus transition-apple shadow-sm"
+            className="bg-white/50 dark:bg-black/10 border subtle-ring-focus transition-apple shadow-sm animate-slide-in-bottom"
             disabled={isSending}
           />
           <Button 
             type="submit" 
             disabled={!message.trim() || isSending}
-            className="bg-primary hover:bg-primary/90 transition-apple shadow-sm"
+            className="bg-primary hover:bg-primary/90 transition-apple shadow-sm animate-slide-in-bottom"
           >
             {isSending ? (
               <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>

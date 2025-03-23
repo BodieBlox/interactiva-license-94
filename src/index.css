@@ -164,6 +164,41 @@
   .fade-in-section.is-visible {
     @apply opacity-100 translate-y-0;
   }
+  
+  /* Brand new components */
+  .card-3d-effect {
+    @apply transition-all duration-300 hover:rotate-1 hover:scale-[1.01] hover:shadow-xl;
+  }
+  
+  .scroll-indicator {
+    @apply w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center animate-bounce;
+  }
+  
+  .animated-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+           transition-all duration-500 transform hover:scale-110 hover:rotate-1;
+  }
+  
+  .shimmer-effect {
+    @apply relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full
+           before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r
+           before:from-transparent before:via-white/20 before:to-transparent;
+  }
+  
+  .sidebar-link {
+    @apply flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-300
+           hover:bg-primary/10 hover:text-primary active:scale-95;
+  }
+  
+  .data-card {
+    @apply p-4 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 
+           hover:border-primary/30 hover:bg-primary/5;
+  }
+  
+  .notification-dot {
+    @apply absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full 
+           animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite];
+  }
 }
 
 /* Extended Animation Keyframes */
@@ -247,6 +282,33 @@
   }
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fade-out-down {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes rotate-center {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Extended animations as utilities */
 @layer utilities {
   .animate-float {
@@ -288,6 +350,22 @@
     );
   }
   
+  .animate-fade-out-down {
+    animation: fade-out-down 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  
+  .animate-wiggle {
+    animation: wiggle 1s ease-in-out infinite;
+  }
+  
+  .animate-rotate {
+    animation: rotate-center 8s linear infinite;
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+  
   .hero-text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-primary;
   }
@@ -302,5 +380,21 @@
   
   .transition-slide {
     @apply transition-all duration-300 ease-apple transform;
+  }
+  
+  .hover-scale {
+    @apply hover:scale-105 transition-transform duration-300;
+  }
+  
+  .hover-rotate {
+    @apply hover:rotate-3 transition-transform duration-300;
+  }
+  
+  .hover-glow {
+    @apply hover:shadow-[0_0_15px_rgba(var(--primary),0.5)] transition-shadow duration-300;
+  }
+  
+  .focus-pop {
+    @apply focus:scale-105 focus:shadow-md transition-all duration-200;
   }
 }

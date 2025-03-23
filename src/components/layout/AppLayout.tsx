@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SideNav } from './SideNav';
 import { useAuth } from '@/context/AuthContext';
@@ -14,22 +13,18 @@ interface AppLayoutProps {
 }
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const isMobile = useIsMobile();
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [showContentDelay, setShowContentDelay] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // For smoother animations, delay showing content
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowContentDelay(true);
-      setIsLoading(false);
     }, 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Effect to check the user's status and show warning dialog if needed
   useEffect(() => {
     if (user && (user.status === 'warned' || user.status === 'suspended')) {
       setIsWarningDialogOpen(true);
@@ -37,19 +32,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       setIsWarningDialogOpen(false);
     }
     
-    // Setup a regular check for status changes
     const statusCheck = setInterval(() => {
-      // This will trigger a revalidation of the user data
       if (user) {
         console.log('Checking user status:', user.status);
       }
-    }, 15000); // Check every 15 seconds
+    }, 15000);
     
     return () => clearInterval(statusCheck);
   }, [user]);
   
   const handleWarningAcknowledge = async () => {
-    // If it's just a warning, clear it and set status back to active
     if (user && user.status === 'warned') {
       try {
         await updateUserStatus(user.id, 'active', null);
@@ -65,8 +57,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     setIsWarningDialogOpen(false);
   };
 
-  // Show loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20">
         <div className="animate-pulse flex flex-col items-center">
@@ -77,7 +68,6 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     );
   }
 
-  // Redirect to login if not authenticated
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -95,9 +85,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       
       {isMobile && <SideNav />}
       
-      {/* Account Suspension/Warning Dialog */}
-      <Dialog 
-        open={isWarningDialogOpen} 
+      <Dialog
+        open={isWarningDialogOpen}
         onOpenChange={setIsWarningDialogOpen}
         defaultOpen={isWarningDialogOpen}
       >

@@ -1,24 +1,25 @@
+export type UserRole = 'admin' | 'user' | 'staff';
 
 export interface User {
   id: string;
-  username: string;
   email: string;
-  role: 'user' | 'admin';
-  status: 'active' | 'warned' | 'suspended';
-  licenseActive: boolean;
-  licenseKey?: string;
-  licenseType?: 'basic' | 'premium' | 'enterprise';
-  licenseId?: string;
-  licenseTier?: string;
-  licenseExpiryDate?: string;
-  licenseIssuedDate?: string;
+  username?: string;
   createdAt?: string;
-  isCompanyAdmin?: boolean;
-  warningMessage?: string;
-  lastLogin?: LoginLog;
-  forcedLogout?: string;
-  password?: string;
-  customization?: DashboardCustomization;
+  status: 'active' | 'warned' | 'suspended';
+  role: UserRole;
+  companyId?: string;
+  licenseKey?: string | null;
+  licenseType?: string | null;
+  licenseActive?: boolean;
+  warningMessage?: string | null;
+  lastLogin?: string | null;
+  invitationAccepted?: boolean;
+  canInviteUsers?: boolean;
+  emailVerified?: boolean;
+  passwordResetRequested?: boolean;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: string | null;
+  profileImageUrl?: string | null;
 }
 
 export interface DashboardCustomization {
