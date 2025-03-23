@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
 import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense, forceUserLogout } from '@/utils/api';
@@ -276,10 +275,10 @@ export const UserManagement = () => {
                         )}
                       </td>
                       <td className="p-4">
-                        {user.licenseIssuedDate ? (
+                        {user.createdAt ? (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Calendar className="h-3.5 w-3.5" />
-                            {format(new Date(user.licenseIssuedDate), 'MMM dd, yyyy')}
+                            {format(new Date(user.createdAt), 'MMM dd, yyyy')}
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Not issued</span>
@@ -393,10 +392,10 @@ export const UserManagement = () => {
               <span>
                 {actionType === 'warn' && 'Issue Warning'}
                 {actionType === 'suspend' && 'Suspend User'}
-                {actionType === 'activate' && 'Restore User Access'}
-                {actionType === 'clearChats' && 'Clear Chat History'}
-                {actionType === 'suspendLicense' && 'Suspend License'}
-                {actionType === 'revokeLicense' && 'Revoke License'}
+                {actionType === 'activate' && `Restore full access for ${selectedUser?.username}.`}
+                {actionType === 'clearChats' && `This will permanently delete all chats for ${selectedUser?.username}. This action cannot be undone.`}
+                {actionType === 'suspendLicense' && `This will suspend the license for ${selectedUser?.username}. They will lose access to premium features.`}
+                {actionType === 'revokeLicense' && `This will completely revoke the license for ${selectedUser?.username}. The license key will be reset and can be reassigned.`}
               </span>
             </DialogTitle>
             <DialogDescription>

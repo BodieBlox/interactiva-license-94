@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -10,6 +11,7 @@ export interface User {
   licenseId?: string;
   licenseTier?: string;
   licenseExpiryDate?: string;
+  licenseIssuedDate?: string;
   createdAt?: string;
   isCompanyAdmin?: boolean;
   warningMessage?: string;

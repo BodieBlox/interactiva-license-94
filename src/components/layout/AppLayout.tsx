@@ -16,15 +16,17 @@ interface AppLayoutProps {
 }
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [showContentDelay, setShowContentDelay] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // For smoother animations, delay showing content
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowContentDelay(true);
+      setIsLoading(false);
     }, 100);
     return () => clearTimeout(timer);
   }, []);
@@ -66,7 +68,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   };
 
   // Show loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20">
         <div className="animate-pulse flex flex-col items-center">
