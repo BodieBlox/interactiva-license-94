@@ -339,7 +339,7 @@ export default function CompaniesManagement() {
         return;
       }
 
-      // Send invitation
+      // Send invitation with all required parameters
       await sendCompanyInvitation({
         fromUserId: adminUser.id,
         fromUsername: adminUser.username,
@@ -785,4 +785,3 @@ export default function CompaniesManagement() {
     </div>
   );
 }
-

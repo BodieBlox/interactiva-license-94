@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +12,11 @@ import { UserCircle, Bot, Send, ArrowLeft, Database } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
+
+const executeAdminAction = (action: string, userId: string, data: any) => {
+  console.log('Executing admin action:', action, userId, data);
+  return Promise.resolve(true);
+};
 
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();

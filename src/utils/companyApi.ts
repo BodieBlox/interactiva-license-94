@@ -1,9 +1,9 @@
 
 import { database } from './firebase';
 import { ref, get, push, set, update, query, orderByChild, equalTo } from 'firebase/database';
-import { User, CompanyInvitation } from './types';
+import { User } from './types';
 import { updateUser } from './api';
-import { Company, UserWithCompany } from './companyTypes';
+import { Company, UserWithCompany, CompanyInvitation } from './companyTypes';
 import { v4 as uuidv4 } from 'uuid';
 
 // Company CRUD functions
@@ -17,6 +17,7 @@ export const createCompany = async (companyData: Partial<Company>, adminUserId: 
       name: companyData.name || 'New Company',
       adminId: adminUserId,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       members: [adminUserId],
       branding: companyData.branding || {
         primaryColor: '#6366f1',
@@ -126,7 +127,12 @@ export const getCompanyMembers = async (companyId: string): Promise<UserWithComp
       if (company.members.includes(user.id)) {
         members.push({
           ...user,
-          companyRole: user.id === company.adminId ? 'admin' : 'member'
+          company: {
+            id: company.id,
+            name: company.name,
+            role: user.id === company.adminId ? 'admin' : 'member',
+            branding: company.branding
+          }
         });
       }
     });
@@ -197,6 +203,9 @@ export const sendCompanyInvitation = async (invitationData: {
       fromUsername: invitationData.fromUsername,
       companyName: invitationData.companyName,
       companyId: invitationData.companyId,
+      toUserId: invitationData.toUserId,
+      toEmail: invitationData.toEmail,
+      status: 'pending',
       timestamp: new Date().toISOString(),
       primaryColor: invitationData.primaryColor,
       logo: invitationData.logo

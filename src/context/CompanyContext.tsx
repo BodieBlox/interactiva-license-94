@@ -65,7 +65,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Fetch pending invitations
       const invitations = await getCompanyInvitationsByUser(user.id);
-      setPendingInvitations(invitations);
+      // Ensure the types match by explicitly typing the invitations
+      setPendingInvitations(invitations as CompanyInvitation[]);
     } catch (err) {
       console.error('Error fetching company data:', err);
       setError(err instanceof Error ? err : new Error('Failed to load company data'));

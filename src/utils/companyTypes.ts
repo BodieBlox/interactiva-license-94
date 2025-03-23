@@ -43,10 +43,10 @@ export interface CompanyInvitation {
   id: string;
   fromUserId: string;
   fromUsername: string;
-  toUserId: string;
-  toEmail: string;
   companyId: string;
   companyName: string;
+  toUserId: string;
+  toEmail: string;
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
   primaryColor?: string;
