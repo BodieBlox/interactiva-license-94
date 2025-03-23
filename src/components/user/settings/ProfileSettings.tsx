@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { Check, Loader2, User, Mail, Key } from 'lucide-react';
-import { updateUsername } from '@/utils/api';
+import { updateUser } from '@/utils/api';
 
 export const ProfileSettings = () => {
   const { user, setUser } = useAuth();
@@ -28,8 +28,16 @@ export const ProfileSettings = () => {
     
     setIsSaving(true);
     try {
-      const updatedUser = await updateUsername(user!.id, newUsername);
-      setUser(updatedUser);
+      await updateUser(user!.id, { username: newUsername });
+      
+      // Update the user in context with new username
+      if (user) {
+        setUser({
+          ...user,
+          username: newUsername
+        });
+      }
+      
       toast({
         title: "Success",
         description: "Username updated successfully",

@@ -1,48 +1,213 @@
 
 import { database } from './firebase';
-import { ref, get, push, set, update } from 'firebase/database';
+import { ref, get, push, set, update, query, orderByChild, equalTo } from 'firebase/database';
 import { User, CompanyInvitation } from './types';
 import { updateUser } from './api';
+import { Company, UserWithCompany } from './companyTypes';
+import { v4 as uuidv4 } from 'uuid';
+
+// Company CRUD functions
+export const createCompany = async (companyData: Partial<Company>, adminUserId: string): Promise<Company> => {
+  try {
+    const companyId = uuidv4();
+    const companiesRef = ref(database, `companies/${companyId}`);
+    
+    const newCompany: Company = {
+      id: companyId,
+      name: companyData.name || 'New Company',
+      adminId: adminUserId,
+      createdAt: new Date().toISOString(),
+      members: [adminUserId],
+      branding: companyData.branding || {
+        primaryColor: '#6366f1',
+        logo: '',
+        approved: false
+      }
+    };
+    
+    await set(companiesRef, newCompany);
+    return newCompany;
+  } catch (error) {
+    console.error('Error creating company:', error);
+    throw error;
+  }
+};
+
+export const getCompanies = async (): Promise<Company[]> => {
+  try {
+    const companiesRef = ref(database, 'companies');
+    const snapshot = await get(companiesRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const companies: Company[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const company = childSnapshot.val() as Company;
+      companies.push(company);
+    });
+    
+    return companies;
+  } catch (error) {
+    console.error('Error fetching companies:', error);
+    throw error;
+  }
+};
+
+export const getCompanyById = async (companyId: string): Promise<Company | null> => {
+  try {
+    const companyRef = ref(database, `companies/${companyId}`);
+    const snapshot = await get(companyRef);
+    
+    if (!snapshot.exists()) {
+      return null;
+    }
+    
+    return snapshot.val() as Company;
+  } catch (error) {
+    console.error('Error fetching company:', error);
+    throw error;
+  }
+};
+
+export const updateCompany = async (companyId: string, updates: Partial<Company>): Promise<Company> => {
+  try {
+    const companyRef = ref(database, `companies/${companyId}`);
+    await update(companyRef, updates);
+    
+    const updatedSnapshot = await get(companyRef);
+    return updatedSnapshot.val() as Company;
+  } catch (error) {
+    console.error('Error updating company:', error);
+    throw error;
+  }
+};
+
+export const updateCompanyLogo = async (companyId: string, logoUrl: string): Promise<Company> => {
+  try {
+    const company = await getCompanyById(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    const updates = {
+      branding: {
+        ...company.branding,
+        logo: logoUrl
+      }
+    };
+    
+    return updateCompany(companyId, updates);
+  } catch (error) {
+    console.error('Error updating company logo:', error);
+    throw error;
+  }
+};
+
+// Company member management functions
+export const getCompanyMembers = async (companyId: string): Promise<UserWithCompany[]> => {
+  try {
+    const company = await getCompanyById(companyId);
+    if (!company || !company.members || company.members.length === 0) {
+      return [];
+    }
+    
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const members: UserWithCompany[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const user = childSnapshot.val() as User;
+      if (company.members.includes(user.id)) {
+        members.push({
+          ...user,
+          companyRole: user.id === company.adminId ? 'admin' : 'member'
+        });
+      }
+    });
+    
+    return members;
+  } catch (error) {
+    console.error('Error fetching company members:', error);
+    throw error;
+  }
+};
+
+export const addCompanyMember = async (companyId: string, userId: string): Promise<void> => {
+  try {
+    const company = await getCompanyById(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    if (!company.members) {
+      company.members = [];
+    }
+    
+    if (!company.members.includes(userId)) {
+      company.members.push(userId);
+      await updateCompany(companyId, { members: company.members });
+    }
+  } catch (error) {
+    console.error('Error adding company member:', error);
+    throw error;
+  }
+};
+
+export const removeCompanyMember = async (companyId: string, userId: string): Promise<void> => {
+  try {
+    const company = await getCompanyById(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    if (!company.members) {
+      return;
+    }
+    
+    const updatedMembers = company.members.filter(id => id !== userId);
+    await updateCompany(companyId, { members: updatedMembers });
+  } catch (error) {
+    console.error('Error removing company member:', error);
+    throw error;
+  }
+};
 
 // Company invitation functions
-export const sendCompanyInvitation = async (
-  fromUserId: string,
-  toUserId: string,
-  companyName: string,
-  companyId: string,
-  primaryColor?: string,
-  logo?: string
-): Promise<void> => {
+export const sendCompanyInvitation = async (invitationData: {
+  fromUserId: string;
+  fromUsername: string;
+  companyId: string;
+  companyName: string;
+  toUserId: string;
+  toEmail: string;
+  primaryColor?: string;
+  logo?: string;
+}): Promise<void> => {
   try {
     // Create invitation
     const invitation: CompanyInvitation = {
-      fromUserId,
-      fromUsername: '',  // Will be updated with the actual username
-      companyName,
-      companyId,
+      id: uuidv4(),
+      fromUserId: invitationData.fromUserId,
+      fromUsername: invitationData.fromUsername,
+      companyName: invitationData.companyName,
+      companyId: invitationData.companyId,
       timestamp: new Date().toISOString(),
-      primaryColor,
-      logo
+      primaryColor: invitationData.primaryColor,
+      logo: invitationData.logo
     };
     
-    // Get the from user to include their username
-    const fromUserRef = ref(database, `users/${fromUserId}`);
-    const fromUserSnapshot = await get(fromUserRef);
-    if (fromUserSnapshot.exists()) {
-      const fromUser = fromUserSnapshot.val() as User;
-      invitation.fromUsername = fromUser.username;
-    }
-    
-    // Create a unique ID for the invitation
-    const invitationsRef = ref(database, 'companyInvitations');
-    const newInvitationRef = push(invitationsRef);
-    invitation.id = newInvitationRef.key;
-    
     // Save the invitation
-    await set(newInvitationRef, invitation);
+    const invitationsRef = ref(database, `companyInvitations/${invitation.id}`);
+    await set(invitationsRef, invitation);
     
     // Add the invitation to the receiver's user record
-    await updateUser(toUserId, {
+    await updateUser(invitationData.toUserId, {
       customization: {
         pendingInvitation: invitation
       }
@@ -53,6 +218,31 @@ export const sendCompanyInvitation = async (
   }
 };
 
+export const getCompanyInvitationsByUser = async (userId: string): Promise<CompanyInvitation[]> => {
+  try {
+    const invitationsRef = ref(database, 'companyInvitations');
+    const snapshot = await get(invitationsRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const invitations: CompanyInvitation[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const invitation = childSnapshot.val() as CompanyInvitation;
+      if (invitation.fromUserId === userId) {
+        invitations.push(invitation);
+      }
+    });
+    
+    return invitations;
+  } catch (error) {
+    console.error('Error fetching company invitations:', error);
+    throw error;
+  }
+};
+
+// Company invitation functions from the existing code
 export const acceptCompanyInvitation = async (invitationId: string, userId: string): Promise<User> => {
   try {
     // Get the user

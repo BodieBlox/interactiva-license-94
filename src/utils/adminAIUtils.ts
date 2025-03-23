@@ -1,12 +1,66 @@
-
 import { Chat, ChatMessage, User } from './types';
-import { addMessageToChat, updateUserStatus, suspendLicense, revokeLicense, updateUser } from './api';
+import { addMessageToChat, updateUserStatus, updateUser, suspendLicense, revokeLicense } from './api';
+
+// Admin intent parsing
+export const parseAdminIntent = (message: string): { intent: string; params: Record<string, any> } | null => {
+  const adminCommandRegex = /^\/admin\s+(\w+)(?:\s+(.*))?$/i;
+  const match = message.match(adminCommandRegex);
+  
+  if (!match) return null;
+  
+  const [, intent, paramsString] = match;
+  const params: Record<string, any> = {};
+  
+  if (paramsString) {
+    // Parse key=value pairs
+    const paramPairs = paramsString.match(/(\w+)=("[^"]*"|\S+)/g) || [];
+    paramPairs.forEach(pair => {
+      const [key, rawValue] = pair.split('=');
+      // Remove quotes if present
+      const value = rawValue.startsWith('"') && rawValue.endsWith('"') 
+        ? rawValue.slice(1, -1) 
+        : rawValue;
+      params[key] = value;
+    });
+  }
+  
+  return { intent, params };
+};
+
+export const executeAdminAction = async (chatId: string, intent: string, params: Record<string, any>): Promise<string> => {
+  let actionType = '';
+  
+  switch (intent.toLowerCase()) {
+    case 'suspend':
+      actionType = 'suspend_user';
+      break;
+    case 'warn':
+      actionType = 'warn_user';
+      break;
+    case 'activate':
+      actionType = 'activate_user';
+      break;
+    case 'suspendlicense':
+      actionType = 'suspend_license';
+      break;
+    case 'revokelicense':
+      actionType = 'revoke_license';
+      break;
+    case 'update':
+      actionType = 'update_user';
+      break;
+    default:
+      return `Unsupported admin action: ${intent}`;
+  }
+  
+  return processAdminAction(chatId, actionType, params);
+};
 
 /**
  * Process admin actions from chat messages
  * @param chatId The chat ID
  * @param actionType The admin action type
- * @param targetUserId The target user ID (if applicable)
+ * @param actionParams Parameters for the action
  * @returns A result message
  */
 export const processAdminAction = async (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -348,19 +347,7 @@ export default function CompaniesManagement() {
         companyName: company.name,
         toUserId: targetUser.id,
         toEmail: targetUser.email,
-        primaryColor: company.branding.primaryColor
-      });
-
-      // Update user with pending invitation
-      await updateDashboardCustomization(targetUser.id, {
-        ...targetUser.customization,
-        pendingInvitation: {
-          fromUserId: adminUser.id,
-          fromUsername: adminUser.username,
-          companyName: company.name,
-          timestamp: new Date().toISOString(),
-          primaryColor: company.branding.primaryColor
-        }
+        primaryColor: company.branding?.primaryColor
       });
 
       toast({
@@ -798,3 +785,4 @@ export default function CompaniesManagement() {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from '@/components/ui/use-toast';
 import { createUser } from '@/utils/api';
 import { UserPlus, ArrowLeft, Mail, User, KeyRound, Loader2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -60,6 +62,7 @@ const Register = () => {
     
     try {
       await createUser({
+        id: uuidv4(),
         email,
         username,
         password,
