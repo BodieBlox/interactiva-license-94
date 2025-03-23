@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/use-toast';
-import { UserPlus, Mail, User, Lock, Shield, Loader2 } from 'lucide-react';
+import { UserPlus, Mail, User, Lock, Shield, Loader2, UserCheck } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +18,7 @@ const formSchema = z.object({
   username: z.string().min(3, { message: "Username must be at least 3 characters" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  role: z.enum(["user", "admin"])
+  role: z.enum(["user", "admin", "staff"])
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -174,6 +174,13 @@ export const UserCreator = () => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="user" id="role-user" />
                           <Label htmlFor="role-user" className="cursor-pointer">User</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="staff" id="role-staff" />
+                          <Label htmlFor="role-staff" className="flex items-center cursor-pointer">
+                            <span className="mr-1">Staff</span>
+                            <span className="text-xs text-muted-foreground">(Limited admin access)</span>
+                          </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="admin" id="role-admin" />
