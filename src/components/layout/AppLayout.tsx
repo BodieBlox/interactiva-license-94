@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -38,35 +37,44 @@ export const AppLayout = ({
 
   // Define checkLicense function first before using it
   const checkLicense = async () => {
-    if (user && location.pathname !== '/activate') {
-      // Skip license check for users who are company members
-      if (user.customization?.isCompanyMember) {
-        return false;
-      }
-      
-      // Only check license validity if user doesn't have an active license already
-      if (!user.licenseActive) {
-        if (location.pathname !== '/activate') {
-          setShowLicenseDialog(true);
-          return true;
-        }
-      } else if (requireLicense) {
-        // If user has an active license but we need to verify it's valid
-        const needsLicense = await checkLicenseValidity();
-        if (needsLicense && !(user.role === 'admin' && location.pathname.startsWith('/admin'))) {
-          if (location.pathname !== '/activate') {
-            setShowLicenseDialog(true);
-            return true;
-          }
-        }
-      }
+    if (!user) return false;
+    
+    // Already on activation page, don't show license dialog
+    if (location.pathname === '/activate') {
+      return false;
     }
-    return false;
+    
+    // Skip license check for users who are company members
+    if (user.customization?.isCompanyMember) {
+      return false;
+    }
+    
+    console.log("Checking license for user:", user.id, "License active:", user.licenseActive);
+    
+    // If user has an active license, no need to show dialog
+    if (user.licenseActive === true) {
+      return false;
+    }
+    
+    // User doesn't have a license, show dialog
+    console.log("User needs to activate license");
+    setShowLicenseDialog(true);
+    return true;
   };
 
   useEffect(() => {
     // Only run redirects if we're not loading
     if (isLoading) return;
+
+    // Log current state for debugging
+    console.log("AppLayout effect running:", {
+      user: user?.id, 
+      path: location.pathname,
+      requireAuth, 
+      requireAdmin, 
+      requireLicense,
+      licenseActive: user?.licenseActive
+    });
 
     if (requireAuth && !user) {
       toast({
@@ -99,7 +107,7 @@ export const AppLayout = ({
     const isActivationRoute = location.pathname === '/activate';
     
     // Only check license if we require it and not already on activation page
-    if (requireLicense && user && !isActivationRoute) {
+    if (requireLicense && user && !isActivationRoute && !isAdminRoute) {
       checkLicense();
     }
 
@@ -115,13 +123,8 @@ export const AppLayout = ({
     }
 
     // If we're on login page and already authenticated, redirect to dashboard
-    if (location.pathname === '/login' && user) {
-      // Check if license is needed before going to dashboard
-      checkLicense().then(needsLicense => {
-        if (!needsLicense) {
-          navigate('/dashboard');
-        }
-      });
+    if (location.pathname === '/login' && user && user.licenseActive) {
+      navigate('/dashboard');
       return;
     }
 
@@ -129,7 +132,7 @@ export const AppLayout = ({
     if (user && user.status === 'warned') {
       setShowWarning(true);
     }
-  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location, checkLicenseValidity]);
+  }, [isLoading, user, requireAuth, requireAdmin, requireLicense, navigate, location]);
 
   const handleWarningContinue = () => {
     setShowWarningDialog(false);

@@ -49,16 +49,54 @@ export const updateChatPin = async (chatId: string, isPinned: boolean): Promise<
  * @param chat The chat object to validate/normalize
  * @returns A chat object with all required properties
  */
-export const normalizeChatObject = (chat: any): Chat => {
-  if (!chat) return null as unknown as Chat;
+export const normalizeChatObject = (chat: any): Chat | null => {
+  if (!chat) return null;
+  
+  // Handle case where Firebase returns messages as an object with keys instead of an array
+  let normalizedMessages = [];
+  if (chat.messages) {
+    if (Array.isArray(chat.messages)) {
+      normalizedMessages = chat.messages;
+    } else if (typeof chat.messages === 'object') {
+      // Convert object of messages to array
+      normalizedMessages = Object.values(chat.messages);
+    }
+  }
   
   return {
     id: chat.id || '',
     userId: chat.userId || '',
     title: chat.title || 'Untitled Conversation',
-    messages: Array.isArray(chat.messages) ? chat.messages : [],
+    messages: normalizedMessages,
     createdAt: chat.createdAt || new Date().toISOString(),
     updatedAt: chat.updatedAt || new Date().toISOString(),
     isPinned: Boolean(chat.isPinned)
   };
+};
+
+/**
+ * Converts Firebase response format to an array of chats
+ * @param data The data returned from Firebase
+ * @returns An array of normalized chat objects
+ */
+export const normalizeChatsData = (data: any): Chat[] => {
+  if (!data) return [];
+  
+  // If data is already an array, normalize each item
+  if (Array.isArray(data)) {
+    return data.map(chat => normalizeChatObject(chat)).filter(Boolean) as Chat[];
+  }
+  
+  // If data is an object with keys (Firebase format)
+  if (typeof data === 'object') {
+    return Object.entries(data).map(([id, chatData]) => {
+      if (!chatData) return null;
+      return normalizeChatObject({
+        id,
+        ...(chatData as object)
+      });
+    }).filter(Boolean) as Chat[];
+  }
+  
+  return [];
 };

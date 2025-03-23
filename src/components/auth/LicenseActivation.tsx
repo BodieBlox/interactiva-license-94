@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -18,26 +17,23 @@ export const LicenseActivation = () => {
   const { user, activateUserLicense, requestLicense, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
-  // Handle auto-formatting of license key as user types
   const handleLicenseKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove all non-alphanumeric characters
     let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     
-    // Format with dashes after every 4 characters
     if (value.length > 0) {
-      // Split into chunks of 4 and join with dashes
       value = value.match(/.{1,4}/g)?.join('-') || value;
     }
     
-    // Limit to 19 characters (16 alphanumeric + 3 dashes)
     if (value.length <= 19) {
       setLicenseKey(value);
     }
   };
 
-  // Use the user data to check if we should redirect
   useEffect(() => {
+    console.log("LicenseActivation effect - User:", user?.id, "License active:", user?.licenseActive);
+    
     if (user?.licenseActive) {
+      console.log("User already has an active license, redirecting to dashboard");
       toast({
         title: "License Already Active",
         description: "You already have an active license and don't need to activate another one.",
@@ -49,8 +45,8 @@ export const LicenseActivation = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Double check user doesn't already have an active license
     if (user?.licenseActive) {
+      console.log("Preventing license activation - user already has active license");
       toast({
         title: "License Already Active",
         description: "You already have an active license and don't need to activate another one.",
@@ -60,7 +56,7 @@ export const LicenseActivation = () => {
     }
     
     const trimmedKey = licenseKey.trim();
-    if (!trimmedKey || trimmedKey.length < 19) { // Checking for full license key (4 blocks of 4 chars + 3 dashes)
+    if (!trimmedKey || trimmedKey.length < 19) {
       toast({
         title: "Invalid License Key",
         description: "Please enter a valid license key",
@@ -76,7 +72,6 @@ export const LicenseActivation = () => {
         title: "Success",
         description: "License key activated successfully",
       });
-      // Navigate to dashboard after successful activation
       navigate('/dashboard');
     } catch (error) {
       console.error('License activation error:', error);
@@ -102,6 +97,34 @@ export const LicenseActivation = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (user?.licenseActive) {
+    console.log("Rendering redirect message - user has active license");
+    return (
+      <div className="w-full max-w-md mx-auto text-center py-12">
+        <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+          <CardHeader className="text-center bg-gradient-to-b from-white to-slate-50 pb-6">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4 shadow-md">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
+            <CardTitle className="text-2xl font-semibold text-slate-800">License Already Active</CardTitle>
+            <CardDescription className="text-slate-500">
+              You already have an active license
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex flex-col space-y-4 px-6 py-5 bg-slate-50 border-t border-slate-100">
+            <Button 
+              onClick={() => navigate('/dashboard')}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md"
+            >
+              <ArrowRight className="mr-2 h-5 w-5" />
+              Go to Dashboard
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">

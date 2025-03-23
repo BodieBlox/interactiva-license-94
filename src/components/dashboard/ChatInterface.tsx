@@ -33,26 +33,37 @@ export const ChatInterface = () => {
   useEffect(() => {
     const initializeChat = async () => {
       if (!user) {
+        console.error("No authenticated user found");
         setError("User not authenticated");
         return;
       }
 
       setIsLoading(true);
+      setError(null);
+      
       try {
         if (isNew) {
+          console.log("Creating new chat for user:", user.id);
           const newChat = await createChat(user.id, 'New conversation');
+          
           if (newChat && newChat.id) {
+            console.log("New chat created:", newChat.id);
             setChat(newChat);
             navigate(`/chat/${newChat.id}`, { replace: true });
           } else {
+            console.error("Failed to create new chat - no chat ID returned");
             throw new Error('Failed to create chat - no chat ID returned');
           }
         } 
         else if (chatId) {
+          console.log("Fetching existing chat:", chatId);
           const fetchedChat = await getChatById(chatId);
+          
           if (fetchedChat) {
+            console.log("Chat fetched successfully:", fetchedChat.id);
             setChat(fetchedChat);
           } else {
+            console.error("Chat not found:", chatId);
             setError("Conversation not found");
             toast({
               title: "Not found",
@@ -334,15 +345,13 @@ export const ChatInterface = () => {
         <p className="text-muted-foreground">
           {isNew ? "Creating new conversation..." : "Loading conversation..."}
         </p>
-        {isNew && (
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => navigate('/dashboard')}
-          >
-            Cancel
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          className="mt-4"
+          onClick={() => navigate('/dashboard')}
+        >
+          Cancel
+        </Button>
       </div>
     );
   }
@@ -512,3 +521,4 @@ export const ChatInterface = () => {
     </div>
   );
 };
+
