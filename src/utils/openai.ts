@@ -6,6 +6,7 @@ const OPENAI_API_KEY = "sk-proj-EEjjzkk2VwP5Q_oBh4nw5Vg64Lc0BZ8wtDlRmWybsaY-_6md
 
 import { User, ChatMessage, Chat } from './types';
 import { getUsers, getChatsByUserId, getAllLicenses, getLicenseRequests, getLoginLogs } from './api';
+import { fetchUsersForAI, fetchCompaniesForAI, getSystemOverviewForAI } from './databaseAccessHelper';
 
 /**
  * Generate a response from OpenAI's API
@@ -34,22 +35,28 @@ export const generateAIResponse = async (
     let databaseContext = '';
     if (isAdmin) {
       try {
-        const users = await getUsers();
-        const licenses = await getAllLicenses();
-        const licenseRequests = await getLicenseRequests();
-        const loginLogs = await getLoginLogs();
+        // Use the new databaseAccessHelper functions to get structured data
+        const { users, count: userCount, roles, statuses } = await fetchUsersForAI();
+        const { companies, count: companyCount } = await fetchCompaniesForAI();
+        const systemOverview = await getSystemOverviewForAI();
         
         // Add a summary of database information to the system prompt
         databaseContext = `
         Here is the current database state (ADMIN ACCESS ONLY):
         
-        Users summary: ${users.length} total users
-        Licenses summary: ${licenses.length} total licenses
-        License requests summary: ${licenseRequests.length} pending requests
-        Recent logins: ${loginLogs.slice(0, 5).map(log => `${log.userId} at ${log.timestamp}`).join(', ')}
+        Users summary: ${userCount} total users
+        User roles: ${JSON.stringify(roles)}
+        User statuses: ${JSON.stringify(statuses)}
         
-        If the admin asks for specific database information, you can provide it. 
-        If they ask for a detailed report, you can generate it using this data.
+        Companies summary: ${companyCount} total companies
+        
+        You have full access to complete details about all users and companies in the system.
+        Users: ${JSON.stringify(users)}
+        Companies: ${JSON.stringify(companies)}
+        
+        System overview: ${JSON.stringify(systemOverview)}
+        
+        When asked about users, companies, or system state, you can now provide detailed information.
         `;
         
         systemPrompt += databaseContext;
@@ -118,13 +125,15 @@ export const generateAIResponse = async (
  */
 export const fetchDatabaseForAdmin = async (): Promise<string> => {
   try {
-    const users = await getUsers();
+    const { users } = await fetchUsersForAI();
+    const { companies } = await fetchCompaniesForAI();
     const licenses = await getAllLicenses();
     const licenseRequests = await getLicenseRequests();
     const loginLogs = await getLoginLogs();
     
     const databaseSnapshot = {
       users,
+      companies,
       licenses,
       licenseRequests,
       loginLogs: loginLogs.slice(0, 100) // Limit to last 100 logs for performance

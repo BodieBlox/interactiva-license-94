@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Chat, ChatMessage } from '@/utils/types';
-import { getChatById, createChat, sendMessage, addMessageToChat } from '@/utils/api';
+import { getChatById, createChat, sendMessage, addMessageToChat, updateUserStatus } from '@/utils/api';
 import { generateAIResponse, fetchDatabaseForAdmin } from '@/utils/openai';
 import { generateChatTitle, updateChatPin } from '@/utils/chatUtils';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { UserCircle, Bot, Send, ArrowLeft, Database } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
+import { checkForInappropriateContent, handleInappropriateMessage } from '@/utils/aiModeration';
 
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -202,6 +203,26 @@ export const ChatInterface = () => {
     e.preventDefault();
     
     if (!message.trim() || isSending) return;
+    
+    // Check for inappropriate content
+    const contentCheck = checkForInappropriateContent(message.trim());
+    if (contentCheck.isInappropriate) {
+      console.log("Inappropriate content detected:", contentCheck.reason);
+      if (user) {
+        const warningResponse = await handleInappropriateMessage(
+          user.id, 
+          user.username,
+          updateUserStatus
+        );
+        toast({
+          title: "Warning",
+          description: "Your message contains inappropriate language",
+          variant: "destructive"
+        });
+        setMessage('');
+        return;
+      }
+    }
     
     setIsSending(true);
     try {

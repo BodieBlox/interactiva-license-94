@@ -17,11 +17,13 @@ export const checkForInappropriateContent = (message: string): {
   
   const lowerCaseMessage = message.toLowerCase();
   
-  // Check for offensive language
+  // Check for offensive language - using more robust word boundary detection
   for (const term of inappropriateTerms) {
-    // Use word boundary check to avoid false positives
-    const regex = new RegExp(`\\b${term}\\b`, 'i');
+    // Use improved regex pattern with word boundaries to match whole words
+    // This avoids false positives like "assassin" matching "ass"
+    const regex = new RegExp(`(^|\\s)${term}(\\s|$|[.,!?])`, 'i');
     if (regex.test(lowerCaseMessage)) {
+      console.log(`Inappropriate term detected: ${term} in message: ${message}`);
       return {
         isInappropriate: true,
         reason: `Contains inappropriate language: "${term}"`
@@ -48,6 +50,7 @@ export const handleInappropriateMessage = async (
     
     console.log("Warning issued to user:", result);
     
+    // Make sure the toast appears
     toast({
       title: "Warning Issued",
       description: "Your account has been flagged for inappropriate language",

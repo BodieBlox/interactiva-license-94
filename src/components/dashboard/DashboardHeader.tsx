@@ -16,7 +16,7 @@ export const DashboardHeader = ({ user, companyName, onLogout }: DashboardHeader
   
   return (
     <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'} mb-6`}>
-      <div>
+      <div className="w-full text-center md:text-left">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Dashboard
         </h1>
