@@ -13,11 +13,6 @@ import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseAdminIntent, executeAdminAction } from '@/utils/adminAIUtils';
 
-const executeAdminAction = (action: string, userId: string, data: any) => {
-  console.log('Executing admin action:', action, userId, data);
-  return Promise.resolve(true);
-};
-
 export const ChatInterface = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { user } = useAuth();
@@ -126,10 +121,13 @@ export const ChatInterface = () => {
       let isAdminAction = false;
       
       if (isAdmin) {
-        const adminAction = await parseAdminIntent(userMessageContent);
-        if (adminAction) {
+        const adminAction = parseAdminIntent(userMessageContent);
+        if (adminAction && adminAction.intent && adminAction.userId) {
           isAdminAction = true;
-          adminActionResult = await executeAdminAction(adminAction);
+          const success = await executeAdminAction(adminAction.intent, adminAction.userId, adminAction.data);
+          adminActionResult = success ? 
+            `Successfully executed ${adminAction.intent} action for user ${adminAction.userId}` : 
+            `Failed to execute ${adminAction.intent} action for user ${adminAction.userId}`;
         }
       }
       
