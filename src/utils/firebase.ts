@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 // Firebase configuration

@@ -2,23 +2,71 @@ import { database } from './firebase';
 import { ref, get, set, update, push, query, orderByChild, equalTo } from 'firebase/database';
 import { User, Chat, ChatMessage, License, LicenseRequest, LoginLog } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 
 // User functions
-export const createUser = async (user: User): Promise<void> => {
+export const createUser = async (userData: User): Promise<User> => {
+  console.log('Creating user:', userData);
+  
+  // First, create the Firebase Authentication account
   try {
-    // Make sure user has an ID if not provided
-    if (!user.id) {
-      user.id = uuidv4();
+    // Create Firebase auth entry using admin SDK (if in admin context)
+    // Since we can't directly create auth users from the client, we need to handle differently
+    // We'll check if user already exists first
+    const auth = getAuth();
+    
+    // Create a reference in the database first
+    const userRef = ref(database, `users/${userData.id}`);
+    const userSnapshot = await get(userRef);
+    
+    if (userSnapshot.exists()) {
+      throw new Error('User with this ID already exists');
     }
     
-    // Make sure required fields are present
-    if (!user.status) user.status = 'active';
-    if (user.licenseActive === undefined) user.licenseActive = false;
-
-    const userRef = ref(database, `users/${user.id}`);
-    await set(userRef, user);
+    // Check if email already exists
+    const usersRef = ref(database, 'users');
+    const usersSnapshot = await get(usersRef);
+    
+    if (usersSnapshot.exists()) {
+      const users = usersSnapshot.val();
+      const emailExists = Object.values(users).some((user: any) => user.email === userData.email);
+      
+      if (emailExists) {
+        throw new Error('User with this email already exists');
+      }
+    }
+    
+    // For admin-created users, we need to use a different approach
+    // Create with Firebase Authentication directly
+    if (userData.password) {
+      try {
+        // Try creating the user in Firebase Auth
+        // This only works if we're in a client context and have appropriate permissions
+        // Typically this would be done through Firebase Functions for admin operations
+        await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+        console.log('User created in Firebase Auth');
+      } catch (error: any) {
+        // If we get a 'already-exists' error, we can proceed with DB creation
+        // Otherwise, throw the error
+        if (error.code !== 'auth/email-already-in-use') {
+          console.error('Error creating Firebase Auth user:', error);
+          throw new Error(`Failed to create authentication account: ${error.message}`);
+        } else {
+          console.log('User already exists in Firebase Auth, proceeding with DB update');
+        }
+      }
+    }
+    
+    // Store user data in the database (without password)
+    const userToSave = { ...userData };
+    delete userToSave.password; // Don't store password in database
+    
+    await set(userRef, userToSave);
+    console.log('User created in database');
+    
+    return userToSave;
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error('Error creating user:', error);
     throw error;
   }
 };

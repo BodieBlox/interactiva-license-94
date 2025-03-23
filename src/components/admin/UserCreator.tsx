@@ -25,6 +25,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export const UserCreator = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -38,6 +39,8 @@ export const UserCreator = () => {
   
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
+    setIsSuccess(false);
+    
     try {
       await createUser({
         id: uuidv4(),
@@ -49,6 +52,7 @@ export const UserCreator = () => {
         licenseActive: false
       });
       
+      setIsSuccess(true);
       toast({
         title: "User Created",
         description: `${values.username} has been successfully created as a ${values.role}`,
@@ -57,6 +61,9 @@ export const UserCreator = () => {
       
       // Reset form
       form.reset();
+      
+      // Reset success state after 3 seconds
+      setTimeout(() => setIsSuccess(false), 3000);
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
@@ -196,12 +203,17 @@ export const UserCreator = () => {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full animate-pulse-subtle"
+                className={`w-full ${isSuccess ? 'bg-green-500 hover:bg-green-600' : ''} transition-colors`}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating...
+                  </>
+                ) : isSuccess ? (
+                  <>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    User Created!
                   </>
                 ) : (
                   <>
