@@ -1,10 +1,21 @@
+
 import { database } from './firebase';
-import { ref, get, set, update, push } from 'firebase/database';
+import { ref, get, set, update, push, query, orderByChild, equalTo } from 'firebase/database';
 import { User, Chat, ChatMessage, License, LicenseRequest, LoginLog } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 // User functions
 export const createUser = async (user: User): Promise<void> => {
   try {
+    // Make sure user has an ID if not provided
+    if (!user.id) {
+      user.id = uuidv4();
+    }
+    
+    // Make sure required fields are present
+    if (!user.status) user.status = 'active';
+    if (user.licenseActive === undefined) user.licenseActive = false;
+
     const userRef = ref(database, `users/${user.id}`);
     await set(userRef, user);
   } catch (error) {
@@ -21,6 +32,29 @@ export const updateUser = async (userId: string, updates: Partial<User>): Promis
     console.error("Error updating user:", error);
     throw error;
   }
+};
+
+export const updateUserStatus = async (userId: string, status: User['status'], warningMessage?: string): Promise<User> => {
+  try {
+    const updates: Partial<User> = { status };
+    if (warningMessage !== undefined) {
+      updates.warningMessage = warningMessage;
+    }
+
+    await updateUser(userId, updates);
+    
+    // Get and return the updated user
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+    return snapshot.val() as User;
+  } catch (error) {
+    console.error("Error updating user status:", error);
+    throw error;
+  }
+};
+
+export const updateUsername = async (userId: string, username: string): Promise<void> => {
+  return updateUser(userId, { username });
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
@@ -56,21 +90,30 @@ export const getUsers = async (): Promise<User[]> => {
   }
 };
 
+// Alias for getUsers to match function names used in components
+export const getAllUsers = getUsers;
+
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   try {
     console.log("Searching for user with email:", email);
-    // First try to search directly by path
     const userRef = ref(database, 'users');
     const snapshot = await get(userRef);
     
     if (snapshot.exists()) {
-      const users = snapshot.val();
-      const userEntry = Object.entries(users).find(([_, userData]: [string, any]) => 
-        userData.email === email
-      );
+      let foundUser: User | null = null;
       
-      if (userEntry) {
-        return userEntry[1] as User;
+      // Manually iterate instead of using .find() which had issues
+      snapshot.forEach((childSnapshot) => {
+        const user = childSnapshot.val() as User;
+        if (user.email === email) {
+          foundUser = user;
+          return true; // Break the forEach loop
+        }
+        return false;
+      });
+      
+      if (foundUser) {
+        return foundUser;
       }
     }
     
@@ -205,6 +248,9 @@ export const getChatsByUserId = async (userId: string): Promise<Chat[]> => {
   }
 };
 
+// Alias for getChatsByUserId to match function names used in components
+export const getUserChats = getChatsByUserId;
+
 export const updateChat = async (chatId: string, updates: Partial<Chat>): Promise<void> => {
   try {
     const chatRef = ref(database, `chat/${chatId}`);
@@ -221,6 +267,71 @@ export const deleteChat = async (chatId: string): Promise<void> => {
     await set(chatRef, null);
   } catch (error) {
     console.error("Error deleting chat:", error);
+    throw error;
+  }
+};
+
+export const clearUserChatHistory = async (userId: string): Promise<void> => {
+  try {
+    const userChats = await getChatsByUserId(userId);
+    
+    // Delete each chat one by one
+    const deletePromises = userChats.map(chat => deleteChat(chat.id));
+    await Promise.all(deletePromises);
+    
+    console.log(`Cleared chat history for user ${userId}`);
+  } catch (error) {
+    console.error("Error clearing chat history:", error);
+    throw error;
+  }
+};
+
+export const getAllChats = async (): Promise<Chat[]> => {
+  try {
+    const chatRef = ref(database, 'chat');
+    const snapshot = await get(chatRef);
+    
+    if (!snapshot.exists()) {
+      console.log("No chats found");
+      return [];
+    }
+    
+    const allChats: Chat[] = [];
+    
+    snapshot.forEach((childSnapshot) => {
+      const chatData = childSnapshot.val();
+      
+      // Normalize messages
+      let normalizedMessages: ChatMessage[] = [];
+      
+      if (chatData.messages) {
+        if (Array.isArray(chatData.messages)) {
+          normalizedMessages = chatData.messages;
+        } else {
+          normalizedMessages = Object.entries(chatData.messages).map(([msgId, msgData]: [string, any]) => ({
+            id: msgId,
+            content: msgData.content,
+            role: msgData.role,
+            timestamp: msgData.timestamp,
+            ...(msgData.isAdminAction !== undefined ? { isAdminAction: msgData.isAdminAction } : {})
+          }));
+        }
+      }
+      
+      allChats.push({
+        id: childSnapshot.key as string,
+        title: chatData.title || 'New conversation',
+        userId: chatData.userId,
+        createdAt: chatData.createdAt || new Date().toISOString(),
+        updatedAt: chatData.updatedAt || new Date().toISOString(),
+        messages: normalizedMessages,
+        isPinned: chatData.isPinned || false
+      });
+    });
+    
+    return allChats.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  } catch (error) {
+    console.error("Error fetching all chats:", error);
     throw error;
   }
 };
@@ -268,7 +379,7 @@ export const addMessageToChat = async (
       timestamp
     };
     
-    // Only add isAdminAction if it's true
+    // Only add isAdminAction if it's true (avoid undefined values)
     if (messageData.isAdminAction === true) {
       message.isAdminAction = true;
     }
@@ -312,6 +423,78 @@ export const getMessagesByChatId = async (chatId: string): Promise<ChatMessage[]
 };
 
 // License functions
+export const generateLicense = async (
+  type: 'basic' | 'premium' | 'enterprise' | 'standard', 
+  expirationDays?: number
+): Promise<License> => {
+  try {
+    // Generate a unique license key
+    const licenseKey = `LIC-${type.substring(0, 3).toUpperCase()}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    
+    const licenseId = uuidv4();
+    
+    // Create expiration date if provided
+    let expiresAt: string | undefined = undefined;
+    if (expirationDays) {
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + expirationDays);
+      expiresAt = expiryDate.toISOString();
+    }
+    
+    // Create the license object
+    const license: License = {
+      id: licenseId,
+      key: licenseKey,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      status: 'active',
+      type: type as 'basic' | 'premium' | 'enterprise',
+      ...(expiresAt ? { expiresAt } : {})
+    };
+    
+    // Save the license to the database
+    const licenseRef = ref(database, `licenses/${licenseId}`);
+    await set(licenseRef, license);
+    
+    return license;
+  } catch (error) {
+    console.error("Error generating license:", error);
+    throw error;
+  }
+};
+
+export const assignLicenseToUser = async (userId: string, licenseKey: string): Promise<void> => {
+  try {
+    // Find the license
+    const license = await getLicenseByKey(licenseKey);
+    
+    if (!license) {
+      throw new Error("License not found");
+    }
+    
+    // Update the license with the user ID
+    const licenseRef = ref(database, `licenses/${license.id}`);
+    await update(licenseRef, {
+      userId,
+      isActive: true,
+      status: 'active',
+      activatedAt: new Date().toISOString()
+    });
+    
+    // Update the user with the license information
+    const userRef = ref(database, `users/${userId}`);
+    await update(userRef, {
+      licenseActive: true,
+      licenseKey: licenseKey,
+      licenseType: license.type,
+      licenseId: license.id
+    });
+  } catch (error) {
+    console.error("Error assigning license to user:", error);
+    throw error;
+  }
+};
+
 export const createLicense = async (license: License): Promise<void> => {
   try {
     const licenseRef = ref(database, `licenses/${license.key}`);
@@ -369,6 +552,64 @@ export const updateLicense = async (licenseId: string, updates: Partial<License>
     await update(licenseRef, updates);
   } catch (error) {
     console.error("Error updating license:", error);
+    throw error;
+  }
+};
+
+export const suspendLicense = async (licenseKey: string): Promise<void> => {
+  try {
+    // Find the license by key
+    const license = await getLicenseByKey(licenseKey);
+    if (!license) {
+      throw new Error("License not found");
+    }
+    
+    // Update license status
+    await updateLicense(license.id, {
+      isActive: false,
+      status: 'suspended',
+      suspendedAt: new Date().toISOString()
+    });
+    
+    // Update user's license status if there's a user assigned
+    if (license.userId) {
+      await updateUser(license.userId, {
+        licenseActive: false
+      });
+    }
+  } catch (error) {
+    console.error("Error suspending license:", error);
+    throw error;
+  }
+};
+
+export const revokeLicense = async (licenseKey: string): Promise<void> => {
+  try {
+    // Find the license by key
+    const license = await getLicenseByKey(licenseKey);
+    if (!license) {
+      throw new Error("License not found");
+    }
+    
+    // Update license status
+    await updateLicense(license.id, {
+      isActive: false,
+      status: 'revoked',
+      userId: undefined,
+      suspendedAt: new Date().toISOString()
+    });
+    
+    // Update user's license status if there's a user assigned
+    if (license.userId) {
+      await updateUser(license.userId, {
+        licenseActive: false,
+        licenseKey: undefined,
+        licenseType: undefined,
+        licenseId: undefined
+      });
+    }
+  } catch (error) {
+    console.error("Error revoking license:", error);
     throw error;
   }
 };
@@ -455,6 +696,44 @@ export const updateLicenseRequest = async (requestId: string, updates: Partial<L
   }
 };
 
+export const approveLicenseRequest = async (requestId: string, licenseType: string = 'basic'): Promise<void> => {
+  try {
+    // Get the license request
+    const request = await getLicenseRequest(requestId);
+    if (!request) {
+      throw new Error("License request not found");
+    }
+    
+    // Generate a new license
+    const license = await generateLicense(licenseType as 'basic' | 'premium' | 'enterprise', 30); // Default to 30 days
+    
+    // Assign the license to the user
+    await assignLicenseToUser(request.userId, license.key);
+    
+    // Update the request status
+    await updateLicenseRequest(requestId, {
+      status: 'approved',
+      resolvedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error approving license request:", error);
+    throw error;
+  }
+};
+
+export const rejectLicenseRequest = async (requestId: string, reason: string): Promise<void> => {
+  try {
+    // Update the request status
+    await updateLicenseRequest(requestId, {
+      status: 'rejected',
+      resolvedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error rejecting license request:", error);
+    throw error;
+  }
+};
+
 export const deleteLicenseRequest = async (requestId: string): Promise<void> => {
   try {
     const requestRef = ref(database, `licenseRequests/${requestId}`);
@@ -509,6 +788,18 @@ export const logUserLogin = async (userId: string, details: { ip: string; userAg
   }
 };
 
+export const forceUserLogout = async (userId: string): Promise<void> => {
+  try {
+    // Set a forced logout timestamp on the user
+    await updateUser(userId, {
+      forcedLogout: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error forcing user logout:", error);
+    throw error;
+  }
+};
+
 export const getLoginLogs = async (): Promise<LoginLog[]> => {
   try {
     const loginLogsRef = ref(database, 'loginLogs');
@@ -528,6 +819,50 @@ export const getLoginLogs = async (): Promise<LoginLog[]> => {
     return loginLogs;
   } catch (error) {
     console.error("Error fetching login logs:", error);
+    throw error;
+  }
+};
+
+// Dashboard customization functions
+export const updateDashboardCustomization = async (userId: string, customization: Partial<User['customization']>): Promise<User> => {
+  try {
+    // Get current user
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error("User not found");
+    }
+    
+    const user = snapshot.val() as User;
+    
+    // Update customization
+    const updatedCustomization = {
+      ...user.customization,
+      ...customization
+    };
+    
+    // Update user
+    await update(userRef, {
+      customization: updatedCustomization
+    });
+    
+    // Return updated user
+    const updatedSnapshot = await get(userRef);
+    return updatedSnapshot.val() as User;
+  } catch (error) {
+    console.error("Error updating dashboard customization:", error);
+    throw error;
+  }
+};
+
+export const approveDashboardCustomization = async (userId: string): Promise<User> => {
+  try {
+    return updateDashboardCustomization(userId, {
+      approved: true
+    });
+  } catch (error) {
+    console.error("Error approving dashboard customization:", error);
     throw error;
   }
 };

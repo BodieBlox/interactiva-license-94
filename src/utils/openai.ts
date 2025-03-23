@@ -5,7 +5,7 @@
 const OPENAI_API_KEY = "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";
 
 import { User, ChatMessage, Chat } from './types';
-import { getUsers, getAllChats, getAllLicenses, getLicenseRequests, getLoginLogs } from './api';
+import { getUsers, getChatsByUserId, getAllLicenses, getLicenseRequests, getLoginLogs } from './api';
 
 /**
  * Generate a response from OpenAI's API

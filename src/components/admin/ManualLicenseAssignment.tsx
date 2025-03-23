@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLicense, getAllUsers, assignLicenseToUser, updateUser } from '@/utils/api';
+import { generateLicense, getUsers, assignLicenseToUser, updateUser } from '@/utils/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Key, UserCog, Calendar, Infinity, Shield, Copy, Check, AlertCircle, Ban } from 'lucide-react';
 import { User } from '@/utils/types';
@@ -34,7 +34,7 @@ export default function ManualLicenseAssignment() {
     refetch 
   } = useQuery({
     queryKey: ['users'],
-    queryFn: getAllUsers
+    queryFn: getUsers
   });
 
   const updateUserMutation = useMutation({
@@ -243,6 +243,11 @@ export default function ManualLicenseAssignment() {
     }
   };
 
+  // Helper function to safely filter users (fixing type issue)
+  const getFilteredUsers = () => {
+    return Array.isArray(users) ? users.filter(user => !user.licenseActive || !user.licenseKey) : [];
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -281,13 +286,11 @@ export default function ManualLicenseAssignment() {
                     {usersLoading ? (
                       <SelectItem value="loading" disabled>Loading users...</SelectItem>
                     ) : (
-                      users
-                        .filter(user => !user.licenseActive || !user.licenseKey)
-                        .map((user: User) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.username} ({user.email})
-                          </SelectItem>
-                        ))
+                      getFilteredUsers().map((user: User) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.username} ({user.email})
+                        </SelectItem>
+                      ))
                     )}
                   </SelectContent>
                 </Select>
@@ -354,7 +357,7 @@ export default function ManualLicenseAssignment() {
                     type="number" 
                     min="1"
                     value={expirationDays} 
-                    onChange={(e) => setExpirationDays(parseInt(e.target.value))}
+                    onChange={(e) => setExpirationDays(parseInt(e.target.value) || 30)}
                     className="bg-white"
                   />
                 </div>
@@ -446,7 +449,7 @@ export default function ManualLicenseAssignment() {
                       <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-b-transparent border-indigo-600"></div>
                       <p className="mt-2 text-sm text-muted-foreground">Loading users...</p>
                     </div>
-                  ) : users.length === 0 ? (
+                  ) : !Array.isArray(users) || users.length === 0 ? (
                     <div className="text-center py-12">
                       <AlertCircle className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
                       <h3 className="text-lg font-medium">No users found</h3>
