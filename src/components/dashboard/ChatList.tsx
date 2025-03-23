@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { Chat } from '@/utils/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -87,7 +88,7 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
   }
 
   // Show empty state
-  if (chats.length === 0) {
+  if (!chats || chats.length === 0) {
     return (
       <div className="text-center py-16 animate-fade-in">
         <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -106,14 +107,16 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
     );
   }
 
-  // Sort chats to show pinned ones first
+  // Sort chats to show pinned ones first, then by date
   const sortedChats = [...chats].sort((a, b) => {
-    // First sort by pinned status
+    // First prioritize pinned status
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
     
-    // Then sort by date
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    // For chats with the same pin status, sort by date
+    const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+    const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+    return dateB - dateA;
   });
 
   // Show chats list
@@ -123,6 +126,16 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
         // Ensure messages is an array and get its length
         const messages = Array.isArray(chat.messages) ? chat.messages : [];
         const messageCount = messages.length;
+        
+        // Format date properly, with fallback
+        const chatDate = chat.updatedAt || chat.createdAt;
+        let timeAgo = '';
+        try {
+          timeAgo = formatDistanceToNow(new Date(chatDate), { addSuffix: true });
+        } catch (e) {
+          console.error(`Invalid date: ${chatDate}`, e);
+          timeAgo = 'recently';
+        }
         
         return (
           <li key={chat.id} style={{ animationDelay: `${index * 0.05}s` }} className="animate-fade-in">
@@ -147,7 +160,7 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
                         {messageCount} message{messageCount !== 1 ? 's' : ''}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                        {formatDistanceToNow(new Date(chat.updatedAt), { addSuffix: true })}
+                        {timeAgo}
                       </span>
                     </div>
                   </div>

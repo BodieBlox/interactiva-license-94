@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { Company, UserWithCompany, CompanyInvitation } from '../utils/companyTypes';
+import { Company, UserWithCompany, CompanyInvitation, sanitizeCompanyData } from '../utils/companyTypes';
 import { 
   getCompanies, 
   getCompanyById, 
@@ -10,7 +10,8 @@ import {
   getCompanyMembers,
   removeCompanyMember,
   getCompanyInvitationsByUser,
-  updateCompanyLogo
+  updateCompanyLogo,
+  sendCompanyInvitation
 } from '../utils/companyApi';
 import { toast } from '@/components/ui/use-toast';
 
@@ -24,6 +25,7 @@ interface CompanyContextType {
   updateCompanyLogo: (companyId: string, logoUrl: string) => Promise<Company | null>;
   refreshCompanyData: () => Promise<void>;
   removeMember: (memberId: string) => Promise<boolean>;
+  inviteUserToCompany: (email: string, companyId: string) => Promise<boolean>;
   error: Error | null;
 }
 
@@ -90,7 +92,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!user) return null;
     
     try {
-      const newCompany = await createCompany(companyData, user.id);
+      // Sanitize data to remove undefined values
+      const sanitizedData = sanitizeCompanyData(companyData);
+      const newCompany = await createCompany(sanitizedData, user.id);
       await fetchCompanyData(); // Refresh data after creating
       return newCompany;
     } catch (err) {
@@ -109,7 +113,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!userCompany) return null;
     
     try {
-      const updatedCompany = await updateCompany(userCompany.id, companyData);
+      // Sanitize data to remove undefined values
+      const sanitizedData = sanitizeCompanyData(companyData);
+      const updatedCompany = await updateCompany(userCompany.id, sanitizedData);
       await fetchCompanyData(); // Refresh data after updating
       return updatedCompany;
     } catch (err) {
@@ -126,6 +132,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateCompanyLogoFn = async (companyId: string, logoUrl: string): Promise<Company | null> => {
     try {
+      if (!logoUrl || !companyId) {
+        throw new Error('Logo URL and company ID are required');
+      }
+      
       const updatedCompany = await updateCompanyLogo(companyId, logoUrl);
       await fetchCompanyData(); // Refresh data after updating logo
       return updatedCompany;
@@ -142,7 +152,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const removeMember = async (memberId: string): Promise<boolean> => {
-    if (!userCompany) return false;
+    if (!userCompany || !userCompany.id) return false;
     
     try {
       await removeCompanyMember(userCompany.id, memberId);
@@ -164,6 +174,45 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const inviteUserToCompany = async (email: string, companyId: string): Promise<boolean> => {
+    if (!email || !companyId) return false;
+    
+    try {
+      // Find the admin user for this company
+      const adminUser = companyMembers.find(member => member.isCompanyAdmin);
+      
+      if (!adminUser) {
+        throw new Error('Company admin not found');
+      }
+      
+      await sendCompanyInvitation({
+        fromUserId: adminUser.id,
+        fromUsername: adminUser.username,
+        companyId: companyId,
+        companyName: userCompany?.name || '',
+        toEmail: email,
+        primaryColor: userCompany?.branding?.primaryColor || '#7E69AB',
+        logo: userCompany?.branding?.logo
+      });
+      
+      toast({
+        title: "Invitation Sent",
+        description: `An invitation has been sent to ${email}`,
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error inviting user to company:', err);
+      setError(err instanceof Error ? err : new Error('Failed to invite user'));
+      toast({
+        title: "Error",
+        description: "Failed to invite user to company",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   const refreshCompanyData = async (): Promise<void> => {
     await fetchCompanyData();
   };
@@ -179,6 +228,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateCompanyLogo: updateCompanyLogoFn,
       refreshCompanyData,
       removeMember,
+      inviteUserToCompany,
       error
     }}>
       {children}

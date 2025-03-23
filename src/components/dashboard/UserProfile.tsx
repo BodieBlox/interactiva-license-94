@@ -2,7 +2,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { User as UserIcon, Mail, Calendar, Shield, AlertCircle } from 'lucide-react';
 import { User } from '@/utils/types';
-import { format, isAfter } from 'date-fns';
+import { format, isAfter, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -17,10 +17,10 @@ export const UserProfile = ({ user }: UserProfileProps) => {
   if (!user) return null;
   
   // Get the expiry date from user object
-  const expiryDate = user.licenseExpiryDate ? new Date(user.licenseExpiryDate) : null;
+  const expiryDate = user.licenseExpiryDate ? parseISO(user.licenseExpiryDate) : null;
   
-  // Check if license is valid
-  const isLicenseValid = user.licenseActive && expiryDate && isAfter(expiryDate, new Date());
+  // Check if license is valid - must have licenseActive flag and valid expiry date
+  const isLicenseValid = Boolean(user.licenseActive) && expiryDate && isAfter(expiryDate, new Date());
   
   // Check if expiring soon (within 30 days)
   const isExpiringSoon = isLicenseValid && expiryDate && 

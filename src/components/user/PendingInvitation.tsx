@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { User as UserType } from '@/utils/types';
-import { updateDashboardCustomization, updateUser } from '@/utils/api';
+import { updateDashboardCustomization, updateUser, assignLicense } from '@/utils/api';
 import { Clock, Check, X, Building } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { acceptCompanyInvitation, declineCompanyInvitation } from '@/utils/companyApi';
+import { sanitizeCustomizationData } from '@/utils/companyTypes';
 
 interface PendingInvitationProps {
   currentUser: UserType;
@@ -21,7 +22,7 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
     return null;
   }
   
-  const { fromUsername, companyName, timestamp, primaryColor, logo } = currentUser.customization.pendingInvitation;
+  const { fromUsername, companyName, timestamp, primaryColor, logo, companyId } = currentUser.customization.pendingInvitation;
   const formattedDate = new Date(timestamp).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -32,19 +33,20 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
     setIsLoading(true);
     try {
       // Accept the invitation via the API
-      const invitations = await acceptCompanyInvitation(
+      await acceptCompanyInvitation(
         currentUser.customization?.pendingInvitation?.id || '',
         currentUser.id
       );
       
       // Prepare customization without undefined values
-      const updatedCustomization = {
-        companyName: companyName,
+      const updatedCustomization = sanitizeCustomizationData({
+        companyName: companyName || '',
+        companyId: companyId || '',
         primaryColor: primaryColor || '#7E69AB',
-        logo: logo || undefined,
+        logo: logo || '',
         isCompanyMember: true,
         approved: true,
-      };
+      });
       
       // Make a clean copy without the pendingInvitation
       const { pendingInvitation, ...restCustomization } = currentUser.customization || {};
@@ -52,17 +54,34 @@ export const PendingInvitation = ({ currentUser }: PendingInvitationProps) => {
       
       const updatedUser = await updateDashboardCustomization(currentUser.id, cleanCustomization);
       
-      // Update license type to enterprise with proper type
-      await updateUser(currentUser.id, { 
-        licenseType: 'enterprise' as 'basic' | 'premium' | 'enterprise', 
-        licenseActive: true 
-      });
+      // Assign enterprise license
+      let licenseData;
+      try {
+        licenseData = await assignLicense(currentUser.id, 'enterprise');
+      } catch (licenseError) {
+        console.error('Error assigning license:', licenseError);
+        toast({
+          title: "License Warning",
+          description: "Joined company but couldn't assign license automatically",
+          variant: "destructive"
+        });
+      }
+      
+      // Update user with license info
+      const licenseUpdate = {
+        licenseType: 'enterprise' as 'basic' | 'premium' | 'enterprise',
+        licenseActive: true,
+        licenseKey: licenseData?.key || currentUser.licenseKey,
+        licenseId: licenseData?.id || currentUser.licenseId,
+        licenseExpiryDate: licenseData?.expiresAt || currentUser.licenseExpiryDate
+      };
+      
+      await updateUser(currentUser.id, licenseUpdate);
       
       // Merge the returned user with license information
       const userWithLicense = {
         ...updatedUser,
-        licenseType: 'enterprise' as 'basic' | 'premium' | 'enterprise',
-        licenseActive: true
+        ...licenseUpdate
       };
       
       setUser(userWithLicense);
