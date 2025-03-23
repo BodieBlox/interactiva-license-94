@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { Company, UserWithCompany, CompanyInvitation, sanitizeCompanyData } from '../utils/companyTypes';
@@ -13,6 +12,7 @@ import {
   updateCompanyLogo,
   sendCompanyInvitation
 } from '../utils/companyApi';
+import { getUserByEmail } from '../utils/api';
 import { toast } from '@/components/ui/use-toast';
 
 interface CompanyContextType {
