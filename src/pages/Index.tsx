@@ -15,7 +15,8 @@ import {
   Users,
   Lightbulb,
   Lock,
-  Rocket
+  Rocket,
+  ArrowRight
 } from 'lucide-react';
 
 const Index = () => {
@@ -26,7 +27,7 @@ const Index = () => {
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
             <Sparkles className="h-6 w-6 text-primary mr-2" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">AppName</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">LicenseAI</span>
           </div>
           <div className="flex gap-3">
             <Link to="/login">
@@ -54,11 +55,11 @@ const Index = () => {
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
-            Welcome to <span className="font-extrabold">AppName</span>
+            Welcome to <span className="font-extrabold">LicenseAI</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Powerful platform for your business needs with AI-powered conversations,
-            team management, and more.
+            Enterprise-grade licensing system with AI-powered conversations,
+            team management, and customizable branding.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/login">
@@ -147,6 +148,64 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Benefits Section - New Section */}
+      <div className="container mx-auto px-4 py-16 md:py-24 bg-gradient-to-br from-background/50 to-muted/20">
+        <h2 className="text-3xl font-bold text-center mb-16 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+          Why Choose LicenseAI?
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl mx-auto">
+          {/* Left column - image or illustration */}
+          <div className="rounded-xl overflow-hidden shadow-2xl">
+            <img 
+              src="/lovable-uploads/bc5ad575-6834-4d61-93cd-0a3b288aee9a.png" 
+              alt="Dashboard preview" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          {/* Right column - benefits */}
+          <div className="flex flex-col justify-center space-y-6">
+            <div className="flex gap-4 items-start">
+              <div className="bg-blue-500/10 p-3 rounded-full">
+                <ShieldCheck className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Enterprise Security</h3>
+                <p className="text-muted-foreground">Bank-level encryption and secure license management for all your sensitive data.</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="bg-purple-500/10 p-3 rounded-full">
+                <Zap className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Powerful Automation</h3>
+                <p className="text-muted-foreground">Streamline workflows and eliminate repetitive tasks with intelligent automation.</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="bg-amber-500/10 p-3 rounded-full">
+                <Globe className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Global Accessibility</h3>
+                <p className="text-muted-foreground">Access your license dashboard from anywhere in the world, on any device.</p>
+              </div>
+            </div>
+            
+            <Link to="/register" className="w-fit">
+              <Button className="mt-4 group" size="lg">
+                Get Started
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* CTA Section */}
       <div className="container mx-auto px-4 py-16 md:py-24">
         <Card className="border-0 shadow-2xl 
@@ -187,9 +246,9 @@ const Index = () => {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center mb-4 md:mb-0">
             <Sparkles className="h-5 w-5 text-primary mr-2" />
-            <span className="font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">AppName</span>
+            <span className="font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">LicenseAI</span>
           </div>
-          <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} AppName. All rights reserved.</p>
+          <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} LicenseAI. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Terms</Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Privacy</Button>
