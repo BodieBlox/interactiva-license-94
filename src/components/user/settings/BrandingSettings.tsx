@@ -7,7 +7,8 @@ import { Building, Lock, Key } from 'lucide-react';
 
 export const BrandingSettings = () => {
   const { user } = useAuth();
-  const isPartOfCompany = user?.customization?.isCompanyMember || (user?.customization?.companyName && user?.customization?.approved);
+  const isPartOfCompany = user?.customization?.isCompanyMember || 
+    (user?.customization?.companyName && user?.customization?.approved);
   
   // Show current license key and type first
   if (user?.licenseKey) {
@@ -41,7 +42,7 @@ export const BrandingSettings = () => {
             <CardContent className="flex flex-col items-center py-6 text-center">
               <div className="bg-background/50 p-4 rounded-lg border border-border/50 mb-4 w-full max-w-md">
                 <p className="font-medium">
-                  Company: {user?.customization?.companyName}
+                  Company: {user?.customization?.companyName || 'Not specified'}
                 </p>
                 <div className="flex items-center justify-center gap-2 mt-2">
                   <div 
@@ -49,7 +50,7 @@ export const BrandingSettings = () => {
                     style={{ backgroundColor: user?.customization?.primaryColor || '#6366f1' }} 
                   />
                   <span className="text-sm text-muted-foreground">
-                    {user?.customization?.primaryColor}
+                    {user?.customization?.primaryColor || 'Default color'}
                   </span>
                 </div>
               </div>

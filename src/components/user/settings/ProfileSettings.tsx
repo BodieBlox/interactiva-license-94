@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from '@/components/ui/use-toast';
 import { Check, Loader2, User, Mail, Key } from 'lucide-react';
 import { updateUser } from '@/utils/api';
+import { sanitizeUserData } from '@/utils/companyTypes';
 
 export const ProfileSettings = () => {
   const { user, setUser } = useAuth();
@@ -28,13 +29,19 @@ export const ProfileSettings = () => {
     
     setIsSaving(true);
     try {
-      await updateUser(user!.id, { username: newUsername });
+      if (!user?.id) {
+        throw new Error("User ID is missing");
+      }
+      
+      // Use sanitizeUserData to ensure no undefined values
+      const userData = sanitizeUserData({ username: newUsername });
+      const updatedUser = await updateUser(user.id, userData);
       
       // Update the user in context with new username
-      if (user) {
+      if (user && updatedUser) {
         setUser({
           ...user,
-          username: newUsername
+          username: updatedUser.username || newUsername
         });
       }
       

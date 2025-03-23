@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsers, updateDashboardCustomization, updateUser } from '@/utils/api';
 import { User as UserType } from '@/utils/types';
-import { Company } from '@/utils/companyTypes';
+import { Company, sanitizeCustomizationData, sanitizeUserData } from '@/utils/companyTypes';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Select, 
@@ -69,7 +68,6 @@ export const CompanyManagementPanel = () => {
   
   const queryClient = useQueryClient();
 
-  // Fetch all users
   const { 
     data: users = [], 
     isLoading, 
@@ -80,7 +78,6 @@ export const CompanyManagementPanel = () => {
     queryFn: getUsers
   });
 
-  // Extract unique companies from users
   const companies = users.reduce((acc: { name: string; adminId: string; primaryColor: string; memberCount: number }[], user) => {
     if (user.customization?.companyName && (user.isCompanyAdmin || user.role === 'admin')) {
       const companyExists = acc.find(c => c.name === user.customization.companyName);
@@ -99,7 +96,6 @@ export const CompanyManagementPanel = () => {
     return acc;
   }, []);
 
-  // Filter users by selected company
   useEffect(() => {
     if (selectedCompany) {
       const filteredUsers = users.filter(user => 
@@ -112,10 +108,11 @@ export const CompanyManagementPanel = () => {
     }
   }, [selectedCompany, users]);
 
-  // Mutations
   const updateUserMutation = useMutation({
-    mutationFn: ({ userId, data }: { userId: string, data: Partial<UserType> }) => 
-      updateUser(userId, data),
+    mutationFn: ({ userId, data }: { userId: string, data: Partial<UserType> }) => {
+      const sanitizedData = sanitizeUserData(data);
+      return updateUser(userId, sanitizedData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
@@ -134,8 +131,10 @@ export const CompanyManagementPanel = () => {
   });
 
   const updateBrandingMutation = useMutation({
-    mutationFn: ({ userId, data }: { userId: string, data: any }) => 
-      updateDashboardCustomization(userId, data),
+    mutationFn: ({ userId, data }: { userId: string, data: any }) => {
+      const sanitizedData = sanitizeCustomizationData(data);
+      return updateDashboardCustomization(userId, sanitizedData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
@@ -152,8 +151,7 @@ export const CompanyManagementPanel = () => {
       });
     }
   });
-  
-  // Handlers
+
   const handleSelectCompany = (companyName: string) => {
     setSelectedCompany(companyName);
     setActiveTab('members');
@@ -163,7 +161,6 @@ export const CompanyManagementPanel = () => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
-    // Remove company affiliation
     const updatedCustomization = {
       ...user.customization,
       companyName: undefined,
@@ -175,7 +172,6 @@ export const CompanyManagementPanel = () => {
       data: updatedCustomization 
     });
     
-    // If user was not an admin, remove enterprise license
     if (!user.isCompanyAdmin) {
       updateUserMutation.mutate({
         userId,
@@ -211,26 +207,24 @@ export const CompanyManagementPanel = () => {
     
     if (!adminUser) return;
     
-    // Update admin's customization
     updateBrandingMutation.mutate({
       userId,
       data: {
-        ...adminUser.customization,
         companyName,
-        primaryColor
+        primaryColor,
+        approved: true
       }
     });
     
-    // Update all company members
     companyUsers
       .filter(user => user.id !== userId && user.customization?.isCompanyMember)
       .forEach(user => {
         updateBrandingMutation.mutate({
           userId: user.id,
           data: {
-            ...user.customization,
             companyName,
-            primaryColor
+            primaryColor,
+            isCompanyMember: true
           }
         });
       });
@@ -241,7 +235,11 @@ export const CompanyManagementPanel = () => {
   const handleMakeAdmin = async (userId: string) => {
     updateUserMutation.mutate({
       userId,
-      data: { isCompanyAdmin: true }
+      data: { 
+        isCompanyAdmin: true,
+        licenseType: 'enterprise',
+        licenseActive: true
+      }
     });
   };
   
@@ -255,7 +253,6 @@ export const CompanyManagementPanel = () => {
       return;
     }
     
-    // Create a new company (in this mock implementation, we're just finding an admin user)
     const adminUser = users.find(user => user.role === 'admin');
     
     if (!adminUser) {
@@ -267,7 +264,6 @@ export const CompanyManagementPanel = () => {
       return;
     }
     
-    // Create company by updating admin user
     updateBrandingMutation.mutate({
       userId: adminUser.id,
       data: {
@@ -278,7 +274,6 @@ export const CompanyManagementPanel = () => {
       }
     });
     
-    // Make admin a company admin
     updateUserMutation.mutate({
       userId: adminUser.id,
       data: { 
@@ -308,31 +303,26 @@ export const CompanyManagementPanel = () => {
       (user.customization?.isCompanyMember && user.customization?.companyName === deleteCompanyId)
     );
     
-    // Remove company from all users
     companyUsers.forEach(user => {
-      // Update user branding
       updateBrandingMutation.mutate({
         userId: user.id,
         data: {
-          ...user.customization,
-          companyName: undefined,
+          companyName: null,
           isCompanyMember: false,
-          primaryColor: undefined
+          primaryColor: null
         }
       });
       
-      // Update user license if not admin
       if (!user.isCompanyAdmin && user.role !== 'admin') {
         updateUserMutation.mutate({
           userId: user.id,
           data: {
             licenseActive: false,
-            licenseType: undefined,
+            licenseType: null,
             isCompanyAdmin: false
           }
         });
       } else {
-        // Reset company admin status
         updateUserMutation.mutate({
           userId: user.id,
           data: {
@@ -373,7 +363,6 @@ export const CompanyManagementPanel = () => {
       return;
     }
     
-    // Find user by email
     const targetUser = users.find(user => user.email === inviteData.email);
     
     if (!targetUser) {
@@ -385,7 +374,6 @@ export const CompanyManagementPanel = () => {
       return;
     }
     
-    // Find admin user of the company
     const adminUser = users.find(user => 
       user.customization?.companyName === inviteData.companyId && 
       (user.isCompanyAdmin || user.role === 'admin')
@@ -400,17 +388,15 @@ export const CompanyManagementPanel = () => {
       return;
     }
     
-    // Create invitation in target user's customization
     updateBrandingMutation.mutate({
       userId: targetUser.id,
       data: {
-        ...targetUser.customization || {},
         pendingInvitation: {
           fromUserId: adminUser.id,
           fromUsername: adminUser.username,
           companyName: inviteData.companyId,
           timestamp: new Date().toISOString(),
-          primaryColor: adminUser.customization?.primaryColor
+          primaryColor: adminUser.customization?.primaryColor || '#7E69AB'
         }
       }
     });
@@ -699,7 +685,6 @@ export const CompanyManagementPanel = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Add Company Dialog */}
       <Dialog open={showAddCompanyDialog} onOpenChange={setShowAddCompanyDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -779,7 +764,6 @@ export const CompanyManagementPanel = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Company Branding Dialog */}
       <Dialog open={showEditBrandingDialog} onOpenChange={setShowEditBrandingDialog}>
         <DialogContent>
           <DialogHeader>
@@ -883,7 +867,6 @@ export const CompanyManagementPanel = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -906,7 +889,6 @@ export const CompanyManagementPanel = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Invite User Dialog */}
       <Dialog open={showInviteUserDialog} onOpenChange={setShowInviteUserDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { sanitizeUserData } from '@/utils/companyTypes';
 
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -90,6 +91,12 @@ export const UserManagement = () => {
           }
           
           const message = actionType !== 'activate' ? warningMessage.trim() : undefined;
+          // Sanitize user data to prevent undefined values
+          const userData = sanitizeUserData({
+            status,
+            warningMessage: message || null // Use null to explicitly remove warning message
+          });
+          
           const updatedUser = await updateUserStatus(selectedUser.id, status, message);
           
           setUsers(prevUsers => prevUsers.map(user => 
@@ -116,7 +123,11 @@ export const UserManagement = () => {
           if (selectedUser.licenseKey) {
             await suspendLicense(selectedUser.licenseKey);
             
-            const updatedUser = { ...selectedUser, licenseActive: false };
+            // Update local state with sanitized data
+            const updatedUser = { 
+              ...selectedUser, 
+              licenseActive: false 
+            };
             setUsers(prevUsers => prevUsers.map(user => 
               user.id === updatedUser.id ? updatedUser : user
             ));
@@ -137,18 +148,32 @@ export const UserManagement = () => {
         }
         case 'revokeLicense': {
           if (selectedUser.licenseKey) {
-            await revokeLicense(selectedUser.licenseKey);
-            
-            const updatedUser = { ...selectedUser, licenseActive: false, licenseKey: undefined };
-            setUsers(prevUsers => prevUsers.map(user => 
-              user.id === updatedUser.id ? updatedUser : user
-            ));
-            
-            toast({
-              title: "Success",
-              description: `License for ${selectedUser.username} has been revoked`,
-              variant: "success",
-            });
+            try {
+              await revokeLicense(selectedUser.licenseKey);
+              
+              // Update local state with sanitized data
+              const updatedUser = { 
+                ...selectedUser, 
+                licenseActive: false,
+                licenseKey: null // Use null instead of undefined
+              };
+              setUsers(prevUsers => prevUsers.map(user => 
+                user.id === updatedUser.id ? updatedUser : user
+              ));
+              
+              toast({
+                title: "Success",
+                description: `License for ${selectedUser.username} has been revoked`,
+                variant: "success",
+              });
+            } catch (error) {
+              console.error('Error revoking license:', error);
+              toast({
+                title: "Error",
+                description: `Failed to revoke license: ${(error as Error).message}`,
+                variant: "destructive"
+              });
+            }
           } else {
             toast({
               title: "Error",
