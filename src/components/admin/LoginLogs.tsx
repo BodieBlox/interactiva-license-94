@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { LoginLog, User } from '@/utils/types';
+import { LoginLog } from '@/utils/types';
 import { getLoginLogs, getUsers, forceUserLogout } from '@/utils/api';
 import { 
   Table, TableHeader, TableBody, TableHead, 
@@ -25,6 +25,7 @@ export const LoginLogs = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     fetchLogs();
@@ -32,9 +33,14 @@ export const LoginLogs = () => {
   
   const fetchLogs = async () => {
     setIsLoading(true);
+    setError(null);
     try {
+      console.log("Fetching login logs...");
       const allLogs = await getLoginLogs();
+      console.log("Logs received:", allLogs);
+      
       const allUsers = await getUsers();
+      console.log("Users received:", allUsers);
       
       // Add username to each log
       const logsWithUsername = allLogs.map(log => {
@@ -54,6 +60,7 @@ export const LoginLogs = () => {
       setFilteredLogs(sortedLogs);
     } catch (error) {
       console.error('Error fetching login logs:', error);
+      setError("Failed to load login logs. Please try again.");
       toast({
         title: "Error",
         description: "Failed to load login logs",
@@ -110,6 +117,28 @@ export const LoginLogs = () => {
     return (
       <div className="flex justify-center py-10">
         <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="animate-fade-in">
+        <Card variant="glass" className="mb-6 p-6">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="text-red-500">
+              <Shield className="h-10 w-10 mx-auto" />
+            </div>
+            <div>
+              <h2 className="text-xl font-medium mb-1">Error Loading Login Logs</h2>
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+            <Button onClick={handleRefresh} className="mt-2">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }

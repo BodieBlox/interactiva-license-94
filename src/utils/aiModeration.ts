@@ -13,11 +13,15 @@ export const checkForInappropriateContent = (message: string): {
   isInappropriate: boolean;
   reason?: string;
 } => {
+  if (!message) return { isInappropriate: false };
+  
   const lowerCaseMessage = message.toLowerCase();
   
   // Check for offensive language
   for (const term of inappropriateTerms) {
-    if (lowerCaseMessage.includes(term)) {
+    // Use word boundary check to avoid false positives
+    const regex = new RegExp(`\\b${term}\\b`, 'i');
+    if (regex.test(lowerCaseMessage)) {
       return {
         isInappropriate: true,
         reason: `Contains inappropriate language: "${term}"`
@@ -34,11 +38,20 @@ export const handleInappropriateMessage = async (
   username: string,
   updateUser: (id: string, data: any) => Promise<any>
 ): Promise<string> => {
+  console.log("Handling inappropriate message for user:", userId);
   try {
     // Issue warning to the user
-    await updateUser(userId, {
+    const result = await updateUser(userId, {
       status: 'warned',
-      warningMessage: 'You have been warned for using inappropriate language.'
+      warningMessage: 'You have been warned for using inappropriate language. Continued violations may result in account suspension.'
+    });
+    
+    console.log("Warning issued to user:", result);
+    
+    toast({
+      title: "Warning Issued",
+      description: "Your account has been flagged for inappropriate language",
+      variant: "destructive"
     });
     
     return "I cannot respond to messages containing inappropriate language. Your account has been issued a warning.";

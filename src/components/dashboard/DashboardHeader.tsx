@@ -40,7 +40,7 @@ export const DashboardHeader = ({ user, companyName, onLogout }: DashboardHeader
                 <Settings className="h-4 w-4" />
               ) : (
                 <>
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4 mr-1" />
                   <span>Settings</span>
                 </>
               )}
@@ -58,7 +58,7 @@ export const DashboardHeader = ({ user, companyName, onLogout }: DashboardHeader
                   <Shield className="h-4 w-4" />
                 ) : (
                   <>
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4 mr-1" />
                     <span>Admin</span>
                   </>
                 )}
@@ -78,7 +78,7 @@ export const DashboardHeader = ({ user, companyName, onLogout }: DashboardHeader
             <LogOut className="h-4 w-4" />
           ) : (
             <>
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 mr-1" />
               <span>Logout</span>
             </>
           )}
