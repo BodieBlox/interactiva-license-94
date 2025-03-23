@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
 import { ShieldAlert, AlertTriangle, Key } from 'lucide-react';
 
@@ -41,6 +42,13 @@ export const AppLayout = ({
     
     // Already on activation page, don't show license dialog
     if (location.pathname === '/activate') {
+      console.log("Already on activation page, skipping license check");
+      return false;
+    }
+    
+    // Skip license check for admin users
+    if (user.role === 'admin') {
+      console.log("User is admin, skipping license check");
       return false;
     }
     
@@ -76,7 +84,8 @@ export const AppLayout = ({
       requireAdmin, 
       requireLicense,
       licenseActive: user?.licenseActive,
-      isCompanyMember: user?.customization?.isCompanyMember
+      isCompanyMember: user?.customization?.isCompanyMember,
+      userRole: user?.role
     });
 
     if (requireAuth && !user) {
@@ -101,10 +110,20 @@ export const AppLayout = ({
     // Skip license check for admin users going to admin pages, and company members
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isActivationRoute = location.pathname === '/activate';
+    const isAdminUser = user?.role === 'admin';
     const isUserCompanyMember = user?.customization?.isCompanyMember === true;
     
-    // Only check license if we require it, not already on activation page, not an admin route, and not a company member
-    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isUserCompanyMember && user.licenseActive !== true) {
+    console.log("License check conditions:", {
+      requireLicense,
+      isAdminRoute,
+      isActivationRoute,
+      isAdminUser,
+      isUserCompanyMember,
+      licenseActive: user?.licenseActive
+    });
+    
+    // Only check license if we require it, not already on activation page, not an admin route, not an admin user, and not a company member
+    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isAdminUser && !isUserCompanyMember && user.licenseActive !== true) {
       checkLicense();
     }
 

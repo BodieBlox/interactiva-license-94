@@ -591,7 +591,7 @@ export const createChat = async (userId: string, title: string): Promise<Chat> =
   };
 
   console.log('Creating new chat:', newChat);
-  const chatRef = ref(database, `chats/${newChat.id}`);
+  const chatRef = ref(database, `chat/${newChat.id}`);
   await set(chatRef, newChat);
   return newChat;
 };
@@ -605,7 +605,7 @@ export const getUserChats = async (userId: string): Promise<Chat[]> => {
   try {
     // Query the chats by userId
     console.log('Querying chats for userId:', userId);
-    const chatsRef = query(ref(database, 'chats'), orderByChild('userId'), equalTo(userId));
+    const chatsRef = query(ref(database, 'chat'), orderByChild('userId'), equalTo(userId));
     const snapshot = await get(chatsRef);
     
     if (!snapshot.exists()) {
@@ -641,7 +641,7 @@ export const getUserChats = async (userId: string): Promise<Chat[]> => {
 export const getAllChats = async (): Promise<Chat[]> => {
   try {
     console.log('Fetching all chats');
-    const chatsRef = ref(database, 'chats');
+    const chatsRef = ref(database, 'chat');
     const snapshot = await get(chatsRef);
     
     if (!snapshot.exists()) {
@@ -694,7 +694,7 @@ export const getChatById = async (chatId: string): Promise<Chat | null> => {
   
   try {
     console.log('Fetching chat by ID:', chatId);
-    const chatRef = ref(database, `chats/${chatId}`);
+    const chatRef = ref(database, `chat/${chatId}`);
     const snapshot = await get(chatRef);
     
     if (!snapshot.exists()) {
@@ -735,7 +735,7 @@ export const getChatById = async (chatId: string): Promise<Chat | null> => {
 };
 
 export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant'): Promise<ChatMessage> => {
-  const messageRef = push(ref(database, `chats/${chatId}/messages`));
+  const messageRef = push(ref(database, `chat/${chatId}/messages`));
   const messageId = messageRef.key;
   
   if (!messageId) {
@@ -755,7 +755,7 @@ export const sendMessage = async (chatId: string, content: string, role: 'user' 
   await set(messageRef, messageData);
   
   // Update the chat's updatedAt timestamp
-  await update(ref(database, `chats/${chatId}`), {
+  await update(ref(database, `chat/${chatId}`), {
     updatedAt: timestamp
   });
   
@@ -763,7 +763,7 @@ export const sendMessage = async (chatId: string, content: string, role: 'user' 
 };
 
 export const addMessageToChat = async (chatId: string, messageData: Partial<ChatMessage>): Promise<ChatMessage> => {
-  const messageRef = push(ref(database, `chats/${chatId}/messages`));
+  const messageRef = push(ref(database, `chat/${chatId}/messages`));
   const messageId = messageRef.key || '';
   
   const timestamp = new Date().toISOString();
@@ -780,7 +780,7 @@ export const addMessageToChat = async (chatId: string, messageData: Partial<Chat
   await set(messageRef, completeMessage);
   
   // Update the chat's updatedAt timestamp
-  await update(ref(database, `chats/${chatId}`), {
+  await update(ref(database, `chat/${chatId}`), {
     updatedAt: timestamp
   });
   
@@ -793,8 +793,9 @@ export const clearUserChatHistory = async (userId: string): Promise<void> => {
   
   // Delete each chat
   const deletePromises = userChats.map(chat => 
-    remove(ref(database, `chats/${chat.id}`))
+    remove(ref(database, `chat/${chat.id}`))
   );
   
   await Promise.all(deletePromises);
 };
+
