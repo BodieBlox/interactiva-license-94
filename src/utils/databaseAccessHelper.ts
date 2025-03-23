@@ -1,4 +1,3 @@
-
 /**
  * Database Access Helper
  * 
@@ -8,7 +7,7 @@
  */
 
 import { getUsers, getLoginLogs, getUserChats as getChatMessages } from './api';
-import { User, ChatMessage, LoginLog } from './types';
+import { User, ChatMessage, LoginLog, Chat } from './types';
 import { getCompanies, getCompanyMembers } from './companyApi';
 import { Company, UserWithCompany } from './companyTypes';
 
@@ -117,24 +116,23 @@ export const fetchChatMessagesForAI = async (userId: string): Promise<{
   topCategories: string[];
 }> => {
   try {
-    const messages = await getChatMessages(userId);
+    const chats = await getChatMessages(userId);
+    let allMessages: ChatMessage[] = [];
     
-    // Group messages by conversation
-    const conversations: { [key: string]: ChatMessage[] } = {};
-    messages.forEach(message => {
-      if (!conversations[message.conversationId]) {
-        conversations[message.conversationId] = [];
+    // Extract all messages from all chats
+    chats.forEach(chat => {
+      if (chat.messages && Array.isArray(chat.messages)) {
+        allMessages = [...allMessages, ...chat.messages];
       }
-      conversations[message.conversationId].push(message);
     });
     
     // Calculate statistics
-    const conversationIds = Object.keys(conversations);
+    const conversationIds = chats.map(chat => chat.id);
     const recentConversations = conversationIds.length;
-    const messageCount = messages.length;
+    const messageCount = allMessages.length;
     
     // Calculate average message length for user messages only
-    const userMessages = messages.filter(m => m.role === 'user');
+    const userMessages = allMessages.filter(m => m.role === 'user');
     const totalLength = userMessages.reduce((sum, msg) => sum + msg.content.length, 0);
     const averageLength = userMessages.length > 0 ? Math.round(totalLength / userMessages.length) : 0;
     
