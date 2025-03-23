@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -134,18 +133,13 @@ export const ChatInterface = () => {
           console.log("Detected admin action:", adminAction);
           isAdminAction = true;
           
-          // Execute the admin action
-          const success = await executeAdminAction(
+          // Execute the admin action with the proper arguments
+          adminActionResult = await executeAdminAction(
             adminAction.intent, 
             adminAction.userId, 
             adminAction.data
           );
           
-          // Prepare result message
-          adminActionResult = success ? 
-            `Successfully executed ${adminAction.intent} action for user ${adminAction.userId}` : 
-            `Failed to execute ${adminAction.intent} action for user ${adminAction.userId}`;
-            
           console.log("Admin action result:", adminActionResult);
         }
       }

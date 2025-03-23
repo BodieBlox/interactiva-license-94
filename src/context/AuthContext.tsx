@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update, onValue } from 'firebase/database';
@@ -16,7 +17,8 @@ import {
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
+  isLoading: boolean; // Adding the loading property that's accessed as 'loading'
+  loading: boolean;   // Adding an alias for backward compatibility
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -691,6 +693,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         isLoading,
+        loading: isLoading, // Add the alias for backward compatibility
         error,
         login,
         logout,
