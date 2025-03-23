@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -137,7 +138,7 @@ export const ChatInterface = () => {
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
         role: 'assistant',
-        isAdminAction: isAdminAction || undefined
+        isAdminAction: isAdminAction
       });
       
       setChat((prevChat) => {
@@ -236,7 +237,7 @@ export const ChatInterface = () => {
         try {
           const generatedTitle = await generateChatTitle(messageContent);
           
-          await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${targetChat.id}.json`, {
+          await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chat/${targetChat.id}.json`, {
             method: 'PATCH',
             body: JSON.stringify({ title: generatedTitle }),
           });
@@ -521,4 +522,3 @@ export const ChatInterface = () => {
     </div>
   );
 };
-

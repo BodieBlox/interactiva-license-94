@@ -112,6 +112,7 @@ export const AppLayout = ({
     const isActivationRoute = location.pathname === '/activate';
     const isAdminUser = user?.role === 'admin';
     const isUserCompanyMember = user?.customization?.isCompanyMember === true;
+    const hasActiveLicense = user?.licenseActive === true;
     
     console.log("License check conditions:", {
       requireLicense,
@@ -119,11 +120,12 @@ export const AppLayout = ({
       isActivationRoute,
       isAdminUser,
       isUserCompanyMember,
-      licenseActive: user?.licenseActive
+      licenseActive: user?.licenseActive,
+      hasActiveLicense
     });
     
     // Only check license if we require it, not already on activation page, not an admin route, not an admin user, and not a company member
-    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isAdminUser && !isUserCompanyMember && user.licenseActive !== true) {
+    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isAdminUser && !isUserCompanyMember && !hasActiveLicense) {
       checkLicense();
     }
 

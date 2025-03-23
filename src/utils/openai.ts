@@ -75,6 +75,13 @@ export const generateAIResponse = async (
     // Add the current user message
     messages.push({ role: 'user', content: userMessageContent });
     
+    console.log("Sending message to OpenAI API:", {
+      model: 'gpt-4o-mini',
+      messages: messages.length,
+      temperature: 0.7,
+      max_tokens: 500
+    });
+    
     // Call OpenAI API to generate a response
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -91,11 +98,13 @@ export const generateAIResponse = async (
     });
     
     if (!response.ok) {
-      console.error('OpenAI API error:', await response.text());
-      throw new Error(`OpenAI API returned ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API returned ${response.status}: ${errorText}`);
     }
     
     const data = await response.json();
+    console.log("OpenAI response received:", data.choices[0].message.content.substring(0, 50) + "...");
     return data.choices[0].message.content;
   } catch (error) {
     console.error('Error generating AI response:', error);
@@ -127,4 +136,3 @@ export const fetchDatabaseForAdmin = async (): Promise<string> => {
     return JSON.stringify({ error: 'Failed to fetch database information' });
   }
 };
-
