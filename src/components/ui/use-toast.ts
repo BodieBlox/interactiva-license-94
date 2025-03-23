@@ -1,40 +1,49 @@
 
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast, toast as originalToast } from "@/hooks/use-toast";
 
-// Re-export for easy usage throughout the application
-export { useToast, toast };
+// Create an extended toast object with our additional methods
+interface ExtendedToast {
+  (props: Parameters<typeof originalToast>[0]): ReturnType<typeof originalToast>;
+  success(message: string): void;
+  error(message: string): void;
+  warning(message: string): void;
+  info(message: string): void;
+}
 
-// Add a convenience method for showing success toasts
+// Create our extended toast function
+const toast = originalToast as ExtendedToast;
+
+// Add convenience methods for showing different types of toasts
 toast.success = (message: string) => {
-  toast({
+  originalToast({
     title: "Success",
     description: message,
     variant: "success",
   });
 };
 
-// Add a convenience method for showing error toasts
 toast.error = (message: string) => {
-  toast({
+  originalToast({
     title: "Error",
     description: message,
     variant: "destructive",
   });
 };
 
-// Add a convenience method for showing warning toasts
 toast.warning = (message: string) => {
-  toast({
+  originalToast({
     title: "Warning",
     description: message,
     variant: "warning",
   });
 };
 
-// Add a convenience method for showing info toasts
 toast.info = (message: string) => {
-  toast({
+  originalToast({
     title: "Info",
     description: message,
   });
 };
+
+// Re-export for easy usage throughout the application
+export { useToast, toast };

@@ -7,7 +7,7 @@
  * logic to improve AI's ability to work with application data.
  */
 
-import { getUsers, getChatMessages, getLoginLogs } from './api';
+import { getUsers, getLoginLogs, getUserChats as getChatMessages } from './api';
 import { User, ChatMessage, LoginLog } from './types';
 import { getCompanies, getCompanyMembers } from './companyApi';
 import { Company, UserWithCompany } from './companyTypes';
@@ -86,9 +86,10 @@ export const fetchCompaniesForAI = async (): Promise<{
       return {
         id: company.id,
         name: company.name,
-        description: company.description,
-        industry: company.industry,
-        size: company.size,
+        // Only include these properties if they exist on the company object
+        ...(company.description ? { description: company.description } : {}),
+        ...(company.industry ? { industry: company.industry } : {}),
+        ...(company.size ? { size: company.size } : {}),
         createdAt: company.createdAt,
         memberCount: memberCounts[company.id] || 0,
         hasBranding: !!company.branding

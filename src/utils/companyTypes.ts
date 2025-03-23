@@ -1,9 +1,13 @@
+
 import { User } from './types';
 
 export interface Company {
   id: string;
   name: string;
   adminId: string;
+  description?: string;
+  industry?: string;
+  size?: string;
   branding?: {
     primaryColor?: string;
     logo?: string;
