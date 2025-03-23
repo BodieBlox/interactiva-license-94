@@ -27,7 +27,7 @@ export const generateChatTitle = async (messageContent: string): Promise<string>
 export const updateChatPin = async (chatId: string, isPinned: boolean): Promise<void> => {
   try {
     console.log(`Updating chat ${chatId} pin status to ${isPinned}`);
-    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`, {
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chat/${chatId}.json`, {
       method: 'PATCH',
       body: JSON.stringify({ isPinned }),
     });

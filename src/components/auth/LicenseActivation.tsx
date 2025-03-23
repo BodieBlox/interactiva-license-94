@@ -31,9 +31,10 @@ export const LicenseActivation = () => {
 
   useEffect(() => {
     console.log("LicenseActivation effect - User:", user?.id, "License active:", user?.licenseActive);
+    console.log("Is company member:", user?.customization?.isCompanyMember);
     
-    if (user?.licenseActive) {
-      console.log("User already has an active license, redirecting to dashboard");
+    if (user?.licenseActive || user?.customization?.isCompanyMember) {
+      console.log("User already has an active license or is a company member, redirecting to dashboard");
       toast({
         title: "License Already Active",
         description: "You already have an active license and don't need to activate another one.",
@@ -45,8 +46,8 @@ export const LicenseActivation = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (user?.licenseActive) {
-      console.log("Preventing license activation - user already has active license");
+    if (user?.licenseActive || user?.customization?.isCompanyMember) {
+      console.log("Preventing license activation - user already has active license or is company member");
       toast({
         title: "License Already Active",
         description: "You already have an active license and don't need to activate another one.",
@@ -98,8 +99,8 @@ export const LicenseActivation = () => {
     }
   };
 
-  if (user?.licenseActive) {
-    console.log("Rendering redirect message - user has active license");
+  if (user?.licenseActive || user?.customization?.isCompanyMember) {
+    console.log("Rendering redirect message - user has active license or is company member");
     return (
       <div className="w-full max-w-md mx-auto text-center py-12">
         <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">

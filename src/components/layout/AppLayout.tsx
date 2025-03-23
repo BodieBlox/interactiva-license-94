@@ -46,6 +46,7 @@ export const AppLayout = ({
     
     // Skip license check for users who are company members
     if (user.customization?.isCompanyMember) {
+      console.log("User is company member, skipping license check");
       return false;
     }
     
@@ -53,6 +54,7 @@ export const AppLayout = ({
     
     // If user has an active license, no need to show dialog
     if (user.licenseActive === true) {
+      console.log("User has active license");
       return false;
     }
     
@@ -73,7 +75,8 @@ export const AppLayout = ({
       requireAuth, 
       requireAdmin, 
       requireLicense,
-      licenseActive: user?.licenseActive
+      licenseActive: user?.licenseActive,
+      isCompanyMember: user?.customization?.isCompanyMember
     });
 
     if (requireAuth && !user) {
@@ -91,23 +94,17 @@ export const AppLayout = ({
         description: "Admin privileges required to access this page",
         variant: "destructive"
       });
-      // Always check license when redirecting from admin pages
-      checkLicense().then(needsLicense => {
-        if (needsLicense) {
-          navigate('/activate');
-        } else {
-          navigate('/dashboard');
-        }
-      });
+      navigate('/dashboard');
       return;
     }
 
-    // Skip license check for admin users going to admin pages
+    // Skip license check for admin users going to admin pages, and company members
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isActivationRoute = location.pathname === '/activate';
+    const isUserCompanyMember = user?.customization?.isCompanyMember === true;
     
-    // Only check license if we require it and not already on activation page
-    if (requireLicense && user && !isActivationRoute && !isAdminRoute) {
+    // Only check license if we require it, not already on activation page, not an admin route, and not a company member
+    if (requireLicense && user && !isActivationRoute && !isAdminRoute && !isUserCompanyMember && user.licenseActive !== true) {
       checkLicense();
     }
 

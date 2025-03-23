@@ -166,9 +166,9 @@ export const ChatViewer = () => {
     }
   };
 
-  // Function to delete chat from API
+  // Function to delete chat from API - Updated to use /chat path
   const deleteChatFromAPI = async (chatId: string) => {
-    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chats/${chatId}.json`, {
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/chat/${chatId}.json`, {
       method: 'DELETE'
     });
     
