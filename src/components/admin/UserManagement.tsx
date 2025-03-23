@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
-import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense } from '@/utils/api';
+import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense, forceUserLogout } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -91,13 +90,17 @@ export const UserManagement = () => {
           }
           
           const message = actionType !== 'activate' ? warningMessage.trim() : undefined;
-          // Sanitize user data to prevent undefined values
           const userData = sanitizeUserData({
             status,
-            warningMessage: message || null // Use null to explicitly remove warning message
+            warningMessage: message || null
           });
           
           const updatedUser = await updateUserStatus(selectedUser.id, status, message);
+          
+          if (status === 'warned' || status === 'suspended') {
+            await forceUserLogout(selectedUser.id);
+            console.log(`User ${selectedUser.id} has been forced to logout due to ${status} status`);
+          }
           
           setUsers(prevUsers => prevUsers.map(user => 
             user.id === updatedUser.id ? updatedUser : user
@@ -123,7 +126,6 @@ export const UserManagement = () => {
           if (selectedUser.licenseKey) {
             await suspendLicense(selectedUser.licenseKey);
             
-            // Update local state with sanitized data
             const updatedUser = { 
               ...selectedUser, 
               licenseActive: false 
@@ -151,11 +153,10 @@ export const UserManagement = () => {
             try {
               await revokeLicense(selectedUser.licenseKey);
               
-              // Update local state with sanitized data
               const updatedUser = { 
                 ...selectedUser, 
                 licenseActive: false,
-                licenseKey: null // Use null instead of undefined
+                licenseKey: null
               };
               setUsers(prevUsers => prevUsers.map(user => 
                 user.id === updatedUser.id ? updatedUser : user
@@ -373,10 +374,10 @@ export const UserManagement = () => {
               <span>
                 {actionType === 'warn' && 'Issue Warning'}
                 {actionType === 'suspend' && 'Suspend User'}
-                {actionType === 'activate' && 'Activate User'}
-                {actionType === 'clearChats' && 'Clear Chat History'}
-                {actionType === 'suspendLicense' && 'Suspend License'}
-                {actionType === 'revokeLicense' && 'Revoke License'}
+                {actionType === 'activate' && `Restore full access for ${selectedUser?.username}.`}
+                {actionType === 'clearChats' && `This will permanently delete all chats for ${selectedUser?.username}. This action cannot be undone.`}
+                {actionType === 'suspendLicense' && `This will suspend the license for ${selectedUser?.username}. They will lose access to premium features.`}
+                {actionType === 'revokeLicense' && `This will completely revoke the license for ${selectedUser?.username}. The license key will be reset and can be reassigned.`}
               </span>
             </DialogTitle>
             <DialogDescription>

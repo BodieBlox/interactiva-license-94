@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { ref, get, set, update } from 'firebase/database';
+import { ref, get, set, update, onValue } from 'firebase/database';
 import { User, License } from '../utils/types';
 import { auth, database } from '../utils/firebase';
 import { toast } from '@/components/ui/use-toast';
@@ -557,15 +557,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const checkForcedLogout = async (): Promise<boolean> => {
+  const checkForcedLogout = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
     
     try {
+      console.log(`Checking forced logout status for user ${user.id}`);
       const userRef = ref(database, `users/${user.id}`);
       const snapshot = await get(userRef);
       
       if (snapshot.exists()) {
-        const userData = snapshot.val();
+        const userData = snapshot.val() as User;
+        
         if (userData.forcedLogout) {
           await update(userRef, {
             forcedLogout: null
@@ -580,6 +582,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           return true;
         }
+        
+        if (userData.status === 'suspended') {
+          toast({
+            title: "Account Suspended",
+            description: userData.warningMessage || "Your account has been suspended by an administrator",
+            variant: "destructive"
+          });
+          
+          await signOut(auth);
+          setUser(null);
+          return true;
+        }
+        
+        if (userData.status === 'warned' && user.status !== 'warned') {
+          toast({
+            title: "Account Warning",
+            description: userData.warningMessage || "Your account has received a warning from an administrator",
+            variant: "warning"
+          });
+          
+          setUser(userData);
+        }
+        
+        if (JSON.stringify(userData) !== JSON.stringify(user)) {
+          setUser(userData);
+        }
       }
       
       return false;
@@ -587,7 +615,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Check forced logout error:', error);
       return false;
     }
-  };
+  }, [user]);
+  
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    console.log(`Setting up real-time status listener for user ${user.id}`);
+    const userRef = ref(database, `users/${user.id}`);
+    
+    const unsubscribe = onValue(userRef, async (snapshot) => {
+      if (snapshot.exists()) {
+        const userData = snapshot.val() as User;
+        
+        if (userData.status === 'suspended' && user.status !== 'suspended') {
+          console.log(`User ${user.id} status changed to suspended, forcing logout`);
+          
+          toast({
+            title: "Account Suspended",
+            description: userData.warningMessage || "Your account has been suspended by an administrator",
+            variant: "destructive"
+          });
+          
+          await signOut(auth);
+          setUser(null);
+          return;
+        }
+        
+        if (userData.status === 'warned' && user.status !== 'warned') {
+          console.log(`User ${user.id} status changed to warned, showing warning`);
+          
+          toast({
+            title: "Account Warning",
+            description: userData.warningMessage || "Your account has received a warning from an administrator",
+            variant: "warning"
+          });
+          
+          setUser(userData);
+        }
+        
+        if (userData.forcedLogout) {
+          console.log(`User ${user.id} has been force logged out`);
+          
+          await update(userRef, {
+            forcedLogout: null
+          });
+          
+          toast({
+            title: "Session Terminated",
+            description: "Your session was terminated by an administrator",
+            variant: "destructive"
+          });
+          
+          await signOut(auth);
+          setUser(null);
+        }
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [user]);
   
   const fetchIP = async (): Promise<string> => {
     try {

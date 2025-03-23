@@ -804,6 +804,7 @@ export const logUserLogin = async (userId: string, details: { ip: string; userAg
 
 export const forceUserLogout = async (userId: string): Promise<void> => {
   try {
+    console.log(`Forcing logout for user ${userId}`);
     // Set a forced logout timestamp on the user
     await updateUser(userId, {
       forcedLogout: new Date().toISOString()

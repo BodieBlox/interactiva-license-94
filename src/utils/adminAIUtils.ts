@@ -1,7 +1,8 @@
 
-import { database } from './firebase';
+import { database, auth } from './firebase';
 import { ref, get, update } from 'firebase/database';
 import { User } from './types';
+import { updateUserStatus, updateUser, forceUserLogout } from './api';
 
 // Parse admin commands from chat messages
 export const parseAdminIntent = (message: string): { intent: string; userId?: string; data?: any } | null => {
@@ -50,34 +51,44 @@ export const executeAdminAction = async (
     }
     
     const user = snapshot.val() as User;
+    const defaultWarningMessage = 'Your account has been actioned by an administrator.';
     
     switch (intent.toLowerCase()) {
       case 'suspend':
-        // Suspend user
-        await update(userRef, { status: 'suspended' });
+        // Suspend user with a proper warning message
+        await updateUserStatus(userId, 'suspended', data?.message || defaultWarningMessage);
+        // Force logout immediately
+        await forceUserLogout(userId);
+        console.log(`User ${userId} has been suspended and forced to logout`);
         return true;
         
       case 'activate':
         // Activate user
-        await update(userRef, { status: 'active' });
+        await updateUserStatus(userId, 'active');
+        console.log(`User ${userId} has been activated`);
         return true;
         
       case 'warn':
-        // Warn user
-        await update(userRef, { status: 'warned' });
+        // Warn user with a proper warning message
+        await updateUserStatus(userId, 'warned', data?.message || defaultWarningMessage);
+        // Force logout immediately
+        await forceUserLogout(userId);
+        console.log(`User ${userId} has been warned and forced to logout`);
         return true;
         
       case 'revoke':
         // Revoke license
-        await update(userRef, { licenseActive: false });
+        await updateUser(userId, { licenseActive: false });
+        console.log(`License for user ${userId} has been revoked`);
         return true;
         
       case 'grant':
         // Grant license
-        await update(userRef, { 
+        await updateUser(userId, { 
           licenseActive: true,
           licenseType: data?.type || 'basic'
         });
+        console.log(`License for user ${userId} has been granted (${data?.type || 'basic'})`);
         return true;
         
       default:

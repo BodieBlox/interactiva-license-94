@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -28,7 +27,7 @@ export const AppLayout = ({
   requireAdmin = false,
   requireLicense = false
 }: AppLayoutProps) => {
-  const { user, isLoading, logout, checkLicenseValidity } = useAuth();
+  const { user, isLoading, logout, checkLicenseValidity, checkForcedLogout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showWarning, setShowWarning] = useState(false);
@@ -71,6 +70,31 @@ export const AppLayout = ({
     setShowLicenseDialog(true);
     return true;
   };
+
+  // Add status polling to detect forced logout
+  useEffect(() => {
+    if (!user) return;
+
+    // Check for forced logout or status changes every 30 seconds
+    const statusCheckInterval = setInterval(async () => {
+      // Check if user has been forced to logout
+      const wasForceLoggedOut = await checkForcedLogout();
+      
+      if (wasForceLoggedOut) {
+        clearInterval(statusCheckInterval);
+      }
+    }, 30000); // Every 30 seconds
+
+    // Cleanup on unmount
+    return () => clearInterval(statusCheckInterval);
+  }, [user, checkForcedLogout]);
+
+  // Run immediate forced logout check on mount
+  useEffect(() => {
+    if (user) {
+      checkForcedLogout();
+    }
+  }, [user, checkForcedLogout]);
 
   useEffect(() => {
     // Only run redirects if we're not loading
