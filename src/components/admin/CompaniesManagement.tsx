@@ -339,7 +339,7 @@ export default function CompaniesManagement() {
         return;
       }
 
-      // Send invitation with all required parameters
+      // Send invitation with all required parameters including toUserId
       await sendCompanyInvitation({
         fromUserId: adminUser.id,
         fromUsername: adminUser.username,
@@ -347,7 +347,8 @@ export default function CompaniesManagement() {
         companyName: company.name,
         toUserId: targetUser.id,
         toEmail: targetUser.email,
-        primaryColor: company.branding?.primaryColor
+        primaryColor: company.branding?.primaryColor,
+        logo: company.branding?.logo
       });
 
       toast({

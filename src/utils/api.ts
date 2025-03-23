@@ -1,4 +1,3 @@
-
 import { database } from './firebase';
 import { ref, get, set, update, push, query, orderByChild, equalTo } from 'firebase/database';
 import { User, Chat, ChatMessage, License, LicenseRequest, LoginLog } from './types';
@@ -459,6 +458,21 @@ export const generateLicense = async (
     return license;
   } catch (error) {
     console.error("Error generating license:", error);
+    throw error;
+  }
+};
+
+export const assignLicense = async (userId: string, licenseType: 'basic' | 'premium' | 'enterprise'): Promise<License> => {
+  try {
+    // Generate a new license of the specified type
+    const license = await generateLicense(licenseType, 365); // Default to 1 year
+    
+    // Assign the license to the user
+    await assignLicenseToUser(userId, license.key);
+    
+    return license;
+  } catch (error) {
+    console.error("Error assigning license:", error);
     throw error;
   }
 };

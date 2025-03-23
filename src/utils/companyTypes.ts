@@ -1,4 +1,3 @@
-
 import { User } from './types';
 
 export interface Company {
@@ -17,6 +16,7 @@ export interface Company {
 
 export interface UserWithCompany extends User {
   companyRole?: 'admin' | 'member';
+  // Remove the 'company' property that was causing issues
 }
 
 export interface CompanyInvitation {
@@ -30,6 +30,7 @@ export interface CompanyInvitation {
   timestamp: string;
   primaryColor?: string;
   logo?: string;
+  status?: 'pending' | 'accepted' | 'declined'; // Add the status field to the interface
 }
 
 // Function to sanitize company data by removing undefined values

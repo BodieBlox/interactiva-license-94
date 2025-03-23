@@ -1,4 +1,3 @@
-
 import { database } from './firebase';
 import { ref, get, push, set, update, query, orderByChild, equalTo } from 'firebase/database';
 import { User } from './types';
@@ -125,15 +124,12 @@ export const getCompanyMembers = async (companyId: string): Promise<UserWithComp
     snapshot.forEach((childSnapshot) => {
       const user = childSnapshot.val() as User;
       if (company.members.includes(user.id)) {
-        members.push({
+        // Create a UserWithCompany without using the 'company' property
+        const memberWithRole: UserWithCompany = {
           ...user,
-          company: {
-            id: company.id,
-            name: company.name,
-            role: user.id === company.adminId ? 'admin' : 'member',
-            branding: company.branding
-          }
-        });
+          companyRole: user.id === company.adminId ? 'admin' : 'member'
+        };
+        members.push(memberWithRole);
       }
     });
     
@@ -205,10 +201,10 @@ export const sendCompanyInvitation = async (invitationData: {
       companyId: invitationData.companyId,
       toUserId: invitationData.toUserId,
       toEmail: invitationData.toEmail,
-      status: 'pending',
       timestamp: new Date().toISOString(),
       primaryColor: invitationData.primaryColor,
-      logo: invitationData.logo
+      logo: invitationData.logo,
+      status: 'pending' // Add the status field
     };
     
     // Save the invitation

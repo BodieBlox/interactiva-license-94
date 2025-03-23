@@ -185,11 +185,18 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error('Company admin not found');
       }
       
+      // Find the user to invite by email
+      const targetUser = await getUserByEmail(email);
+      if (!targetUser) {
+        throw new Error('User not found with this email');
+      }
+      
       await sendCompanyInvitation({
         fromUserId: adminUser.id,
         fromUsername: adminUser.username,
         companyId: companyId,
         companyName: userCompany?.name || '',
+        toUserId: targetUser.id, // Add the required toUserId
         toEmail: email,
         primaryColor: userCompany?.branding?.primaryColor || '#7E69AB',
         logo: userCompany?.branding?.logo
