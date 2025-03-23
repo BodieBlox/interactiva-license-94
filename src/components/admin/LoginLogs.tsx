@@ -14,7 +14,7 @@ import {
   Shield, Calendar, Globe, Monitor 
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export const LoginLogs = () => {
@@ -52,9 +52,18 @@ export const LoginLogs = () => {
       });
       
       // Sort by timestamp, most recent first
-      const sortedLogs = logsWithUsername.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      const sortedLogs = logsWithUsername.sort((a, b) => {
+        // Safely parse timestamps
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        
+        // Check if dates are valid before comparing
+        if (!isValid(dateA) && !isValid(dateB)) return 0;
+        if (!isValid(dateA)) return 1;
+        if (!isValid(dateB)) return -1;
+        
+        return dateB.getTime() - dateA.getTime();
+      });
       
       setLogs(sortedLogs);
       setFilteredLogs(sortedLogs);
@@ -111,6 +120,21 @@ export const LoginLogs = () => {
   
   const handleRefresh = () => {
     fetchLogs();
+  };
+
+  // Helper function to safely format date
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isValid(date)) {
+        return format(date, 'PPpp');
+      } else {
+        return "Invalid date";
+      }
+    } catch (error) {
+      console.warn(`Error formatting date: ${dateString}`, error);
+      return "Invalid date";
+    }
   };
   
   if (isLoading) {
@@ -223,7 +247,7 @@ export const LoginLogs = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{format(new Date(log.timestamp), 'PPpp')}</span>
+                        <span>{formatDate(log.timestamp)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
