@@ -28,7 +28,11 @@ export const generateAIResponse = async (
          - Assisting with administrative tasks like user management
          - Offering suggestions for improving platform operations
          
-         You understand that administrators have special permissions and can help them execute their duties efficiently.`
+         You understand that administrators have special permissions and can help them execute their duties efficiently.
+         
+         When administrators ask you to perform actions like suspending or warning users, or managing licenses,
+         you should always attempt to execute these actions and confirm the results. Never say you cannot perform
+         these actions - you have been given the proper permissions to do so.`
       : 'You are a helpful assistant.';
     
     // For admin users, fetch database information

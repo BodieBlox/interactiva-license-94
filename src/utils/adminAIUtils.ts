@@ -6,12 +6,14 @@ import { updateUserStatus, updateUser, forceUserLogout } from './api';
 
 // Parse admin commands from chat messages
 export const parseAdminIntent = (message: string): { intent: string; userId?: string; data?: any } | null => {
-  // Simple parser for admin commands in the format: /admin <command> <userId> [data]
-  const adminCommandPattern = /^\/admin\s+(\w+)(?:\s+(\w+))?(?:\s+(.+))?$/i;
-  const match = message.match(adminCommandPattern);
+  // More robust parser for admin commands with multiple formats
   
-  if (match) {
-    const [, intent, userId, dataString] = match;
+  // Check for direct admin commands in format: /admin <command> <userId> [data]
+  const adminCommandPattern = /^\/admin\s+(\w+)(?:\s+(\w+))?(?:\s+(.+))?$/i;
+  const directMatch = message.match(adminCommandPattern);
+  
+  if (directMatch) {
+    const [, intent, userId, dataString] = directMatch;
     let data;
     
     // Try to parse data as JSON if it exists
@@ -27,32 +29,138 @@ export const parseAdminIntent = (message: string): { intent: string; userId?: st
     return { intent, userId, data };
   }
   
+  // Check for natural language admin requests
+  const suspendPattern = /(?:suspend|ban|block)\s+user\s+(?:with\s+(?:id|email|username)\s+)?(?:"([^"]+)"|(\S+@\S+\.\S+|\S+))/i;
+  const suspendMatch = message.match(suspendPattern);
+  
+  if (suspendMatch) {
+    const userIdentifier = suspendMatch[1] || suspendMatch[2];
+    // Extract reason if provided
+    const reasonMatch = message.match(/(?:for|because|reason|due to)\s+(?:"([^"]+)"|([^\.]+))/i);
+    const reason = reasonMatch ? (reasonMatch[1] || reasonMatch[2]) : "Suspended by admin via AI";
+    
+    return { 
+      intent: "suspend", 
+      userId: userIdentifier,
+      data: { message: reason }
+    };
+  }
+  
+  // Check for warning requests
+  const warnPattern = /(?:warn|warning|issue\s+warning\s+to)\s+user\s+(?:with\s+(?:id|email|username)\s+)?(?:"([^"]+)"|(\S+@\S+\.\S+|\S+))/i;
+  const warnMatch = message.match(warnPattern);
+  
+  if (warnMatch) {
+    const userIdentifier = warnMatch[1] || warnMatch[2];
+    // Extract reason if provided
+    const reasonMatch = message.match(/(?:for|because|reason|due to)\s+(?:"([^"]+)"|([^\.]+))/i);
+    const reason = reasonMatch ? (reasonMatch[1] || reasonMatch[2]) : "Warned by admin via AI";
+    
+    return { 
+      intent: "warn", 
+      userId: userIdentifier,
+      data: { message: reason }
+    };
+  }
+  
+  // Check for activation requests
+  const activatePattern = /(?:activate|enable|unsuspend|restore)\s+user\s+(?:with\s+(?:id|email|username)\s+)?(?:"([^"]+)"|(\S+@\S+\.\S+|\S+))/i;
+  const activateMatch = message.match(activatePattern);
+  
+  if (activateMatch) {
+    const userIdentifier = activateMatch[1] || activateMatch[2];
+    return { intent: "activate", userId: userIdentifier };
+  }
+  
+  // Check for license revocation
+  const revokePattern = /(?:revoke|cancel|remove)\s+license\s+(?:for|from)\s+user\s+(?:with\s+(?:id|email|username)\s+)?(?:"([^"]+)"|(\S+@\S+\.\S+|\S+))/i;
+  const revokeMatch = message.match(revokePattern);
+  
+  if (revokeMatch) {
+    const userIdentifier = revokeMatch[1] || revokeMatch[2];
+    return { intent: "revoke", userId: userIdentifier };
+  }
+  
+  // Check for license granting
+  const grantPattern = /(?:grant|give|assign|issue)\s+(?:a\s+)?license\s+(?:to|for)\s+user\s+(?:with\s+(?:id|email|username)\s+)?(?:"([^"]+)"|(\S+@\S+\.\S+|\S+))/i;
+  const grantMatch = message.match(grantPattern);
+  
+  if (grantMatch) {
+    const userIdentifier = grantMatch[1] || grantMatch[2];
+    // Try to extract license type
+    const typeMatch = message.match(/(?:type|tier|level)\s+(?:"([^"]+)"|(\w+))/i);
+    const licenseType = typeMatch ? (typeMatch[1] || typeMatch[2]) : "basic";
+    
+    return { 
+      intent: "grant", 
+      userId: userIdentifier,
+      data: { type: licenseType }
+    };
+  }
+  
   return null;
+};
+
+// Helper function to find a user by ID, email, or username
+const findUserByIdentifier = async (identifier: string): Promise<User | null> => {
+  try {
+    // First, check if it's a valid user ID
+    const userRef = ref(database, `users/${identifier}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      return { id: identifier, ...snapshot.val() } as User;
+    }
+    
+    // If not, check all users to match by email or username
+    const usersRef = ref(database, 'users');
+    const usersSnapshot = await get(usersRef);
+    
+    if (usersSnapshot.exists()) {
+      const users = usersSnapshot.val();
+      
+      for (const userId in users) {
+        const user = users[userId];
+        if (
+          (user.email && user.email.toLowerCase() === identifier.toLowerCase()) ||
+          (user.username && user.username.toLowerCase() === identifier.toLowerCase())
+        ) {
+          return { id: userId, ...user } as User;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding user by identifier:', error);
+    return null;
+  }
 };
 
 // Execute admin actions based on the parsed intent
 export const executeAdminAction = async (
   intent: string,
-  userId: string, 
+  userIdentifier: string, 
   data?: any
 ): Promise<boolean> => {
-  if (!userId) {
-    console.error('No user ID provided for admin action');
+  if (!userIdentifier) {
+    console.error('No user identifier provided for admin action');
     return false;
   }
   
   try {
-    console.log(`Executing admin action: ${intent} for user: ${userId}`);
+    console.log(`Executing admin action: ${intent} for user identifier: ${userIdentifier}`);
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
+    // Find user by ID, email, or username
+    const user = await findUserByIdentifier(userIdentifier);
     
-    if (!snapshot.exists()) {
-      console.error(`User ${userId} not found`);
+    if (!user) {
+      console.error(`User with identifier ${userIdentifier} not found`);
       return false;
     }
     
-    const user = snapshot.val() as User;
+    console.log(`Found user for admin action:`, user);
+    const userId = user.id;
     const defaultWarningMessage = 'Your account has been actioned by an administrator.';
     
     switch (intent.toLowerCase()) {

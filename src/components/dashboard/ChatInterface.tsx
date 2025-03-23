@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -121,29 +122,46 @@ export const ChatInterface = () => {
       let adminActionResult: string | null = null;
       let isAdminAction = false;
       
+      // Process admin commands when user is an admin
       if (isAdmin) {
+        console.log("Checking for admin intent in:", userMessageContent);
         const adminAction = parseAdminIntent(userMessageContent);
+        
         if (adminAction && adminAction.intent && adminAction.userId) {
+          console.log("Detected admin action:", adminAction);
           isAdminAction = true;
-          const success = await executeAdminAction(adminAction.intent, adminAction.userId, adminAction.data);
+          
+          // Execute the admin action
+          const success = await executeAdminAction(
+            adminAction.intent, 
+            adminAction.userId, 
+            adminAction.data
+          );
+          
+          // Prepare result message
           adminActionResult = success ? 
             `Successfully executed ${adminAction.intent} action for user ${adminAction.userId}` : 
             `Failed to execute ${adminAction.intent} action for user ${adminAction.userId}`;
+            
+          console.log("Admin action result:", adminActionResult);
         }
       }
       
       const conversationHistory = currentChat.messages || [];
       
+      // Use admin action result if available, otherwise generate AI response
       const aiMessage = isAdminAction && adminActionResult 
         ? adminActionResult
         : await generateAIResponse(userMessageContent, conversationHistory, isAdmin);
       
+      // Add AI response to chat
       const aiResponseMessage = await addMessageToChat(currentChat.id, {
         content: aiMessage,
         role: 'assistant',
         isAdminAction: isAdminAction
       });
       
+      // Update chat state
       setChat((prevChat) => {
         if (!prevChat) return null;
         
@@ -161,6 +179,7 @@ export const ChatInterface = () => {
         } as Chat;
       });
       
+      // Refresh chat to ensure we have latest data
       const updatedChat = await getChatById(currentChat.id);
       if (updatedChat) {
         setChat(updatedChat);
@@ -169,6 +188,7 @@ export const ChatInterface = () => {
     } catch (error) {
       console.error('Error generating AI response:', error);
       
+      // Remove loading message
       setChat((prevChat: Chat | null) => {
         if (!prevChat) return null;
         
@@ -179,6 +199,7 @@ export const ChatInterface = () => {
         } as Chat;
       });
       
+      // Add error message
       if (currentChat && currentChat.id) {
         await addMessageToChat(currentChat.id, {
           content: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
@@ -209,21 +230,56 @@ export const ChatInterface = () => {
     if (contentCheck.isInappropriate) {
       console.log("Inappropriate content detected:", contentCheck.reason);
       if (user) {
-        const warningResponse = await handleInappropriateMessage(
-          user.id, 
-          user.username,
-          updateUserStatus
-        );
-        toast({
-          title: "Warning",
-          description: "Your message contains inappropriate language",
-          variant: "destructive"
-        });
-        setMessage('');
-        return;
+        try {
+          const warningResponse = await handleInappropriateMessage(
+            user.id, 
+            user.username,
+            updateUserStatus
+          );
+          
+          // Add both the user's message and the warning to the chat
+          let targetChat = chat;
+          
+          if (!targetChat) {
+            const newChat = await createChat(user.id, 'New conversation');
+            if (!newChat || !newChat.id) {
+              throw new Error("Failed to create chat");
+            }
+            targetChat = newChat;
+            setChat(newChat);
+            navigate(`/chat/${newChat.id}`, { replace: true });
+          }
+          
+          // Add user's message so they can see what they sent
+          const sentMessage = await sendMessage(targetChat.id, message.trim(), 'user');
+          
+          // Add warning message from system
+          await addMessageToChat(targetChat.id, {
+            content: warningResponse,
+            role: 'assistant'
+          });
+          
+          // Update local chat state
+          const updatedChat = await getChatById(targetChat.id);
+          if (updatedChat) {
+            setChat(updatedChat);
+          }
+          
+          toast({
+            title: "Warning",
+            description: "Your message contains inappropriate language",
+            variant: "destructive"
+          });
+          
+          setMessage('');
+          return;
+        } catch (error) {
+          console.error("Error handling inappropriate message:", error);
+        }
       }
     }
     
+    // Handle regular message if no inappropriate content
     setIsSending(true);
     try {
       const messageContent = message.trim();

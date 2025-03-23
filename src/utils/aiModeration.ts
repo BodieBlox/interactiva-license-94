@@ -42,9 +42,9 @@ export const handleInappropriateMessage = async (
 ): Promise<string> => {
   console.log("Handling inappropriate message for user:", userId);
   try {
-    // Issue warning to the user
+    // Issue warning to the user - ensuring proper status is set
     const result = await updateUser(userId, {
-      status: 'warned',
+      status: 'warned', // Explicitly set to 'warned' status
       warningMessage: 'You have been warned for using inappropriate language. Continued violations may result in account suspension.'
     });
     
