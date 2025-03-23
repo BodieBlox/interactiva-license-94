@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +13,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
-import { ShieldAlert, AlertTriangle, Key } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Key, Lock, LogOut, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -75,7 +77,7 @@ export const AppLayout = ({
   useEffect(() => {
     if (!user) return;
 
-    // Check for forced logout or status changes every 30 seconds
+    // Check for forced logout or status changes every 15 seconds (more frequent)
     const statusCheckInterval = setInterval(async () => {
       // Check if user has been forced to logout
       const wasForceLoggedOut = await checkForcedLogout();
@@ -83,7 +85,7 @@ export const AppLayout = ({
       if (wasForceLoggedOut) {
         clearInterval(statusCheckInterval);
       }
-    }, 30000); // Every 30 seconds
+    }, 15000); // Every 15 seconds
 
     // Cleanup on unmount
     return () => clearInterval(statusCheckInterval);
@@ -189,6 +191,11 @@ export const AppLayout = ({
     setShowLicenseDialog(false);
     navigate('/activate');
   };
+  
+  const handleContactSupport = () => {
+    // Open email client with support email
+    window.location.href = 'mailto:support@example.com?subject=Account%20Suspension%20Inquiry';
+  };
 
   // Only show loader if authentication is in progress AND we need auth for this page
   if (isLoading && (requireAuth || requireAdmin || requireLicense)) {
@@ -253,19 +260,39 @@ export const AppLayout = ({
 
       {/* Suspended Dialog for suspended users */}
       <AlertDialog open={showSuspendedDialog} onOpenChange={setShowSuspendedDialog}>
-        <AlertDialogContent className="glass-panel border-0">
+        <AlertDialogContent className="glass-panel border-0 max-w-md">
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
+              <Lock className="h-8 w-8 text-red-500" />
+            </div>
+          </div>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-red-500" />
-              <span>Account Suspended</span>
+            <AlertDialogTitle className="text-center text-xl">
+              Account Suspended
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
+            <AlertDialogDescription className="text-center text-base">
               {user?.warningMessage || "Your account has been suspended by an administrator."}
-              <p className="mt-2">Please contact support for assistance.</p>
+              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-100 dark:border-red-900/20">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  If you believe this is an error, please contact support for assistance.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuspendedLogout} className="bg-red-500 hover:bg-red-600">
+          <AlertDialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-center mt-4">
+            <Button 
+              variant="outline" 
+              onClick={handleContactSupport}
+              className="w-full sm:w-auto border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Contact Support
+            </Button>
+            <AlertDialogAction 
+              onClick={handleSuspendedLogout} 
+              className="w-full sm:w-auto bg-red-500 hover:bg-red-600"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </AlertDialogAction>
           </AlertDialogFooter>

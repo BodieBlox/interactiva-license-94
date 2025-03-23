@@ -1,6 +1,6 @@
 
 import { database, auth } from './firebase';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, onValue, off } from 'firebase/database';
 import { User } from './types';
 import { updateUserStatus, updateUser, forceUserLogout } from './api';
 
@@ -54,42 +54,69 @@ export const executeAdminAction = async (
     const defaultWarningMessage = 'Your account has been actioned by an administrator.';
     
     switch (intent.toLowerCase()) {
-      case 'suspend':
+      case 'suspend': {
         // Suspend user with a proper warning message
-        await updateUserStatus(userId, 'suspended', data?.message || defaultWarningMessage);
+        const message = data?.message || defaultWarningMessage;
+        console.log(`Attempting to suspend user ${userId} with message: ${message}`);
+        
+        // Update user status in the database
+        await updateUserStatus(userId, 'suspended', message);
+        
         // Force logout immediately
         await forceUserLogout(userId);
+        
         console.log(`User ${userId} has been suspended and forced to logout`);
         return true;
+      }
         
-      case 'activate':
-        // Activate user
-        await updateUserStatus(userId, 'active');
+      case 'activate': {
+        console.log(`Attempting to activate user ${userId}`);
+        
+        // Activate user - clear warning message
+        await updateUserStatus(userId, 'active', null);
+        
         console.log(`User ${userId} has been activated`);
         return true;
+      }
         
-      case 'warn':
+      case 'warn': {
         // Warn user with a proper warning message
-        await updateUserStatus(userId, 'warned', data?.message || defaultWarningMessage);
+        const message = data?.message || defaultWarningMessage;
+        console.log(`Attempting to warn user ${userId} with message: ${message}`);
+        
+        // Update user status in the database
+        await updateUserStatus(userId, 'warned', message);
+        
         // Force logout immediately
         await forceUserLogout(userId);
+        
         console.log(`User ${userId} has been warned and forced to logout`);
         return true;
+      }
         
-      case 'revoke':
+      case 'revoke': {
+        console.log(`Attempting to revoke license for user ${userId}`);
+        
         // Revoke license
         await updateUser(userId, { licenseActive: false });
+        
         console.log(`License for user ${userId} has been revoked`);
         return true;
+      }
         
-      case 'grant':
+      case 'grant': {
+        const licenseType = data?.type || 'basic';
+        console.log(`Attempting to grant ${licenseType} license to user ${userId}`);
+        
         // Grant license
         await updateUser(userId, { 
           licenseActive: true,
-          licenseType: data?.type || 'basic'
+          licenseType: licenseType
         });
-        console.log(`License for user ${userId} has been granted (${data?.type || 'basic'})`);
+        
+        console.log(`License for user ${userId} has been granted (${licenseType})`);
         return true;
+      }
         
       default:
         console.error(`Unknown admin action: ${intent}`);
@@ -99,4 +126,24 @@ export const executeAdminAction = async (
     console.error('Error executing admin action:', error);
     return false;
   }
+};
+
+// Helper function to listen for status changes
+export const listenForUserStatusChanges = (userId: string, callback: (status: User['status'], message?: string) => void): (() => void) => {
+  const userRef = ref(database, `users/${userId}/status`);
+  const messageRef = ref(database, `users/${userId}/warningMessage`);
+  
+  const statusListener = onValue(userRef, (snapshot) => {
+    const status = snapshot.val() as User['status'] | null;
+    if (status) {
+      get(messageRef).then((msgSnapshot) => {
+        const message = msgSnapshot.val();
+        callback(status, message);
+      });
+    }
+  });
+  
+  return () => {
+    off(userRef, 'value', statusListener);
+  };
 };
