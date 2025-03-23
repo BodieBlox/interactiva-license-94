@@ -6,7 +6,7 @@
  * logic to improve AI's ability to work with application data.
  */
 
-import { getUsers, getLoginLogs, getUserChats as getChatMessages } from './api';
+import { getUsers, getLoginLogs, getUserChats } from './api';
 import { User, ChatMessage, LoginLog, Chat } from './types';
 import { getCompanies, getCompanyMembers } from './companyApi';
 import { Company, UserWithCompany } from './companyTypes';
@@ -116,7 +116,7 @@ export const fetchChatMessagesForAI = async (userId: string): Promise<{
   topCategories: string[];
 }> => {
   try {
-    const chats = await getChatMessages(userId);
+    const chats = await getUserChats(userId);
     let allMessages: ChatMessage[] = [];
     
     // Extract all messages from all chats
@@ -198,11 +198,23 @@ export const fetchLoginActivityForAI = async (): Promise<{
     // Count unique IPs
     const uniqueIPs = new Set(loginLogs.map(log => log.ip)).size;
     
-    // Group logins by day
+    // Group logins by day - with date validation
     const loginsByDay: { [key: string]: number } = {};
     loginLogs.forEach(log => {
-      const date = new Date(log.timestamp).toISOString().split('T')[0];
-      loginsByDay[date] = (loginsByDay[date] || 0) + 1;
+      try {
+        // Safely parse the timestamp and format it
+        const timestamp = new Date(log.timestamp);
+        
+        // Validate that the timestamp is a valid date before using toISOString
+        if (!isNaN(timestamp.getTime())) {
+          const date = timestamp.toISOString().split('T')[0];
+          loginsByDay[date] = (loginsByDay[date] || 0) + 1;
+        } else {
+          console.warn(`Invalid timestamp in login log: ${log.timestamp}`);
+        }
+      } catch (err) {
+        console.warn(`Error parsing timestamp in login log: ${log.timestamp}`, err);
+      }
     });
     
     return {
