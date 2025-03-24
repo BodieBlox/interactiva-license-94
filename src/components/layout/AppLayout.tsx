@@ -25,14 +25,12 @@ export const AppLayout = () => {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
 
+  // Hook to handle mounting
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  if (!isMounted) {
-    return <div className="h-screen flex justify-center items-center">Loading...</div>;
-  }
-
+  // Hook to check platform status
   useEffect(() => {
     const checkPlatformStatus = async () => {
       try {
@@ -58,6 +56,11 @@ export const AppLayout = () => {
       checkPlatformStatus();
     }
   }, [user, logout, navigate]);
+
+  // Don't render the main content until mounted
+  if (!isMounted) {
+    return <div className="h-screen flex justify-center items-center">Loading...</div>;
+  }
 
   return (
     <div className="h-screen flex overflow-hidden">
