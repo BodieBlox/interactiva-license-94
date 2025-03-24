@@ -195,23 +195,23 @@ export const DashboardContent = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background/70 to-muted/20" style={customStyle}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
               Welcome back, {user?.username || 'User'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm md:text-base">
               {companyName ? `${companyName} Dashboard` : 'Your personal dashboard'} • 
               <span className="ml-1 text-primary">{user?.role === 'admin' ? 'Administrator' : user?.role === 'staff' ? 'Staff Member' : 'User'}</span>
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             <Link to="/chat/new">
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-                size="sm"
+                size={isMobile ? "sm" : "default"}
               >
                 <MessageSquarePlus className="h-4 w-4" />
                 <span>New Chat</span>
@@ -221,7 +221,7 @@ export const DashboardContent = () => {
             <Button 
               variant="outline" 
               className="border-primary/20 text-primary hover:bg-primary/10 flex items-center gap-2"
-              size="sm"
+              size={isMobile ? "sm" : "default"}
               onClick={() => handleOpenUpgradeDialog('extension')}
             >
               <Clock className="h-4 w-4" />
@@ -231,7 +231,7 @@ export const DashboardContent = () => {
             <Button 
               variant="outline" 
               className="border-purple-500/20 text-purple-500 hover:bg-purple-500/10 flex items-center gap-2"
-              size="sm"
+              size={isMobile ? "sm" : "default"}
               onClick={() => handleOpenUpgradeDialog('upgrade')}
             >
               <Sparkles className="h-4 w-4" />
@@ -240,8 +240,8 @@ export const DashboardContent = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-3 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8">
+          <div className="lg:col-span-3 space-y-4 md:space-y-6">
             <UserProfile user={user} />
             
             <Card className="overflow-hidden border-primary/10 shadow-sm hover:shadow-md transition-all duration-300">
@@ -307,8 +307,8 @@ export const DashboardContent = () => {
             <DashboardStats chats={chats} />
           </div>
 
-          <div className="lg:col-span-9 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="lg:col-span-9 space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Card className="bg-gradient-to-br from-primary/80 to-primary border-none text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300">
                 <CardContent className="p-6 flex flex-col items-center text-center">
                   <MessageSquarePlus className="h-12 w-12 mb-4 animate-pulse-soft" />
@@ -353,24 +353,24 @@ export const DashboardContent = () => {
             
             <Card className="border border-primary/10 shadow-md">
               <CardHeader className="pb-3 border-b border-border/40">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-2">
                   <CardTitle className="flex items-center text-xl">
                     <MessagesSquare className="h-5 w-5 mr-2 text-primary" />
                     Your Conversations
                   </CardTitle>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-8 border-primary/20 text-primary hover:bg-primary/10"
+                      className="h-8 border-primary/20 text-primary hover:bg-primary/10 sm:w-auto w-1/2"
                       onClick={fetchChats}
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
                     </Button>
                   
                     <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                      <SelectTrigger className="h-8 w-[150px] border-primary/20 bg-white/80 dark:bg-gray-800/80">
+                      <SelectTrigger className="h-8 sm:w-[150px] w-1/2 border-primary/20 bg-white/80 dark:bg-gray-800/80">
                         <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
@@ -399,7 +399,7 @@ export const DashboardContent = () => {
               </CardHeader>
                 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                <TabsList className="bg-muted/50 border border-border">
+                <TabsList className="bg-muted/50 border border-border mx-4">
                   <TabsTrigger value="recent" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
                     <Clock className="h-3.5 w-3.5" /> Recent
                   </TabsTrigger>
@@ -411,7 +411,7 @@ export const DashboardContent = () => {
                   </TabsTrigger>
                 </TabsList>
               
-                <TabsContent value="recent" className="mt-0">
+                <TabsContent value="recent" className="mt-0 px-4">
                   <ChatList
                     chats={recentChats}
                     isLoading={isLoading}
@@ -433,7 +433,7 @@ export const DashboardContent = () => {
                   )}
                 </TabsContent>
                 
-                <TabsContent value="starred" className="mt-0">
+                <TabsContent value="starred" className="mt-0 px-4">
                   {starredChats.length > 0 ? (
                     <ChatList
                       chats={starredChats}
@@ -454,7 +454,7 @@ export const DashboardContent = () => {
                   )}
                 </TabsContent>
                 
-                <TabsContent value="all" className="mt-0">
+                <TabsContent value="all" className="mt-0 px-4">
                   <ChatList
                     chats={sortedChats}
                     isLoading={isLoading}
