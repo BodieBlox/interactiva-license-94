@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,6 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { RobloxUserDisplay, RobloxGameDisplay, RobloxRevenueDisplay } from './RobloxDataDisplay';
+import { getRobloxUserByUsername, getRobloxGameById, getMockRobloxRevenue } from '@/utils/robloxApi';
 
 interface AIResponseEmbedProps {
   content: string;
@@ -47,11 +47,26 @@ export const AIResponseEmbed = ({ content, isAdminAction }: AIResponseEmbedProps
           console.log("Extracted Roblox revenue data:", revenueData);
         }
 
-        // Remove the JSON blocks from the content
+        // Check for Roblox lookup commands
+        const robloxUserLookup = content.match(/\[lookup-roblox-user:(.*?)\]/);
+        if (robloxUserLookup && robloxUserLookup[1]) {
+          const username = robloxUserLookup[1].trim();
+          handleRobloxUserLookup(username);
+        }
+        
+        const robloxGameLookup = content.match(/\[lookup-roblox-game:(.*?)\]/);
+        if (robloxGameLookup && robloxGameLookup[1]) {
+          const gameId = robloxGameLookup[1].trim();
+          handleRobloxGameLookup(gameId);
+        }
+
+        // Remove the JSON blocks and lookup commands from the content
         let cleanedContent = content
           .replace(/```roblox-user-data\n[\s\S]*?\n```/g, '')
           .replace(/```roblox-game-data\n[\s\S]*?\n```/g, '')
           .replace(/```roblox-revenue-data\n[\s\S]*?\n```/g, '')
+          .replace(/\[lookup-roblox-user:.*?\]/g, '')
+          .replace(/\[lookup-roblox-game:.*?\]/g, '')
           .trim();
 
         setProcessedContent(cleanedContent);
@@ -63,6 +78,36 @@ export const AIResponseEmbed = ({ content, isAdminAction }: AIResponseEmbedProps
 
     extractRobloxData();
   }, [content]);
+
+  const handleRobloxUserLookup = async (username: string) => {
+    try {
+      const userData = await getRobloxUserByUsername(username);
+      if (userData) {
+        setRobloxUserData(userData);
+        console.log("Fetched Roblox user:", userData);
+      }
+    } catch (error) {
+      console.error("Error looking up Roblox user:", error);
+    }
+  };
+
+  const handleRobloxGameLookup = async (gameId: string) => {
+    try {
+      const gameData = await getRobloxGameById(gameId);
+      if (gameData) {
+        setRobloxGameData(gameData);
+        console.log("Fetched Roblox game:", gameData);
+        
+        // Also generate mock revenue data
+        if (gameData.visitCount) {
+          const revenueData = getMockRobloxRevenue(gameData.visitCount);
+          setRobloxRevenueData(revenueData);
+        }
+      }
+    } catch (error) {
+      console.error("Error looking up Roblox game:", error);
+    }
+  };
 
   return (
     <div className="whitespace-pre-wrap">

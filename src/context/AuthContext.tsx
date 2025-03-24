@@ -14,6 +14,15 @@ import {
   updateLicense, 
   updateUser 
 } from '@/utils/api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AuthContextType {
   user: User | null;
@@ -37,6 +46,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [showWarningBanner, setShowWarningBanner] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
+  
+  // Alert dialog states for warnings and suspensions
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [alertDialogTitle, setAlertDialogTitle] = useState('');
+  const [alertDialogDescription, setAlertDialogDescription] = useState('');
+  const [alertDialogAction, setAlertDialogAction] = useState<'warn' | 'suspend' | null>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -632,38 +647,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData = snapshot.val() as User;
         
         if (userData.status === 'suspended' && user.status !== 'suspended') {
-          console.log(`User ${user.id} status changed to suspended, forcing logout`);
+          console.log(`User ${user.id} status changed to suspended, showing dialog and forcing logout`);
           
-          // Show suspension notification before logout
-          setWarningMessage(userData.warningMessage || "Your account has been suspended by an administrator");
-          setShowWarningBanner(true);
+          // Show suspension dialog before logout
+          setAlertDialogTitle("Account Suspended");
+          setAlertDialogDescription(userData.warningMessage || "Your account has been suspended by an administrator. You will be logged out.");
+          setAlertDialogAction('suspend');
+          setAlertDialogOpen(true);
           
-          // Wait for user to see the notification before logging out
-          setTimeout(async () => {
-            toast({
-              title: "Account Suspended",
-              description: userData.warningMessage || "Your account has been suspended by an administrator",
-              variant: "destructive"
-            });
-            
-            await signOut(auth);
-            setUser(null);
-          }, 3000);
+          // No need for timeout or additional banner here as the dialog will be visible
+          // and requires user interaction before we log them out
           return;
         }
         
         if (userData.status === 'warned' && user.status !== 'warned') {
-          console.log(`User ${user.id} status changed to warned, showing warning`);
+          console.log(`User ${user.id} status changed to warned, showing warning dialog`);
           
-          // Show warning notification
-          setWarningMessage(userData.warningMessage || "Your account has received a warning from an administrator");
-          setShowWarningBanner(true);
-          
-          toast({
-            title: "Account Warning",
-            description: userData.warningMessage || "Your account has received a warning from an administrator",
-            variant: "warning"
-          });
+          // Show warning dialog
+          setAlertDialogTitle("Account Warning");
+          setAlertDialogDescription(userData.warningMessage || "Your account has received a warning from an administrator.");
+          setAlertDialogAction('warn');
+          setAlertDialogOpen(true);
           
           setUser(userData);
         }
@@ -675,27 +679,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             forcedLogout: null
           });
           
-          // Show notification before logging out
-          setWarningMessage("Your session was terminated by an administrator");
-          setShowWarningBanner(true);
-          
-          // Wait for user to see the notification before logging out
-          setTimeout(async () => {
-            toast({
-              title: "Session Terminated",
-              description: "Your session was terminated by an administrator",
-              variant: "destructive"
-            });
-            
-            await signOut(auth);
-            setUser(null);
-          }, 3000);
+          // Show dialog before logging out
+          setAlertDialogTitle("Session Terminated");
+          setAlertDialogDescription("Your session was terminated by an administrator. You will be logged out.");
+          setAlertDialogAction('suspend'); // Use suspend action to log them out
+          setAlertDialogOpen(true);
         }
       }
     });
     
     return () => unsubscribe();
   }, [user]);
+
+  // Handle alert dialog close action
+  const handleAlertDialogAction = useCallback(async () => {
+    if (alertDialogAction === 'suspend') {
+      // For suspensions and forced logouts, log the user out
+      toast({
+        title: alertDialogTitle,
+        description: alertDialogDescription,
+        variant: "destructive"
+      });
+      
+      await signOut(auth);
+      setUser(null);
+    } else if (alertDialogAction === 'warn') {
+      // For warnings, just show the toast
+      toast({
+        title: alertDialogTitle,
+        description: alertDialogDescription,
+        variant: "warning"
+      });
+    }
+    
+    setAlertDialogOpen(false);
+    setAlertDialogAction(null);
+  }, [alertDialogAction, alertDialogTitle, alertDialogDescription]);
   
   const fetchIP = async (): Promise<string> => {
     try {
@@ -732,6 +751,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           onClose={() => setShowWarningBanner(false)}
         />
       )}
+      
+      {/* Alert Dialog for warnings and suspensions */}
+      <AlertDialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className={alertDialogAction === 'suspend' ? 'text-destructive' : 'text-warning'}>
+              {alertDialogTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {alertDialogDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleAlertDialogAction}>
+              {alertDialogAction === 'suspend' ? 'Acknowledge and Log Out' : 'I Understand'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {children}
     </AuthContext.Provider>
   );
