@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,6 +11,7 @@ import { DashboardStats } from './DashboardStats';
 import { UserProfile } from './UserProfile';
 import { getChatsByUserId } from '@/utils/api';
 import { Chat } from '@/utils/types';
+import { ChatList } from './ChatList';
 
 export const DashboardContent = () => {
   const { user, logout } = useAuth();
@@ -67,6 +69,35 @@ export const DashboardContent = () => {
 
       {/* Conversation Stats */}
       <DashboardStats chats={chats} />
+
+      {/* Past Chats */}
+      <div className="mt-6">
+        <h2 className="text-xl font-semibold mb-4">Recent Conversations</h2>
+        {isLoadingChats ? (
+          <div className="text-center py-4">
+            <p className="text-muted-foreground">Loading your conversations...</p>
+          </div>
+        ) : chats.length > 0 ? (
+          <ChatList 
+            chats={chats.slice(0, 5)} // Show only the 5 most recent chats
+            onSelectChat={(chatId) => navigate(`/chat/${chatId}`)}
+            className="rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800"
+          />
+        ) : (
+          <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-100 dark:border-gray-800">
+            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <h3 className="text-lg font-medium mb-1">No conversations yet</h3>
+            <p className="text-muted-foreground mb-4">Start a new chat to get assistance</p>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/chat/new')}
+              disabled={newChatDisabled && user?.role !== 'admin'}
+            >
+              Start a new conversation
+            </Button>
+          </div>
+        )}
+      </div>
 
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
