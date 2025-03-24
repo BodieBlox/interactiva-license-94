@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -395,74 +396,74 @@ export const DashboardContent = () => {
                   </div>
                 </div>
                 <CardDescription>Continue an existing conversation or start a new one</CardDescription>
+              </CardHeader>
                 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                  <TabsList className="bg-muted/50 border border-border">
-                    <TabsTrigger value="recent" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
-                      <Clock className="h-3.5 w-3.5" /> Recent
-                    </TabsTrigger>
-                    <TabsTrigger value="starred" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
-                      <Star className="h-3.5 w-3.5" /> Favorites
-                    </TabsTrigger>
-                    <TabsTrigger value="all" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
-                      <MessagesSquare className="h-3.5 w-3.5" /> All
-                    </TabsTrigger>
-                  </TabsList>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                <TabsList className="bg-muted/50 border border-border">
+                  <TabsTrigger value="recent" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <Clock className="h-3.5 w-3.5" /> Recent
+                  </TabsTrigger>
+                  <TabsTrigger value="starred" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <Star className="h-3.5 w-3.5" /> Favorites
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <MessagesSquare className="h-3.5 w-3.5" /> All
+                  </TabsTrigger>
+                </TabsList>
+              
+                <TabsContent value="recent" className="mt-0">
+                  <ChatList
+                    chats={recentChats}
+                    isLoading={isLoading}
+                    error={error}
+                    onRetry={fetchChats}
+                    onUpdate={fetchChats}
+                  />
+                  
+                  {recentChats.length > 0 && (
+                    <div className="mt-4 text-center">
+                      <Button 
+                        variant="link" 
+                        className="text-primary flex items-center mx-auto"
+                        onClick={() => setActiveTab('all')}
+                      >
+                        View all conversations <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
                 
-                  <TabsContent value="recent" className="mt-0">
+                <TabsContent value="starred" className="mt-0">
+                  {starredChats.length > 0 ? (
                     <ChatList
-                      chats={recentChats}
+                      chats={starredChats}
                       isLoading={isLoading}
                       error={error}
                       onRetry={fetchChats}
                       onUpdate={fetchChats}
                     />
-                    
-                    {recentChats.length > 0 && (
-                      <div className="mt-4 text-center">
-                        <Button 
-                          variant="link" 
-                          className="text-primary flex items-center mx-auto"
-                          onClick={() => setActiveTab('all')}
-                        >
-                          View all conversations <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="starred" className="mt-0">
-                    {starredChats.length > 0 ? (
-                      <ChatList
-                        chats={starredChats}
-                        isLoading={isLoading}
-                        error={error}
-                        onRetry={fetchChats}
-                        onUpdate={fetchChats}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Star className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-                        <h3 className="text-lg font-medium mb-1">No favorite conversations yet</h3>
-                        <p className="text-muted-foreground text-sm max-w-md mb-4">
-                          You haven't marked any conversations as favorites yet. 
-                          Star your important conversations to access them quickly.
-                        </p>
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="all" className="mt-0">
-                    <ChatList
-                      chats={sortedChats}
-                      isLoading={isLoading}
-                      error={error}
-                      onRetry={fetchChats}
-                      onUpdate={fetchChats}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Star className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
+                      <h3 className="text-lg font-medium mb-1">No favorite conversations yet</h3>
+                      <p className="text-muted-foreground text-sm max-w-md mb-4">
+                        You haven't marked any conversations as favorites yet. 
+                        Star your important conversations to access them quickly.
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="all" className="mt-0">
+                  <ChatList
+                    chats={sortedChats}
+                    isLoading={isLoading}
+                    error={error}
+                    onRetry={fetchChats}
+                    onUpdate={fetchChats}
+                  />
+                </TabsContent>
+              </Tabs>
             </Card>
           </div>
         </div>
