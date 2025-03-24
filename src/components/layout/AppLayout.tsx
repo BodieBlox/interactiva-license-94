@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -19,7 +20,7 @@ import { Moon, Sun, User } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 export const AppLayout = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const { userCompany } = useCompany();
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
@@ -44,7 +45,7 @@ export const AppLayout = () => {
               description: "The platform is currently unavailable. Please try again later.",
               variant: "destructive"
             });
-            signOut();
+            logout();
             navigate('/login');
           }
         }
@@ -56,7 +57,7 @@ export const AppLayout = () => {
     if (user && user.role !== 'admin') {
       checkPlatformStatus();
     }
-  }, [user]);
+  }, [user, logout, navigate]);
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -100,7 +101,7 @@ export const AppLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.image} alt={user?.username} />
+                    <AvatarImage src={user?.photoURL} alt={user?.username} />
                     <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -112,7 +113,7 @@ export const AppLayout = () => {
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={() => logout()}>
                   Log Out
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -16,40 +16,46 @@ import NotFound from './pages/NotFound';
 import './App.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CompanyJoinPage } from './components/user/CompanyJoinPage';
+import { ThemeProvider } from "next-themes";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <CompanyProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/key-generator" element={<KeyGenerator />} />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <CompanyProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<LoginForm />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/key-generator" element={<KeyGenerator />} />
 
-            {/* Auth routes */}
-            <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
-            <Route path="/join-company/:inviteCode" element={<AppLayout><CompanyJoinPage /></AppLayout>} />
+              {/* App layout wrapper for authenticated routes */}
+              <Route element={<AppLayout />}>
+                {/* Auth routes */}
+                <Route path="/activate" element={<LicenseActivation />} />
+                <Route path="/join-company/:inviteCode" element={<CompanyJoinPage />} />
 
-            {/* Protected routes */}
-            <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
-            <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
-            <Route path="/chat/new" element={<AppLayout><div className="w-full"><ChatInterface /></div></AppLayout>} />
-            <Route path="/chat/:chatId" element={<AppLayout><div className="w-full"><ChatInterface /></div></AppLayout>} />
-            <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
+                {/* Protected routes */}
+                <Route path="/dashboard" element={<DashboardContent />} />
+                <Route path="/settings" element={<UserSettings />} />
+                <Route path="/chat/new" element={<div className="w-full"><ChatInterface /></div>} />
+                <Route path="/chat/:chatId" element={<div className="w-full"><ChatInterface /></div>} />
+                <Route path="/admin/*" element={<AdminPanel />} />
+              </Route>
 
-            {/* Redirect and 404 */}
-            <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </CompanyProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+              {/* Redirect and 404 */}
+              <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CompanyProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
