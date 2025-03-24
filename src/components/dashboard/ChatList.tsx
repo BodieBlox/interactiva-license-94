@@ -10,13 +10,15 @@ import { toast } from '@/components/ui/use-toast';
 
 interface ChatListProps {
   chats: Chat[];
-  isLoading: boolean;
-  error: Error | null;
+  isLoading?: boolean;
+  error?: Error | null;
   onRetry?: () => void;
   onUpdate?: () => void;
+  onSelectChat?: (chatId: string) => void;
+  className?: string;
 }
 
-export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatListProps) => {
+export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate, onSelectChat, className }: ChatListProps) => {
   const [isPinning, setIsPinning] = useState<string | null>(null);
 
   const handleRetry = useCallback(() => {
@@ -121,7 +123,7 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
 
   // Show chats list
   return (
-    <ul className="space-y-3 animate-fade-in">
+    <ul className={`space-y-3 animate-fade-in ${className || ''}`}>
       {sortedChats.map((chat, index) => {
         // Ensure messages is an array and get its length
         const messages = Array.isArray(chat.messages) ? chat.messages : [];
@@ -142,6 +144,12 @@ export const ChatList = ({ chats, isLoading, error, onRetry, onUpdate }: ChatLis
             <Link
               to={`/chat/${chat.id}`}
               className="block rounded-lg hover:bg-primary/5 transition-all duration-300 ease-apple border border-transparent hover:border-primary/20 hover:shadow-sm relative"
+              onClick={(e) => {
+                if (onSelectChat) {
+                  e.preventDefault();
+                  onSelectChat(chat.id);
+                }
+              }}
             >
               {chat.isPinned && (
                 <div className="absolute top-2 right-2 bg-primary/10 rounded-full p-1">
