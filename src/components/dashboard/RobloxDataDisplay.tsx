@@ -17,7 +17,7 @@ export const RobloxUserDisplay = ({ user }: RobloxUserProps) => {
         <CardTitle className="text-lg flex items-center gap-2">
           <span>Roblox User</span>
           {user.hasVerifiedBadge && (
-            <Badge variant="primary" className="text-xs">Verified</Badge>
+            <Badge variant="default" className="text-xs">Verified</Badge>
           )}
         </CardTitle>
       </CardHeader>

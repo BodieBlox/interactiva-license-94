@@ -70,9 +70,13 @@ export const AIResponseEmbed = ({ content, isAdminAction }: AIResponseEmbedProps
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
-          code({ node, inline, className, children, ...props }) {
+          code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
-            return !inline && match ? (
+            return !match ? (
+              <code className={`${className} px-1 py-0.5 bg-muted rounded text-sm`} {...props}>
+                {children}
+              </code>
+            ) : (
               <SyntaxHighlighter
                 style={vscDarkPlus}
                 language={match[1]}
@@ -82,10 +86,6 @@ export const AIResponseEmbed = ({ content, isAdminAction }: AIResponseEmbedProps
               >
                 {String(children).replace(/\n$/, '')}
               </SyntaxHighlighter>
-            ) : (
-              <code className={`${className} px-1 py-0.5 bg-muted rounded text-sm`} {...props}>
-                {children}
-              </code>
             );
           },
           table({ children }) {
