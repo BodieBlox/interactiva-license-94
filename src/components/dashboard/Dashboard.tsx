@@ -1,14 +1,43 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useCompany } from '@/context/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare, User, Building2, Key, ShieldCheck, Users } from 'lucide-react';
+import { DashboardHeader } from './DashboardHeader';
+import { DashboardStats } from './DashboardStats';
+import { UserProfile } from './UserProfile';
+import { getChatsByUser } from '@/utils/api';
+import { Chat } from '@/utils/types';
 
 export const DashboardContent = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { userCompany } = useCompany();
   const navigate = useNavigate();
   const [newChatDisabled, setNewChatDisabled] = useState(false);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+
+  // Fetch chats for the user
+  useEffect(() => {
+    const fetchChats = async () => {
+      if (user?.id) {
+        setIsLoadingChats(true);
+        try {
+          const userChats = await getChatsByUser(user.id);
+          setChats(userChats || []);
+        } catch (error) {
+          console.error('Error fetching chats:', error);
+        } finally {
+          setIsLoadingChats(false);
+        }
+      }
+    };
+
+    fetchChats();
+  }, [user?.id]);
 
   useEffect(() => {
     const checkNewChatStatus = async () => {
@@ -28,6 +57,18 @@ export const DashboardContent = () => {
 
   return (
     <div className="container max-w-4xl mx-auto py-6 sm:py-10 px-4 space-y-6">
+      <DashboardHeader 
+        user={user} 
+        companyName={userCompany?.name || null} 
+        onLogout={logout} 
+      />
+
+      {/* User Profile Card */}
+      <UserProfile user={user} />
+
+      {/* Conversation Stats */}
+      <DashboardStats chats={chats} />
+
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">

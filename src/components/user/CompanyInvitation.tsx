@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, Send, CheckCircle, XCircle, UserPlus, User, Mail, Lock, Building, Search } from 'lucide-react';
+import { Users, Send, CheckCircle, XCircle, UserPlus, User, Mail, Lock, Building, Search, Link, Copy } from 'lucide-react';
 import { User as UserType } from '@/utils/types';
 import { getUserByEmail, updateDashboardCustomization } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
+import { useCompany } from '@/context/CompanyContext';
 
 interface CompanyInvitationProps {
   currentUser: UserType;
@@ -21,7 +22,11 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [invitedUser, setInvitedUser] = useState<UserType | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { user } = useAuth();
+  const { userCompany, generateInviteLink } = useCompany();
 
   // Check if current user has approved branding they can share and is a company admin
   const canInviteOthers = user?.customization?.approved && 
@@ -145,6 +150,49 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
     }
   };
 
+  const handleGenerateInviteLink = async () => {
+    if (!userCompany) {
+      toast({
+        title: "Error",
+        description: "No company found to generate invite link",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGeneratingLink(true);
+    try {
+      const link = await generateInviteLink(userCompany.id);
+      setInviteLink(link);
+      toast({
+        title: "Success",
+        description: "Invite link generated successfully",
+      });
+    } catch (error) {
+      console.error('Error generating invite link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate invite link",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (!inviteLink) return;
+    
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    toast({
+      title: "Copied!",
+      description: "Invite link copied to clipboard",
+    });
+    
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (!hasEnterpriseLicense) {
     return (
       <Card className="bg-amber-900/20 border-amber-700/30">
@@ -209,6 +257,52 @@ export const CompanyInvitation = ({ currentUser }: CompanyInvitationProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Company Invite Link Section */}
+          <Card className="border border-primary/20 bg-primary/5 mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Link className="h-4 w-4 text-primary" />
+                Company Invite Link
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {inviteLink ? (
+                <div className="flex items-center gap-2">
+                  <Input 
+                    value={inviteLink} 
+                    readOnly 
+                    className="flex-1 text-sm font-mono"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={copyInviteLink}
+                    className="flex-shrink-0"
+                  >
+                    {copied ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={handleGenerateInviteLink}
+                  disabled={isGeneratingLink}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  {isGeneratingLink ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                  ) : (
+                    <Link className="h-4 w-4" />
+                  )}
+                  <span>Generate Invite Link</span>
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                Anyone with this link can join your company. The link will expire after 7 days.
+              </p>
+            </CardContent>
+          </Card>
+        
           <div className="p-4 bg-secondary/30 rounded-lg">
             <p className="text-sm mb-2">
               When users accept your invitation:

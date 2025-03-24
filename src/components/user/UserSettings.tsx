@@ -5,10 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCompany } from '@/context/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, User, Palette, Users, Link2, Copy, Check } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { ArrowLeft, User, Palette, Users } from 'lucide-react';
 
 import { ProfileSettings } from './settings/ProfileSettings';
 import { BrandingSettings } from './settings/BrandingSettings';
@@ -17,43 +14,8 @@ import { CompanyInvitation } from './CompanyInvitation';
 
 export const UserSettings = () => {
   const { user } = useAuth();
-  const { userCompany, generateInviteLink } = useCompany();
+  const { userCompany } = useCompany();
   const [activeTab, setActiveTab] = useState('profile');
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleGenerateInviteLink = async () => {
-    if (!userCompany) return;
-    
-    setIsGeneratingLink(true);
-    try {
-      const link = await generateInviteLink(userCompany.id);
-      setInviteLink(link);
-    } catch (error) {
-      console.error('Error generating invite link:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate invite link",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGeneratingLink(false);
-    }
-  };
-
-  const copyInviteLink = () => {
-    if (!inviteLink) return;
-    
-    navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    toast({
-      title: "Copied!",
-      description: "Invite link copied to clipboard",
-    });
-    
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="container max-w-4xl mx-auto py-6 sm:py-10 px-4 space-y-6">
@@ -99,52 +61,6 @@ export const UserSettings = () => {
         </TabsContent>
 
         <TabsContent value="team" className="space-y-4 mt-4">
-          {user && userCompany && (
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle>Company Invite Link</CardTitle>
-                <CardDescription>
-                  Generate a link that others can use to join your company
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {inviteLink ? (
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={inviteLink} 
-                      readOnly 
-                      className="flex-1"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={copyInviteLink}
-                      className="flex-shrink-0"
-                    >
-                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleGenerateInviteLink}
-                    disabled={isGeneratingLink}
-                    className="flex items-center gap-2"
-                  >
-                    {isGeneratingLink ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
-                    ) : (
-                      <Link2 className="h-4 w-4" />
-                    )}
-                    <span>Generate Invite Link</span>
-                  </Button>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  This link will expire in 7 days. Anyone with this link can join your company.
-                </p>
-              </CardContent>
-            </Card>
-          )}
           {user && <CompanyInvitation currentUser={user} />}
         </TabsContent>
       </Tabs>
