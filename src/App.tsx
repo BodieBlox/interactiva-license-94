@@ -37,8 +37,8 @@ function App() {
             {/* Protected routes */}
             <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />
             <Route path="/settings" element={<AppLayout><UserSettings /></AppLayout>} />
-            <Route path="/chat/new" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
-            <Route path="/chat/:chatId" element={<AppLayout><div className="w-full h-screen"><ChatInterface /></div></AppLayout>} />
+            <Route path="/chat/new" element={<AppLayout><div className="w-full"><ChatInterface /></div></AppLayout>} />
+            <Route path="/chat/:chatId" element={<AppLayout><div className="w-full"><ChatInterface /></div></AppLayout>} />
             <Route path="/admin/*" element={<AppLayout><AdminPanel /></AppLayout>} />
 
             {/* Redirect and 404 */}

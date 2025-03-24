@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Palette, Building, Users } from 'lucide-react';
+import { ArrowLeft, User, Palette, Users } from 'lucide-react';
 
 import { ProfileSettings } from './settings/ProfileSettings';
 import { BrandingSettings } from './settings/BrandingSettings';
@@ -17,10 +17,10 @@ export const UserSettings = () => {
   const [activeTab, setActiveTab] = useState('profile');
 
   return (
-    <div className="container max-w-4xl mx-auto py-10 space-y-8">
+    <div className="container max-w-4xl mx-auto py-6 sm:py-10 px-4 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
             Manage your account settings and preferences
           </p>
