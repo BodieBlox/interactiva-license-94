@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import './App.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CompanyJoinPage } from './components/user/CompanyJoinPage';
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ function App() {
 
             {/* Auth routes */}
             <Route path="/activate" element={<AppLayout><LicenseActivation /></AppLayout>} />
+            <Route path="/join-company/:inviteCode" element={<AppLayout><CompanyJoinPage /></AppLayout>} />
 
             {/* Protected routes */}
             <Route path="/dashboard" element={<AppLayout><DashboardContent /></AppLayout>} />

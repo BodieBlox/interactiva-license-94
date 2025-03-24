@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -30,6 +29,7 @@ import LicenseManager from './LicenseManager';
 import { CompanyManagementPanel } from './company/CompanyManagementPanel';
 import { UpgradeRequests } from './UpgradeRequests';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SystemSettings } from './SystemSettings';
 
 interface NavItem {
   label: string;
@@ -38,7 +38,6 @@ interface NavItem {
   staffAccess?: boolean;
 }
 
-// Create a QueryClient instance
 const queryClient = new QueryClient();
 
 export const AdminPanel = () => {
@@ -47,10 +46,8 @@ export const AdminPanel = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   
-  // Get the active section from the current path
   const getActiveSection = () => {
     const path = location.pathname;
-    // Extract the section after /admin/
     if (path === '/admin') return '';
     const section = path.split('/admin/')[1];
     return section || '';
@@ -58,7 +55,6 @@ export const AdminPanel = () => {
   
   const [activeSection, setActiveSection] = useState<string>(getActiveSection());
   
-  // Update activeSection when location changes
   useEffect(() => {
     setActiveSection(getActiveSection());
   }, [location]);
@@ -96,9 +92,9 @@ export const AdminPanel = () => {
     { label: 'Branding Approval', path: '/admin/branding-approval', icon: Shield, staffAccess: false },
     { label: 'Create User', path: '/admin/create-user', icon: UserCheck, staffAccess: true },
     { label: 'Assign License', path: '/admin/assign-license', icon: Key, staffAccess: false },
+    { label: 'System Settings', path: '/admin/system-settings', icon: Shield, staffAccess: false },
   ];
 
-  // Filter items based on role
   const filteredNavItems = navItems.filter(item => isAdmin || item.staffAccess);
 
   const handleNavigation = (path: string) => {
@@ -129,7 +125,6 @@ export const AdminPanel = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Navigation Sidebar */}
         <div className={`${isMobile ? 'flex flex-row overflow-x-auto pb-4 -mx-4 px-4' : 'w-64 min-w-64 space-y-2'}`}>
           {filteredNavItems.map((item, index) => (
             <Button
@@ -155,7 +150,6 @@ export const AdminPanel = () => {
           ))}
         </div>
 
-        {/* Main Content */}
         <div className="flex-1 bg-card rounded-lg border shadow-sm p-4 md:p-6 transition-all duration-300 hover:shadow-md animate-fade-in">
           <QueryClientProvider client={queryClient}>
             <Routes>
@@ -171,6 +165,7 @@ export const AdminPanel = () => {
               {isAdmin && <Route path="/branding-approval" element={<BrandingApproval />} />}
               {(isAdmin || isStaff) && <Route path="/create-user" element={<UserCreator />} />}
               {isAdmin && <Route path="/assign-license" element={<ManualLicenseAssignment />} />}
+              {isAdmin && <Route path="/system-settings" element={<SystemSettings />} />}
               {(!isAdmin && isStaff) && <Route path="*" element={<StaffAccessDenied />} />}
             </Routes>
           </QueryClientProvider>

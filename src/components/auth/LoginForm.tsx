@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -25,8 +24,8 @@ export const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showLicenseDialog, setShowLicenseDialog] = useState(false);
+  const [loginDisabled, setLoginDisabled] = useState(false);
 
-  // Handle redirection when user logs in
   useEffect(() => {
     const checkUserLicense = async () => {
       if (user) {
@@ -52,6 +51,22 @@ export const LoginForm = () => {
     
     checkUserLicense();
   }, [user, navigate, location, checkLicenseValidity]);
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch('https://orgid-f590b-default-rtdb.firebaseio.com/systemSettings.json');
+        if (response.ok) {
+          const data = await response.json();
+          setLoginDisabled(data?.loginDisabled || false);
+        }
+      } catch (error) {
+        console.error('Error checking login status:', error);
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +96,15 @@ export const LoginForm = () => {
 
   return (
     <>
+      {loginDisabled && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6 animate-pulse">
+          <h3 className="font-medium mb-1">Login Temporarily Disabled</h3>
+          <p className="text-sm">
+            Logins are currently disabled by the administrator. Please try again later.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto">
         <Card className="glass-panel shadow-xl border-0">
           <CardHeader>
@@ -116,13 +140,13 @@ export const LoginForm = () => {
           <CardFooter className="flex flex-col space-y-3">
             <Button 
               type="submit" 
+              disabled={isLoading || loginDisabled} 
               className="w-full bg-primary hover:bg-primary/90 transition-apple"
-              disabled={isLoading}
             >
               {isLoading ? (
                 <div className="h-5 w-5 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin mx-auto"></div>
               ) : (
-                'Sign In'
+                'Log In'
               )}
             </Button>
             {error && (

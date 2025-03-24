@@ -413,29 +413,30 @@ export const ChatInterface = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Only show database button for admin, not for staff */}
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1 transition-apple"
+              onClick={fetchDatabaseInfo}
+            >
+              <Database className="h-4 w-4" />
+              <span className="hidden md:inline">Database</span>
+            </Button>
+          )}
           {hasAdminAccess && (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-1 transition-apple"
-                onClick={fetchDatabaseInfo}
-              >
-                <Database className="h-4 w-4" />
-                <span className="hidden md:inline">Database</span>
-              </Button>
-              <Badge 
-                variant="outline" 
-                className={`
-                  ${isAdmin 
-                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 animate-pulse-soft' 
-                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 animate-pulse-soft'
-                  }
-                `}
-              >
-                {isAdmin ? 'Admin Mode' : 'Staff Mode'}
-              </Badge>
-            </>
+            <Badge 
+              variant="outline" 
+              className={`
+                ${isAdmin 
+                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 animate-pulse-soft' 
+                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 animate-pulse-soft'
+                }
+              `}
+            >
+              {isAdmin ? 'Admin Mode' : 'Staff Mode'}
+            </Badge>
           )}
         </div>
       </div>
@@ -514,7 +515,7 @@ export const ChatInterface = () => {
               >
                 {(msg as any).isLoading ? (
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full border-2 border-t-current border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    <div className="h-3 w-3 rounded-full border-2 border-t-primary-foreground border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
                     <span>Thinking...</span>
                   </div>
                 ) : (

@@ -1,193 +1,130 @@
-
-import React, { useState, useEffect } from 'react';
-import { SideNav } from './SideNav';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { ShieldAlert, AlertTriangle, XCircle, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { updateUserStatus } from '@/utils/api';
+import { useCompany } from '@/context/CompanyContext';
+import { Sidebar } from './Sidebar';
+import { MobileSidebar } from './MobileSidebar';
+import { ModeToggle } from '../ui/mode-toggle';
+import { Button } from '../ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Moon, Sun, User } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-export const AppLayout = ({ children }: AppLayoutProps) => {
-  const { user, loading, logout } = useAuth();
-  const isMobile = useIsMobile();
-  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
-  const [showContentDelay, setShowContentDelay] = useState(false);
+export const AppLayout = () => {
+  const { user, signOut } = useAuth();
+  const { userCompany } = useCompany();
+  const navigate = useNavigate();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowContentDelay(true);
-    }, 100);
-    return () => clearTimeout(timer);
+    setIsMounted(true);
   }, []);
 
+  if (!isMounted) {
+    return <div className="h-screen flex justify-center items-center">Loading...</div>;
+  }
+
   useEffect(() => {
-    if (user && (user.status === 'warned' || user.status === 'suspended')) {
-      setIsWarningDialogOpen(true);
-    } else {
-      setIsWarningDialogOpen(false);
-    }
-    
-    const statusCheck = setInterval(() => {
-      if (user) {
-        console.log('Checking user status:', user.status);
-      }
-    }, 15000);
-    
-    return () => clearInterval(statusCheck);
-  }, [user]);
-  
-  const handleWarningAcknowledge = async () => {
-    if (user && user.status === 'warned') {
+    const checkPlatformStatus = async () => {
       try {
-        await updateUserStatus(user.id, 'active', null);
-        setIsWarningDialogOpen(false);
+        const response = await fetch('https://orgid-f590b-default-rtdb.firebaseio.com/systemSettings.json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.platformDisabled && user?.role !== 'admin') {
+            toast({
+              title: "Platform Unavailable",
+              description: "The platform is currently unavailable. Please try again later.",
+              variant: "destructive"
+            });
+            signOut();
+            navigate('/login');
+          }
+        }
       } catch (error) {
-        console.error('Error acknowledging warning:', error);
+        console.error('Error checking platform status:', error);
       }
+    };
+
+    if (user && user.role !== 'admin') {
+      checkPlatformStatus();
     }
-  };
-  
-  const handleLogout = () => {
-    logout();
-    setIsWarningDialogOpen(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-16 w-16 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  const isSuspended = user.status === 'suspended';
-  const isWarned = user.status === 'warned';
+  }, [user]);
 
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/20 ${showContentDelay ? 'animate-fade-in' : 'opacity-0'}`}>
-      {!isMobile && <SideNav />}
-      
-      <main className={`flex-1 transition-all duration-300 ${!isMobile ? 'ml-[260px]' : ''}`}>
-        {children}
-      </main>
-      
-      {isMobile && <SideNav />}
-      
-      <Dialog
-        open={isWarningDialogOpen}
-        onOpenChange={(open) => {
-          // Only allow closing the dialog if the user is not suspended or warned
-          if (!isSuspended && !isWarned) {
-            setIsWarningDialogOpen(open);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md animate-scale-in border-destructive" onEscapeKeyDown={(e) => {
-          // Prevent escape key from closing the dialog if suspended or warned
-          if (isSuspended || isWarned) {
-            e.preventDefault();
-          }
-        }} onPointerDownOutside={(e) => {
-          // Prevent clicking outside from closing the dialog if suspended or warned
-          if (isSuspended || isWarned) {
-            e.preventDefault();
-          }
-        }}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              {isSuspended ? (
-                <>
-                  <ShieldAlert className="h-5 w-5" />
-                  Account Suspended
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-5 w-5" />
-                  Account Warning
-                </>
-              )}
-            </DialogTitle>
-            <DialogDescription className="pt-2 text-base">
-              {isSuspended ? (
-                <>
-                  Your account has been suspended by an administrator.
-                  <div className="mt-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
-                    <p className="font-medium text-destructive">Reason:</p>
-                    <p className="mt-1">{user.warningMessage || "No reason provided."}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  You have received a warning from an administrator.
-                  <div className="mt-4 p-3 bg-amber-500/10 rounded-md border border-amber-500/20">
-                    <p className="font-medium text-amber-500">Reason:</p>
-                    <p className="mt-1">{user.warningMessage || "No reason provided."}</p>
-                  </div>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex justify-center my-2">
-            {isSuspended ? (
-              <div className="w-full p-4 rounded-md bg-muted/50 flex flex-col items-center">
-                <ShieldAlert className="h-10 w-10 text-destructive mb-3 animate-pulse" />
-                <p className="text-center mb-2">
-                  Please contact support for assistance with your account suspension.
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-2 w-full border-destructive/30 hover:bg-destructive/10 text-destructive"
-                  onClick={() => window.open('mailto:support@license-ai.com')}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Contact Support
-                </Button>
-              </div>
-            ) : (
-              <div className="w-full p-4 rounded-md bg-muted/50 flex flex-col items-center">
-                <AlertTriangle className="h-10 w-10 text-amber-500 mb-3" />
-                <p className="text-center mb-2">
-                  Please acknowledge this warning to continue using your account.
-                </p>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={handleLogout}
+    <div className="h-screen flex overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Mobile Sidebar */}
+      <MobileSidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="w-full h-14 md:h-16 flex items-center justify-between py-2 px-4 border-b">
+          <div className="flex items-center sm:hidden">
+            <label
+              htmlFor="mobile-sidebar-drawer"
+              className="btn btn-ghost mr-2"
             >
-              <XCircle className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-            
-            {!isSuspended && (
-              <Button
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleWarningAcknowledge}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                I Understand
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h7"
+                />
+              </svg>
+            </label>
+            <h1 className="text-xl font-semibold">
+              {userCompany?.name || 'Dashboard'}
+            </h1>
+          </div>
+          <div className="ml-auto flex items-center space-x-4">
+            <ModeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.image} alt={user?.username} />
+                    <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };

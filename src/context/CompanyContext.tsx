@@ -10,7 +10,9 @@ import {
   removeCompanyMember,
   getCompanyInvitationsByUser,
   updateCompanyLogo,
-  sendCompanyInvitation
+  sendCompanyInvitation,
+  generateCompanyInviteLink,
+  joinCompanyViaLink
 } from '../utils/companyApi';
 import { getUserByEmail } from '../utils/api';
 import { toast } from '@/components/ui/use-toast';
@@ -26,6 +28,8 @@ interface CompanyContextType {
   refreshCompanyData: () => Promise<void>;
   removeMember: (memberId: string) => Promise<boolean>;
   inviteUserToCompany: (email: string, companyId: string) => Promise<boolean>;
+  generateInviteLink: (companyId: string) => Promise<string | null>;
+  joinViaInviteLink: (inviteCode: string) => Promise<boolean>;
   error: Error | null;
 }
 
@@ -52,8 +56,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoadingCompany(true);
     setError(null);
     try {
-      // Check if user is part of a company
-      const companyId = user.customization?.companyId || user.customization?.companyName; // Support both companyId and legacy companyName
+      const companyId = user.customization?.companyId || user.customization?.companyName;
       
       if (companyId) {
         const company = await getCompanyById(companyId);
@@ -65,9 +68,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
       
-      // Fetch pending invitations
       const invitations = await getCompanyInvitationsByUser(user.id);
-      // Ensure the types match by explicitly typing the invitations
       setPendingInvitations(invitations as CompanyInvitation[]);
     } catch (err) {
       console.error('Error fetching company data:', err);
@@ -92,10 +93,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!user) return null;
     
     try {
-      // Sanitize data to remove undefined values
       const sanitizedData = sanitizeCompanyData(companyData);
       const newCompany = await createCompany(sanitizedData, user.id);
-      await fetchCompanyData(); // Refresh data after creating
+      await fetchCompanyData();
       return newCompany;
     } catch (err) {
       console.error('Error creating company:', err);
@@ -113,10 +113,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!userCompany) return null;
     
     try {
-      // Sanitize data to remove undefined values
       const sanitizedData = sanitizeCompanyData(companyData);
       const updatedCompany = await updateCompany(userCompany.id, sanitizedData);
-      await fetchCompanyData(); // Refresh data after updating
+      await fetchCompanyData();
       return updatedCompany;
     } catch (err) {
       console.error('Error updating company:', err);
@@ -137,7 +136,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       const updatedCompany = await updateCompanyLogo(companyId, logoUrl);
-      await fetchCompanyData(); // Refresh data after updating logo
+      await fetchCompanyData();
       return updatedCompany;
     } catch (err) {
       console.error('Error updating company logo:', err);
@@ -156,7 +155,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       await removeCompanyMember(userCompany.id, memberId);
-      await fetchCompanyData(); // Refresh data after removing member
+      await fetchCompanyData();
       toast({
         title: "Member Removed",
         description: "The member has been removed from the company."
@@ -178,14 +177,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!email || !companyId) return false;
     
     try {
-      // Find the admin user for this company
       const adminUser = companyMembers.find(member => member.isCompanyAdmin);
       
       if (!adminUser) {
         throw new Error('Company admin not found');
       }
       
-      // Find the user to invite by email
       const targetUser = await getUserByEmail(email);
       if (!targetUser) {
         throw new Error('User not found with this email');
@@ -196,7 +193,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         fromUsername: adminUser.username,
         companyId: companyId,
         companyName: userCompany?.name || '',
-        toUserId: targetUser.id, // Add the required toUserId
+        toUserId: targetUser.id,
         toEmail: email,
         primaryColor: userCompany?.branding?.primaryColor || '#7E69AB',
         logo: userCompany?.branding?.logo
@@ -224,6 +221,50 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await fetchCompanyData();
   };
 
+  const generateInviteLink = async (companyId: string): Promise<string | null> => {
+    if (!companyId) return null;
+    
+    try {
+      const inviteLink = await generateCompanyInviteLink(companyId);
+      return inviteLink;
+    } catch (err) {
+      console.error('Error generating company invite link:', err);
+      setError(err instanceof Error ? err : new Error('Failed to generate invite link'));
+      toast({
+        title: "Error",
+        description: "Failed to generate company invite link",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const joinViaInviteLink = async (inviteCode: string): Promise<boolean> => {
+    if (!user || !inviteCode) return false;
+    
+    try {
+      const success = await joinCompanyViaLink(inviteCode, user.id);
+      if (success) {
+        await fetchCompanyData();
+        toast({
+          title: "Success",
+          description: "You have joined the company",
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error joining company via link:', err);
+      setError(err instanceof Error ? err : new Error('Failed to join company'));
+      toast({
+        title: "Error",
+        description: "Failed to join company",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   return (
     <CompanyContext.Provider value={{
       userCompany,
@@ -236,6 +277,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       refreshCompanyData,
       removeMember,
       inviteUserToCompany,
+      generateInviteLink,
+      joinViaInviteLink,
       error
     }}>
       {children}

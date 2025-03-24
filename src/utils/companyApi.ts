@@ -363,3 +363,79 @@ export const updateDashboardCustomization = async (userId: string, customization
     throw error;
   }
 };
+
+// Generate a company invite link
+export const generateCompanyInviteLink = async (companyId: string): Promise<string> => {
+  try {
+    // Generate a unique invite code
+    const inviteCode = `${companyId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Store the invite code in the database
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/companyInviteLinks/${inviteCode}.json`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        companyId,
+        createdAt: new Date().toISOString(),
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days expiry
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate invite link');
+    }
+    
+    // Return the full invite link
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/join-company/${inviteCode}`;
+  } catch (error) {
+    console.error('Error generating company invite link:', error);
+    throw error;
+  }
+};
+
+// Join a company via invite link
+export const joinCompanyViaLink = async (inviteCode: string, userId: string): Promise<boolean> => {
+  try {
+    // Fetch the invite details
+    const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/companyInviteLinks/${inviteCode}.json`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch invite details');
+    }
+    
+    const inviteData = await response.json();
+    
+    if (!inviteData) {
+      throw new Error('Invalid invite code');
+    }
+    
+    // Check if the invite is expired
+    if (new Date(inviteData.expires) < new Date()) {
+      throw new Error('This invite link has expired');
+    }
+    
+    // Get the company data
+    const company = await getCompanyById(inviteData.companyId);
+    
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    // Add the user to the company
+    const updateResponse = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/users/${userId}/customization.json`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        companyId: inviteData.companyId
+      }),
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error('Failed to join company');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error joining company via invite link:', error);
+    throw error;
+  }
+};
