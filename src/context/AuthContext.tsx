@@ -1,10 +1,10 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, get, set, update, onValue } from 'firebase/database';
 import { User, License } from '../utils/types';
 import { auth, database } from '../utils/firebase';
 import { toast } from '@/components/ui/use-toast';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { 
   getUserByEmail, 
   logUserLogin, 
@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWarningBanner, setShowWarningBanner] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -632,19 +634,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userData.status === 'suspended' && user.status !== 'suspended') {
           console.log(`User ${user.id} status changed to suspended, forcing logout`);
           
-          toast({
-            title: "Account Suspended",
-            description: userData.warningMessage || "Your account has been suspended by an administrator",
-            variant: "destructive"
-          });
+          // Show suspension notification before logout
+          setWarningMessage(userData.warningMessage || "Your account has been suspended by an administrator");
+          setShowWarningBanner(true);
           
-          await signOut(auth);
-          setUser(null);
+          // Wait for user to see the notification before logging out
+          setTimeout(async () => {
+            toast({
+              title: "Account Suspended",
+              description: userData.warningMessage || "Your account has been suspended by an administrator",
+              variant: "destructive"
+            });
+            
+            await signOut(auth);
+            setUser(null);
+          }, 3000);
           return;
         }
         
         if (userData.status === 'warned' && user.status !== 'warned') {
           console.log(`User ${user.id} status changed to warned, showing warning`);
+          
+          // Show warning notification
+          setWarningMessage(userData.warningMessage || "Your account has received a warning from an administrator");
+          setShowWarningBanner(true);
           
           toast({
             title: "Account Warning",
@@ -662,14 +675,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             forcedLogout: null
           });
           
-          toast({
-            title: "Session Terminated",
-            description: "Your session was terminated by an administrator",
-            variant: "destructive"
-          });
+          // Show notification before logging out
+          setWarningMessage("Your session was terminated by an administrator");
+          setShowWarningBanner(true);
           
-          await signOut(auth);
-          setUser(null);
+          // Wait for user to see the notification before logging out
+          setTimeout(async () => {
+            toast({
+              title: "Session Terminated",
+              description: "Your session was terminated by an administrator",
+              variant: "destructive"
+            });
+            
+            await signOut(auth);
+            setUser(null);
+          }, 3000);
         }
       }
     });
@@ -704,6 +724,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         checkLicenseValidity
       }}
     >
+      {showWarningBanner && (
+        <NotificationBanner 
+          type={user?.status === 'suspended' ? 'error' : 'warning'}
+          message={warningMessage}
+          isOpen={showWarningBanner}
+          onClose={() => setShowWarningBanner(false)}
+        />
+      )}
       {children}
     </AuthContext.Provider>
   );
