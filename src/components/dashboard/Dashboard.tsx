@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +8,7 @@ import { MessageSquare, User, Building2, Key, ShieldCheck, Users } from 'lucide-
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardStats } from './DashboardStats';
 import { UserProfile } from './UserProfile';
-import { getChatsByUser } from '@/utils/api';
+import { getChatsByUserId } from '@/utils/api';
 import { Chat } from '@/utils/types';
 
 export const DashboardContent = () => {
@@ -26,7 +25,7 @@ export const DashboardContent = () => {
       if (user?.id) {
         setIsLoadingChats(true);
         try {
-          const userChats = await getChatsByUser(user.id);
+          const userChats = await getChatsByUserId(user.id);
           setChats(userChats || []);
         } catch (error) {
           console.error('Error fetching chats:', error);
