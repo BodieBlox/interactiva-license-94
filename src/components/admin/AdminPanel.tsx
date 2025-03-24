@@ -94,7 +94,7 @@ export const AdminPanel = () => {
     { label: 'Manage Licenses', path: '/admin/manage-licenses', icon: Key, staffAccess: true },
     { label: 'Login Logs', path: '/admin/login-logs', icon: Activity, staffAccess: false },
     { label: 'Branding Approval', path: '/admin/branding-approval', icon: Shield, staffAccess: false },
-    { label: 'Create User', path: '/admin/create-user', icon: Users, staffAccess: false },
+    { label: 'Create User', path: '/admin/create-user', icon: UserCheck, staffAccess: true },
     { label: 'Assign License', path: '/admin/assign-license', icon: Key, staffAccess: false },
   ];
 
@@ -169,7 +169,7 @@ export const AdminPanel = () => {
               {(isAdmin || isStaff) && <Route path="/manage-licenses" element={<LicenseManager />} />}
               {isAdmin && <Route path="/login-logs" element={<LoginLogs />} />}
               {isAdmin && <Route path="/branding-approval" element={<BrandingApproval />} />}
-              {isAdmin && <Route path="/create-user" element={<UserCreator />} />}
+              {(isAdmin || isStaff) && <Route path="/create-user" element={<UserCreator />} />}
               {isAdmin && <Route path="/assign-license" element={<ManualLicenseAssignment />} />}
               {(!isAdmin && isStaff) && <Route path="*" element={<StaffAccessDenied />} />}
             </Routes>
@@ -277,6 +277,18 @@ const AdminDashboard = () => {
           <Key className="h-8 w-8 text-blue-500" />
           <span>Manage Licenses</span>
         </Button>
+
+        {(isAdmin || isStaff) && (
+          <Button 
+            variant="outline" 
+            className="h-auto py-6 flex flex-col items-center justify-center gap-3 text-lg border-blue-500/20 hover:border-blue-500/40 hover:bg-blue-500/5 transition-all duration-300 animate-scale-in"
+            style={{animationDelay: "0.8s"}}
+            onClick={() => navigate('/admin/create-user')}
+          >
+            <UserCheck className="h-8 w-8 text-blue-500" />
+            <span>Create User</span>
+          </Button>
+        )}
       </div>
     </div>
   );

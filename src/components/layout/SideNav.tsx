@@ -71,7 +71,7 @@ export const SideNav = () => {
             <span className="text-xs mt-1">Chat</span>
           </Link>
           
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'staff') && (
             <Link to="/admin" className="flex flex-col items-center p-2">
               <Shield className={cn("h-5 w-5", isActive('/admin') ? "text-primary" : "text-muted-foreground")} />
               <span className="text-xs mt-1">Admin</span>
@@ -131,7 +131,7 @@ export const SideNav = () => {
               isActive={isActive('/activate')}
             />
           )}
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'staff') && (
             <NavItem
               to="/admin"
               icon={<Shield className="h-5 w-5" />}

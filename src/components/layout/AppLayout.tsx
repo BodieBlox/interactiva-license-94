@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SideNav } from './SideNav';
 import { useAuth } from '@/context/AuthContext';
@@ -87,10 +88,24 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       
       <Dialog
         open={isWarningDialogOpen}
-        onOpenChange={setIsWarningDialogOpen}
-        defaultOpen={isWarningDialogOpen}
+        onOpenChange={(open) => {
+          // Only allow closing the dialog if the user is not suspended or warned
+          if (!isSuspended && !isWarned) {
+            setIsWarningDialogOpen(open);
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-md animate-scale-in border-destructive">
+        <DialogContent className="sm:max-w-md animate-scale-in border-destructive" onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing the dialog if suspended or warned
+          if (isSuspended || isWarned) {
+            e.preventDefault();
+          }
+        }} onPointerDownOutside={(e) => {
+          // Prevent clicking outside from closing the dialog if suspended or warned
+          if (isSuspended || isWarned) {
+            e.preventDefault();
+          }
+        }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               {isSuspended ? (

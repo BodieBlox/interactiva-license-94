@@ -20,7 +20,12 @@ import {
   Plus, 
   Filter,
   Sparkles,
-  ArrowUp
+  ArrowUp,
+  Clock,
+  Star,
+  ChevronRight,
+  RefreshCw,
+  LayoutDashboard
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,6 +37,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type SortOption = 'newest' | 'oldest' | 'alphabetical' | 'messages';
 
@@ -46,6 +52,7 @@ export const DashboardContent = () => {
   const [upgradeType, setUpgradeType] = useState<'extension' | 'upgrade'>('extension');
   const [upgradeReason, setUpgradeReason] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [activeTab, setActiveTab] = useState('recent');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -185,175 +192,290 @@ export const DashboardContent = () => {
     ? user.customization.companyName 
     : null;
 
-  return (
-    <div className="bg-gradient-to-br from-background to-muted/50 min-h-screen" style={customStyle}>
-      <div className="container mx-auto px-4 py-6 md:py-8 max-w-6xl">
-        {/* Header */}
-        <DashboardHeader 
-          user={user} 
-          companyName={companyName} 
-          onLogout={handleLogout}
-        />
+  // Get recent chats
+  const recentChats = [...sortedChats].slice(0, 5);
+  
+  // Get starred chats (for now just simulate with the first 3 if they exist)
+  const starredChats = sortedChats.length > 2 ? [...sortedChats].slice(0, 3) : [];
 
-        {/* Mobile User Profile */}
-        {isMobile && <UserProfile user={user} />}
-        
-        {/* Stats Overview */}
-        <DashboardStats chats={chats} />
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background/70 to-muted/20" style={customStyle}>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
+              Welcome back, {user?.username || 'User'}
+            </h1>
+            <p className="text-muted-foreground">
+              {companyName ? `${companyName} Dashboard` : 'Your personal dashboard'} • 
+              <span className="ml-1 text-primary">{user?.role === 'admin' ? 'Administrator' : user?.role === 'staff' ? 'Staff Member' : 'User'}</span>
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            <Link to="/chat/new">
+              <Button 
+                className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+                size="sm"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                <span>New Chat</span>
+              </Button>
+            </Link>
+            
+            <Button 
+              variant="outline" 
+              className="border-primary/20 text-primary hover:bg-primary/10 flex items-center gap-2"
+              size="sm"
+              onClick={() => handleOpenUpgradeDialog('extension')}
+            >
+              <Clock className="h-4 w-4" />
+              <span>Extend License</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="border-purple-500/20 text-purple-500 hover:bg-purple-500/10 flex items-center gap-2"
+              size="sm"
+              onClick={() => handleOpenUpgradeDialog('upgrade')}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Upgrade</span>
+            </Button>
+          </div>
+        </div>
 
         {/* Main Content */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Sidebar - desktop only */}
-          {!isMobile && (
-            <div className="md:col-span-3">
-              <UserProfile user={user} />
-              
-              <Card className="mt-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border border-primary/10 overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-                <CardHeader className="bg-primary/5 border-b border-primary/10 pb-3">
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <Link to="/chat/new" className="w-full">
-                    <Button 
-                      className="w-full justify-start text-sm bg-transparent hover:bg-primary/10 text-primary hover:text-primary border border-primary/20"
-                      variant="ghost"
-                    >
-                      <Plus className="mr-2 h-4 w-4" /> 
-                      New Conversation
-                    </Button>
-                  </Link>
-                  <Link to="/settings" className="w-full">
-                    <Button 
-                      className="w-full justify-start text-sm bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
-                      variant="ghost"
-                    >
-                      <Settings className="mr-2 h-4 w-4" /> 
-                      Settings
-                    </Button>
-                  </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar */}
+          <div className="lg:col-span-3 space-y-6">
+            <UserProfile user={user} />
+            
+            <Card className="overflow-hidden border-primary/10 shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader className="bg-primary/5 border-b border-primary/10 pb-3">
+                <CardTitle className="text-lg font-medium flex items-center gap-2">
+                  <LayoutDashboard className="h-5 w-5 text-primary" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2.5">
+                <Link to="/chat/new" className="w-full">
                   <Button 
-                    className="w-full justify-start text-sm bg-transparent hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                    variant="ghost"
-                    onClick={() => handleOpenUpgradeDialog('extension')}
+                    className="w-full justify-start text-sm border border-primary/20 bg-transparent hover:bg-primary/10 text-primary hover:text-primary"
+                    variant="outline"
                   >
-                    <CalendarClock className="mr-2 h-4 w-4" /> 
-                    Request License Extension
-                  </Button>
-                  <Button 
-                    className="w-full justify-start text-sm bg-transparent hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:text-purple-700"
-                    variant="ghost"
-                    onClick={() => handleOpenUpgradeDialog('upgrade')}
-                  >
-                    <ArrowUp className="mr-2 h-4 w-4" /> 
-                    Request Tier Upgrade
-                  </Button>
-                  {user?.role === 'admin' && (
-                    <Link to="/admin" className="w-full">
-                      <Button 
-                        className="w-full justify-start text-sm bg-transparent hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                        variant="ghost"
-                      >
-                        <Shield className="mr-2 h-4 w-4" /> 
-                        Admin Panel
-                      </Button>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Main content area */}
-          <div className="md:col-span-9">
-            {/* Create New Conversation Button - mobile only */}
-            {isMobile && (
-              <div className="flex flex-col space-y-3 mb-6">
-                <Link to="/chat/new" className="block">
-                  <Button className="w-full py-6 text-lg flex items-center gap-3 font-medium
-                    bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary
-                    shadow-lg shadow-primary/20 border-none transition-all duration-300">
-                    <MessageSquarePlus className="h-5 w-5" />
-                    <span>Create New Conversation</span>
+                    <Plus className="mr-2 h-4 w-4" /> 
+                    New Conversation
                   </Button>
                 </Link>
                 
-                <div className="flex gap-2">
+                <Button 
+                  className="w-full justify-start text-sm border border-amber-500/20 bg-transparent hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                  variant="outline"
+                  onClick={() => handleOpenUpgradeDialog('extension')}
+                >
+                  <CalendarClock className="mr-2 h-4 w-4" /> 
+                  Request License Extension
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start text-sm border border-purple-500/20 bg-transparent hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:text-purple-700"
+                  variant="outline"
+                  onClick={() => handleOpenUpgradeDialog('upgrade')}
+                >
+                  <ArrowUp className="mr-2 h-4 w-4" /> 
+                  Request Tier Upgrade
+                </Button>
+                
+                <Link to="/settings" className="w-full">
                   <Button 
-                    className="flex-1 py-3 items-center gap-2 bg-amber-500/90 hover:bg-amber-500 text-white"
+                    className="w-full justify-start text-sm border border-muted/50 bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                    variant="outline"
+                  >
+                    <Settings className="mr-2 h-4 w-4" /> 
+                    Settings
+                  </Button>
+                </Link>
+                
+                {(user?.role === 'admin' || user?.role === 'staff') && (
+                  <Link to="/admin" className="w-full">
+                    <Button 
+                      className="w-full justify-start text-sm border border-red-500/20 bg-transparent hover:bg-red-500/10 text-red-600 dark:text-red-400 hover:text-red-700"
+                      variant="outline"
+                    >
+                      <Shield className="mr-2 h-4 w-4" /> 
+                      Admin Panel
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Stats Card */}
+            <DashboardStats chats={chats} />
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-9 space-y-6">
+            {/* Featured Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-gradient-to-br from-primary/80 to-primary border-none text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <MessageSquarePlus className="h-12 w-12 mb-4 animate-pulse-soft" />
+                  <CardTitle className="mb-2">Start Chatting</CardTitle>
+                  <p className="text-white/80 mb-4">Create a new conversation with LicenseAI</p>
+                  <Link to="/chat/new" className="w-full">
+                    <Button className="w-full bg-white text-primary hover:bg-white/90">
+                      New Conversation
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-amber-500/80 to-amber-600 border-none text-white shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-300">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <Clock className="h-12 w-12 mb-4 animate-pulse-soft" />
+                  <CardTitle className="mb-2">Extend License</CardTitle>
+                  <p className="text-white/80 mb-4">Request additional time for your license</p>
+                  <Button 
+                    className="w-full bg-white text-amber-600 hover:bg-white/90"
                     onClick={() => handleOpenUpgradeDialog('extension')}
                   >
-                    <CalendarClock className="h-4 w-4" />
-                    <span>Extend License</span>
+                    Request Extension
                   </Button>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-purple-500/80 to-purple-600 border-none text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <Sparkles className="h-12 w-12 mb-4 animate-pulse-soft" />
+                  <CardTitle className="mb-2">Upgrade Plan</CardTitle>
+                  <p className="text-white/80 mb-4">Get more features with a higher tier plan</p>
                   <Button 
-                    className="flex-1 py-3 items-center gap-2 bg-purple-500/90 hover:bg-purple-500 text-white"
+                    className="w-full bg-white text-purple-600 hover:bg-white/90"
                     onClick={() => handleOpenUpgradeDialog('upgrade')}
                   >
-                    <Sparkles className="h-4 w-4" />
-                    <span>Upgrade Tier</span>
+                    Request Upgrade
                   </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Desktop New Chat Button */}
-            {!isMobile && (
-              <Link to="/chat/new">
-                <Button className="mb-6 py-5 px-6 text-base flex items-center gap-3 font-medium
-                  bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
-                  shadow-lg shadow-blue-500/20 border-none transition-all duration-300">
-                  <MessageSquarePlus className="h-5 w-5" />
-                  <span>Create New Conversation</span>
-                </Button>
-              </Link>
-            )}
-
-            {/* Conversations Card */}
-            <Card className="glass-card shadow-xl border-primary/10">
-              <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 border-b border-border/40 pb-4">
-                <div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Conversations */}
+            <Card className="border border-primary/10 shadow-md">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center text-xl">
                     <MessagesSquare className="h-5 w-5 mr-2 text-primary" />
                     Your Conversations
                   </CardTitle>
-                  <CardDescription>Continue an existing conversation or start a new one</CardDescription>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 border-primary/20 text-primary hover:bg-primary/10"
+                      onClick={fetchChats}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+                    </Button>
+                  
+                    <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                      <SelectTrigger className="h-8 w-[150px] border-primary/20 bg-white/80 dark:bg-gray-800/80">
+                        <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest" className="flex items-center gap-2">
+                          <CalendarClock className="h-4 w-4" />
+                          <span>Newest First</span>
+                        </SelectItem>
+                        <SelectItem value="oldest" className="flex items-center gap-2">
+                          <CalendarClock className="h-4 w-4" />
+                          <span>Oldest First</span>
+                        </SelectItem>
+                        <SelectItem value="alphabetical" className="flex items-center gap-2">
+                          <ArrowDownAZ className="h-4 w-4" />
+                          <span>Alphabetical</span>
+                        </SelectItem>
+                        <SelectItem value="messages" className="flex items-center gap-2">
+                          <MessagesSquare className="h-4 w-4" />
+                          <span>Most Messages</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                <CardDescription>Continue an existing conversation or start a new one</CardDescription>
                 
-                <div className="flex items-center">
-                  <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                    <SelectTrigger className={`${isMobile ? 'w-full' : 'w-[200px]'} border border-primary/20 bg-white/80 dark:bg-gray-800/80`}>
-                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="Sort conversations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="newest" className="flex items-center gap-2">
-                        <CalendarClock className="h-4 w-4" />
-                        <span>Newest First</span>
-                      </SelectItem>
-                      <SelectItem value="oldest" className="flex items-center gap-2">
-                        <CalendarClock className="h-4 w-4" />
-                        <span>Oldest First</span>
-                      </SelectItem>
-                      <SelectItem value="alphabetical" className="flex items-center gap-2">
-                        <ArrowDownAZ className="h-4 w-4" />
-                        <span>Alphabetical</span>
-                      </SelectItem>
-                      <SelectItem value="messages" className="flex items-center gap-2">
-                        <MessagesSquare className="h-4 w-4" />
-                        <span>Most Messages</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                  <TabsList className="bg-muted/50 border border-border">
+                    <TabsTrigger value="recent" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                      <Clock className="h-3.5 w-3.5" /> Recent
+                    </TabsTrigger>
+                    <TabsTrigger value="starred" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                      <Star className="h-3.5 w-3.5" /> Favorites
+                    </TabsTrigger>
+                    <TabsTrigger value="all" className="flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+                      <MessagesSquare className="h-3.5 w-3.5" /> All
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </CardHeader>
-              <CardContent className="p-4 md:p-6">
-                <ChatList
-                  chats={sortedChats}
-                  isLoading={isLoading}
-                  error={error}
-                  onRetry={fetchChats}
-                  onUpdate={fetchChats}
-                />
+              <CardContent className="p-4">
+                <TabsContent value="recent" className="mt-0">
+                  <ChatList
+                    chats={recentChats}
+                    isLoading={isLoading}
+                    error={error}
+                    onRetry={fetchChats}
+                    onUpdate={fetchChats}
+                  />
+                  
+                  {recentChats.length > 0 && (
+                    <div className="mt-4 text-center">
+                      <Button 
+                        variant="link" 
+                        className="text-primary flex items-center mx-auto"
+                        onClick={() => setActiveTab('all')}
+                      >
+                        View all conversations <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="starred" className="mt-0">
+                  {starredChats.length > 0 ? (
+                    <ChatList
+                      chats={starredChats}
+                      isLoading={isLoading}
+                      error={error}
+                      onRetry={fetchChats}
+                      onUpdate={fetchChats}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Star className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
+                      <h3 className="text-lg font-medium mb-1">No favorite conversations yet</h3>
+                      <p className="text-muted-foreground text-sm max-w-md mb-4">
+                        You haven't marked any conversations as favorites yet. 
+                        Star your important conversations to access them quickly.
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="all" className="mt-0">
+                  <ChatList
+                    chats={sortedChats}
+                    isLoading={isLoading}
+                    error={error}
+                    onRetry={fetchChats}
+                    onUpdate={fetchChats}
+                  />
+                </TabsContent>
               </CardContent>
             </Card>
           </div>

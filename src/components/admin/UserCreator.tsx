@@ -42,8 +42,10 @@ export const UserCreator = () => {
     setIsSuccess(false);
     
     try {
+      const userId = uuidv4();
+      
       await createUser({
-        id: uuidv4(),
+        id: userId,
         email: values.email,
         password: values.password,
         username: values.username,
