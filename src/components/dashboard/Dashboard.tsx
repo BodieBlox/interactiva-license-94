@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -69,7 +68,6 @@ export const DashboardContent = () => {
         const userChats = await getUserChats(user.id);
         console.log('Fetched chats:', userChats);
         
-        // Initialize as empty array even if API returns null/undefined
         if (!userChats || !Array.isArray(userChats)) {
           console.log('No chats found or invalid response, setting empty array');
           setChats([]);
@@ -84,7 +82,6 @@ export const DashboardContent = () => {
           description: "Failed to load your chats",
           variant: "destructive"
         });
-        // Set empty array to prevent undefined errors
         setChats([]);
       } finally {
         setIsLoading(false);
@@ -149,7 +146,6 @@ export const DashboardContent = () => {
 
     setIsSubmittingRequest(true);
     try {
-      // Submit the upgrade/extension request to Firebase
       const response = await fetch('https://orgid-f590b-default-rtdb.firebaseio.com/licenseRequests.json', {
         method: 'POST',
         body: JSON.stringify({
@@ -192,16 +188,13 @@ export const DashboardContent = () => {
     ? user.customization.companyName 
     : null;
 
-  // Get recent chats
   const recentChats = [...sortedChats].slice(0, 5);
   
-  // Get starred chats (for now just simulate with the first 3 if they exist)
   const starredChats = sortedChats.length > 2 ? [...sortedChats].slice(0, 3) : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background/70 to-muted/20" style={customStyle}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
@@ -246,9 +239,7 @@ export const DashboardContent = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Sidebar */}
           <div className="lg:col-span-3 space-y-6">
             <UserProfile user={user} />
             
@@ -312,13 +303,10 @@ export const DashboardContent = () => {
               </CardContent>
             </Card>
             
-            {/* Stats Card */}
             <DashboardStats chats={chats} />
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-9 space-y-6">
-            {/* Featured Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-gradient-to-br from-primary/80 to-primary border-none text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300">
                 <CardContent className="p-6 flex flex-col items-center text-center">
@@ -362,7 +350,6 @@ export const DashboardContent = () => {
               </Card>
             </div>
             
-            {/* Conversations */}
             <Card className="border border-primary/10 shadow-md">
               <CardHeader className="pb-3 border-b border-border/40">
                 <div className="flex justify-between items-center">
@@ -421,68 +408,66 @@ export const DashboardContent = () => {
                       <MessagesSquare className="h-3.5 w-3.5" /> All
                     </TabsTrigger>
                   </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent className="p-4">
-                <TabsContent value="recent" className="mt-0">
-                  <ChatList
-                    chats={recentChats}
-                    isLoading={isLoading}
-                    error={error}
-                    onRetry={fetchChats}
-                    onUpdate={fetchChats}
-                  />
-                  
-                  {recentChats.length > 0 && (
-                    <div className="mt-4 text-center">
-                      <Button 
-                        variant="link" 
-                        className="text-primary flex items-center mx-auto"
-                        onClick={() => setActiveTab('all')}
-                      >
-                        View all conversations <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
                 
-                <TabsContent value="starred" className="mt-0">
-                  {starredChats.length > 0 ? (
+                  <TabsContent value="recent" className="mt-0">
                     <ChatList
-                      chats={starredChats}
+                      chats={recentChats}
                       isLoading={isLoading}
                       error={error}
                       onRetry={fetchChats}
                       onUpdate={fetchChats}
                     />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Star className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-                      <h3 className="text-lg font-medium mb-1">No favorite conversations yet</h3>
-                      <p className="text-muted-foreground text-sm max-w-md mb-4">
-                        You haven't marked any conversations as favorites yet. 
-                        Star your important conversations to access them quickly.
-                      </p>
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="all" className="mt-0">
-                  <ChatList
-                    chats={sortedChats}
-                    isLoading={isLoading}
-                    error={error}
-                    onRetry={fetchChats}
-                    onUpdate={fetchChats}
-                  />
-                </TabsContent>
+                    
+                    {recentChats.length > 0 && (
+                      <div className="mt-4 text-center">
+                        <Button 
+                          variant="link" 
+                          className="text-primary flex items-center mx-auto"
+                          onClick={() => setActiveTab('all')}
+                        >
+                          View all conversations <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="starred" className="mt-0">
+                    {starredChats.length > 0 ? (
+                      <ChatList
+                        chats={starredChats}
+                        isLoading={isLoading}
+                        error={error}
+                        onRetry={fetchChats}
+                        onUpdate={fetchChats}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Star className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
+                        <h3 className="text-lg font-medium mb-1">No favorite conversations yet</h3>
+                        <p className="text-muted-foreground text-sm max-w-md mb-4">
+                          You haven't marked any conversations as favorites yet. 
+                          Star your important conversations to access them quickly.
+                        </p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="all" className="mt-0">
+                    <ChatList
+                      chats={sortedChats}
+                      isLoading={isLoading}
+                      error={error}
+                      onRetry={fetchChats}
+                      onUpdate={fetchChats}
+                    />
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
-      {/* License Upgrade/Extension Dialog */}
       <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

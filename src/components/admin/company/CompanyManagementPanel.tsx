@@ -413,23 +413,11 @@ export const CompanyManagementPanel = () => {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Company Management</h1>
-            <p className="text-muted-foreground">Manage company accounts and their team members</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              onClick={() => setShowAddCompanyDialog(true)}
-              className="flex items-center gap-2 bg-centralai-purple hover:bg-centralai-accent"
-            >
-              <Plus size={16} />
-              <span>Add Company</span>
-            </Button>
-            <TabsList>
-              <TabsTrigger value="companies">Companies</TabsTrigger>
-              <TabsTrigger value="members" disabled={!selectedCompany}>Members</TabsTrigger>
-            </TabsList>
-          </div>
+          <h1 className="text-2xl font-semibold">Companies Management</h1>
+          <TabsList>
+            <TabsTrigger value="companies">Companies</TabsTrigger>
+            <TabsTrigger value="members" disabled={!selectedCompany}>Company Members</TabsTrigger>
+          </TabsList>
         </div>
 
         <TabsContent value="companies" className="space-y-4">
@@ -536,7 +524,7 @@ export const CompanyManagementPanel = () => {
                 </Table>
               ) : (
                 <div className="text-center py-12 space-y-4">
-                  <Building className="h-16 w-16 mx-auto mb-3 text-muted-foreground/30" />
+                  <Building className="h-16 w-16 mx-auto text-muted-foreground/30" />
                   <h3 className="text-lg font-medium">No companies found</h3>
                   <p className="text-muted-foreground max-w-md mx-auto mb-2">
                     Create your first company to manage teams and branding across multiple users.
@@ -949,3 +937,4 @@ export const CompanyManagementPanel = () => {
     </div>
   );
 };
+
