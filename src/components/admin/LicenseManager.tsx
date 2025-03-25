@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getAllLicenses, deleteLicense, updateLicense } from '@/utils/api';
-import { Copy, Trash, Key, Calendar, Infinity, Search, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { getAllLicenses, deleteLicense, updateLicense, getCompanies } from '@/utils/api';
+import { Copy, Trash, Key, Calendar, Infinity, Search, Shield, CheckCircle, XCircle, Building } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { License } from '@/utils/types';
+import { License, Company } from '@/utils/types';
 import { Badge } from '@/components/ui/badge';
 
 const LicenseManager = () => {
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredLicenses, setFilteredLicenses] = useState<License[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -24,6 +25,7 @@ const LicenseManager = () => {
 
   useEffect(() => {
     fetchLicenses();
+    fetchCompanies();
   }, []);
 
   const fetchLicenses = async () => {
@@ -54,6 +56,15 @@ const LicenseManager = () => {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const fetchedCompanies = await getCompanies();
+      setCompanies(fetchedCompanies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
+
   useEffect(() => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -61,13 +72,19 @@ const LicenseManager = () => {
         license.key.toLowerCase().includes(query) ||
         license.type.toLowerCase().includes(query) ||
         license.status.toLowerCase().includes(query) ||
-        (license.userId && license.userId.toLowerCase().includes(query))
+        getCompanyName(license.companyId).toLowerCase().includes(query)
       );
       setFilteredLicenses(filtered);
     } else {
       setFilteredLicenses(licenses);
     }
-  }, [searchQuery, licenses]);
+  }, [searchQuery, licenses, companies]);
+
+  const getCompanyName = (companyId?: string): string => {
+    if (!companyId) return 'Unassigned';
+    const company = companies.find(c => c.id === companyId);
+    return company ? company.name : 'Unknown Company';
+  };
 
   const handleCopyLicense = (licenseKey: string) => {
     navigator.clipboard.writeText(licenseKey);
@@ -83,6 +100,16 @@ const LicenseManager = () => {
     setIsProcessing(true);
     try {
       await deleteLicense(selectedLicense.id);
+      
+      // If assigned to a company, update the company's license status
+      if (selectedLicense.companyId) {
+        const company = companies.find(c => c.id === selectedLicense.companyId);
+        if (company) {
+          // TODO: Update company license status in database
+          // await updateCompanyLicense(company.id, null, false);
+        }
+      }
+      
       setLicenses(prevLicenses => prevLicenses.filter(license => license.id !== selectedLicense.id));
       toast({
         title: "License Deleted",
@@ -110,6 +137,15 @@ const LicenseManager = () => {
         status: 'active',
         isActive: true
       });
+      
+      // If assigned to a company, update the company's license status
+      if (selectedLicense.companyId) {
+        const company = companies.find(c => c.id === selectedLicense.companyId);
+        if (company) {
+          // TODO: Update company license status in database
+          // await updateCompanyLicense(company.id, selectedLicense.key, true);
+        }
+      }
       
       // Update local state
       setLicenses(prevLicenses => 
@@ -146,6 +182,15 @@ const LicenseManager = () => {
         status: 'inactive',
         isActive: false
       });
+      
+      // If assigned to a company, update the company's license status
+      if (selectedLicense.companyId) {
+        const company = companies.find(c => c.id === selectedLicense.companyId);
+        if (company) {
+          // TODO: Update company license status in database
+          // await updateCompanyLicense(company.id, selectedLicense.key, false);
+        }
+      }
       
       // Update local state
       setLicenses(prevLicenses => 
@@ -203,9 +248,9 @@ const LicenseManager = () => {
           <div className="w-full sm:w-auto">
             <h2 className="text-xl font-medium mb-1 flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              License Management
+              Company License Management
             </h2>
-            <p className="text-sm text-muted-foreground">View, copy, and delete license keys</p>
+            <p className="text-sm text-muted-foreground">View, copy, and manage company license keys</p>
           </div>
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -244,7 +289,8 @@ const LicenseManager = () => {
                   <TableHead>License Key</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>User ID</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Max Users</TableHead>
                   <TableHead>Expiration</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -253,7 +299,7 @@ const LicenseManager = () => {
               <TableBody>
                 {filteredLicenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Key className="h-8 w-8 text-muted-foreground/30" />
                         <p className="text-muted-foreground">No licenses found</p>
@@ -286,8 +332,14 @@ const LicenseManager = () => {
                           {license.status}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-[100px] truncate">
-                        {license.userId || 'Unassigned'}
+                      <TableCell className="max-w-[200px] truncate">
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          {getCompanyName(license.companyId)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {license.maxUsers || 'Unlimited'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -372,7 +424,7 @@ const LicenseManager = () => {
           <DialogHeader>
             <DialogTitle>Delete License</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this license? This action cannot be undone.
+              Are you sure you want to delete this company license? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           
@@ -382,6 +434,9 @@ const LicenseManager = () => {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Type: {normalizeType(selectedLicense.type)}</span>
                 <span>Status: {selectedLicense.status}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Company: {getCompanyName(selectedLicense.companyId)}
               </div>
             </div>
           )}
@@ -415,7 +470,7 @@ const LicenseManager = () => {
           <DialogHeader>
             <DialogTitle>Activate License</DialogTitle>
             <DialogDescription>
-              Are you sure you want to activate this license?
+              Are you sure you want to activate this company license?
             </DialogDescription>
           </DialogHeader>
           
@@ -425,6 +480,9 @@ const LicenseManager = () => {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Type: {normalizeType(selectedLicense.type)}</span>
                 <span>Current Status: {selectedLicense.status}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Company: {getCompanyName(selectedLicense.companyId)}
               </div>
             </div>
           )}
@@ -459,7 +517,7 @@ const LicenseManager = () => {
           <DialogHeader>
             <DialogTitle>Deactivate License</DialogTitle>
             <DialogDescription>
-              Are you sure you want to deactivate this license?
+              Are you sure you want to deactivate this company license?
             </DialogDescription>
           </DialogHeader>
           
@@ -469,6 +527,9 @@ const LicenseManager = () => {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Type: {normalizeType(selectedLicense.type)}</span>
                 <span>Current Status: {selectedLicense.status}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Company: {getCompanyName(selectedLicense.companyId)}
               </div>
             </div>
           )}

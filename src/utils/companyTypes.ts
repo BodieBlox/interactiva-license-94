@@ -8,6 +8,11 @@ export interface Company {
   description?: string;
   industry?: string;
   size?: string;
+  licenseKey?: string;
+  licenseId?: string;
+  licenseType?: string;
+  licenseActive?: boolean;
+  licenseExpiryDate?: string;
   branding?: {
     primaryColor?: string;
     logo?: string;
@@ -20,8 +25,7 @@ export interface Company {
 
 export interface UserWithCompany extends User {
   companyRole?: 'admin' | 'member';
-  isCompanyAdmin?: boolean; // Add this property to match User interface
-  // Remove the 'company' property that was causing issues
+  isCompanyAdmin?: boolean;
 }
 
 export interface CompanyInvitation {
@@ -35,7 +39,7 @@ export interface CompanyInvitation {
   timestamp: string;
   primaryColor?: string;
   logo?: string;
-  status?: 'pending' | 'accepted' | 'declined'; // Add the status field to the interface
+  status?: 'pending' | 'accepted' | 'declined';
 }
 
 // Function to sanitize company data by removing undefined values

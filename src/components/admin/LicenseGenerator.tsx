@@ -8,11 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateLicense } from '@/utils/api';
-import { Key, Copy, Calendar, Infinity, Shield, UserCog } from 'lucide-react';
+import { Key, Copy, Calendar, Infinity, Shield, UserCog, Users } from 'lucide-react';
 
 export default function LicenseGenerator() {
   const [licenseType, setLicenseType] = useState<'basic' | 'premium' | 'enterprise'>('basic');
   const [expirationDays, setExpirationDays] = useState(30);
+  const [maxUsers, setMaxUsers] = useState(5);
   const [showExpiration, setShowExpiration] = useState(true);
   const [generatedLicense, setGeneratedLicense] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -23,10 +24,11 @@ export default function LicenseGenerator() {
       // Convert UI license type to API compatible types
       const apiLicenseType = licenseType === 'basic' ? 'standard' : licenseType;
       
-      // Generate license key with the selected type and expiration
+      // Generate license key with the selected type, expiration and max users
       const licenseKey = await generateLicense(
         apiLicenseType, 
-        showExpiration ? expirationDays : undefined
+        showExpiration ? expirationDays : undefined,
+        maxUsers
       );
       
       // Set the generated license key
@@ -34,7 +36,7 @@ export default function LicenseGenerator() {
       
       toast({
         title: "License Generated",
-        description: `New ${licenseType} ${showExpiration ? 'temporary' : 'permanent'} license key has been generated successfully`,
+        description: `New ${licenseType} ${showExpiration ? 'temporary' : 'permanent'} company license key has been generated successfully`,
       });
     } catch (error) {
       console.error('Error generating license:', error);
@@ -62,10 +64,10 @@ export default function LicenseGenerator() {
         <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b pb-6">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
             <Key className="h-5 w-5 text-indigo-500" />
-            License Generator
+            Company License Generator
           </CardTitle>
           <CardDescription>
-            Generate license keys for users with customizable options
+            Generate license keys for companies with customizable options
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 pt-6">
@@ -99,6 +101,22 @@ export default function LicenseGenerator() {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="maxUsers" className="text-sm font-medium">Maximum Users</Label>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <Input 
+                id="maxUsers"
+                type="number" 
+                min="1"
+                value={maxUsers} 
+                onChange={(e) => setMaxUsers(parseInt(e.target.value) || 5)}
+                className="bg-white"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Maximum number of users allowed in the company</p>
           </div>
           
           <div className="flex items-center space-x-2 pt-2">
@@ -139,7 +157,7 @@ export default function LicenseGenerator() {
           {generatedLicense && (
             <div className="w-full mt-4 p-4 bg-slate-50 rounded-md border border-slate-100 animate-fade-in">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-700">Generated License Key</h3>
+                <h3 className="text-sm font-medium text-slate-700">Generated Company License Key</h3>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -182,7 +200,7 @@ export default function LicenseGenerator() {
             ) : (
               <>
                 <Key className="mr-2 h-4 w-4" />
-                Generate License Key
+                Generate Company License Key
               </>
             )}
           </Button>

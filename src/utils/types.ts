@@ -9,9 +9,6 @@ export interface User {
   status: 'active' | 'warned' | 'suspended';
   role: UserRole;
   companyId?: string;
-  licenseKey?: string | null;
-  licenseType?: string | null;
-  licenseActive?: boolean;
   warningMessage?: string | null;
   lastLogin?: string | null;
   invitationAccepted?: boolean;
@@ -22,11 +19,9 @@ export interface User {
   passwordResetExpires?: string | null;
   profileImageUrl?: string | null;
   
-  // Add missing properties
+  // Modified properties - removing individual license fields
   customization?: DashboardCustomization;
   isCompanyAdmin?: boolean;
-  licenseId?: string;
-  licenseExpiryDate?: string;
   forcedLogout?: string;
   password?: string; // Only used during user creation, not stored
 }
@@ -59,14 +54,36 @@ export interface License {
   id: string;
   key: string;
   isActive: boolean;
-  userId?: string;
+  companyId?: string; // Changed from userId to companyId
   createdAt: string;
   activatedAt?: string;
   suspendedAt?: string;
   expiresAt?: string;
   status: 'active' | 'inactive' | 'revoked' | 'suspended';
   type: 'basic' | 'premium' | 'enterprise';
-  assignedTo?: string;
+  maxUsers?: number; // Added for user limit per license
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  adminId: string; // Primary company owner
+  licenseKey?: string;
+  licenseId?: string;
+  licenseType?: string;
+  licenseActive?: boolean;
+  licenseExpiryDate?: string;
+  members?: string[];
+  createdAt: string;
+  updatedAt: string;
+  branding?: {
+    primaryColor?: string;
+    logo?: string;
+    approved?: boolean;
+  };
+  description?: string;
+  industry?: string;
+  size?: string;
 }
 
 export interface ChatMessage {
@@ -99,8 +116,9 @@ export interface LoginLog {
 
 export interface LicenseRequest {
   id: string;
-  userId: string;
-  username: string;
+  companyId: string; // Changed from userId to companyId
+  companyName: string; // Added company name
+  adminName: string; // Changed from username
   email: string;
   message?: string;
   status: 'pending' | 'approved' | 'rejected';
