@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getAllLicenses, deleteLicense, updateLicense } from '@/utils/api';
-import { getCompanies } from '@/utils/companyApi'; // Fixed import source
+import { getCompanies } from '@/utils/companyApi'; // Corrected import
 import { Copy, Trash, Key, Calendar, Infinity, Search, Shield, CheckCircle, XCircle, Building } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { License, Company } from '@/utils/types';
+import { License } from '@/utils/types';
+import { Company } from '@/utils/companyTypes'; // Updated import
 import { Badge } from '@/components/ui/badge';
 
 const LicenseManager = () => {
