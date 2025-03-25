@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getAllLicenses, deleteLicense, updateLicense, getCompanies } from '@/utils/api';
+import { getAllLicenses, deleteLicense, updateLicense } from '@/utils/api';
+import { getCompanies } from '@/utils/companyApi'; // Fixed import source
 import { Copy, Trash, Key, Calendar, Infinity, Search, Shield, CheckCircle, XCircle, Building } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { License, Company } from '@/utils/types';
