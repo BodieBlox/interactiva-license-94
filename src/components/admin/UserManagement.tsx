@@ -1,11 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { User } from '@/utils/types';
-import { getUsers, updateUserStatus, clearUserChatHistory, suspendLicense, revokeLicense, forceUserLogout } from '@/utils/api';
+import { getUsers, updateUserStatus, clearUserChatHistory, forceUserLogout } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX, Key, ClipboardX, Calendar } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle, Search, ShieldAlert, UserCheck, MessageSquareX } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +20,7 @@ export const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [actionType, setActionType] = useState<'warn' | 'suspend' | 'activate' | 'clearChats' | 'suspendLicense' | 'revokeLicense' | null>(null);
+  const [actionType, setActionType] = useState<'warn' | 'suspend' | 'activate' | 'clearChats' | null>(null);
   const [warningMessage, setWarningMessage] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,7 +60,7 @@ export const UserManagement = () => {
     }
   }, [searchQuery, users]);
 
-  const handleOpenDialog = (user: User, type: 'warn' | 'suspend' | 'activate' | 'clearChats' | 'suspendLicense' | 'revokeLicense') => {
+  const handleOpenDialog = (user: User, type: 'warn' | 'suspend' | 'activate' | 'clearChats') => {
     setSelectedUser(user);
     setActionType(type);
     setWarningMessage(type === 'activate' ? '' : user.warningMessage || '');
@@ -129,66 +130,6 @@ export const UserManagement = () => {
           });
           break;
         }
-        case 'suspendLicense': {
-          if (selectedUser.licenseKey) {
-            await suspendLicense(selectedUser.licenseKey);
-            
-            const updatedUser = { 
-              ...selectedUser, 
-              licenseActive: false 
-            };
-            setUsers(prevUsers => prevUsers.map(user => 
-              user.id === updatedUser.id ? updatedUser : user
-            ));
-            
-            toast({
-              title: "Success",
-              description: `License for ${selectedUser.username} has been suspended`,
-            });
-          } else {
-            toast({
-              title: "Error",
-              description: "User does not have an active license",
-              variant: "destructive"
-            });
-          }
-          break;
-        }
-        case 'revokeLicense': {
-          if (selectedUser.licenseKey) {
-            try {
-              await revokeLicense(selectedUser.licenseKey);
-              
-              const updatedUser = { 
-                ...selectedUser, 
-                licenseActive: false,
-                licenseKey: null
-              };
-              setUsers(prevUsers => prevUsers.map(user => 
-                user.id === updatedUser.id ? updatedUser : user
-              ));
-              
-              toast({
-                title: "Success",
-                description: `License for ${selectedUser.username} has been revoked`,
-              });
-            } catch (error) {
-              console.error('Error revoking license:', error);
-              toast({
-                title: "Error",
-                description: `Failed to revoke license: ${(error as Error).message}`,
-                variant: "destructive"
-              });
-            }
-          } else {
-            toast({
-              title: "Error",
-              description: "User does not have an active license",
-              variant: "destructive"
-            });
-          }
-          break;
-        }
       }
       
       setDialogOpen(false);
@@ -248,8 +189,7 @@ export const UserManagement = () => {
                   <th className="text-left p-4 font-medium">Username</th>
                   <th className="text-left p-4 font-medium">Email</th>
                   <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-left p-4 font-medium">License</th>
-                  <th className="text-left p-4 font-medium">License Date</th>
+                  <th className="text-left p-4 font-medium">Created</th>
                   <th className="text-left p-4 font-medium">Role</th>
                   <th className="text-right p-4 font-medium">Actions</th>
                 </tr>
@@ -257,7 +197,7 @@ export const UserManagement = () => {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-4 text-center text-muted-foreground">
                       No users found
                     </td>
                   </tr>
@@ -268,20 +208,12 @@ export const UserManagement = () => {
                       <td className="p-4">{user.email}</td>
                       <td className="p-4">{renderStatusBadge(user.status)}</td>
                       <td className="p-4">
-                        {user.licenseActive ? (
-                          <Badge variant="default" className="bg-primary">Active</Badge>
-                        ) : (
-                          <Badge variant="outline">Inactive</Badge>
-                        )}
-                      </td>
-                      <td className="p-4">
                         {user.createdAt ? (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5" />
                             {format(new Date(user.createdAt), 'MMM dd, yyyy')}
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Not issued</span>
+                          <span className="text-sm text-muted-foreground">Not available</span>
                         )}
                       </td>
                       <td className="p-4">
@@ -332,30 +264,6 @@ export const UserManagement = () => {
                             <MessageSquareX className="h-3.5 w-3.5" />
                             <span>Clear Chats</span>
                           </Button>
-                          
-                          {user.licenseActive && (
-                            <>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleOpenDialog(user, 'suspendLicense')}
-                                className="flex items-center gap-1 text-purple-500 border-purple-200 hover:bg-purple-50 animate-fade-in"
-                              >
-                                <Key className="h-3.5 w-3.5" />
-                                <span>Suspend License</span>
-                              </Button>
-                              
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleOpenDialog(user, 'revokeLicense')}
-                                className="flex items-center gap-1 text-indigo-500 border-indigo-200 hover:bg-indigo-50 animate-fade-in"
-                              >
-                                <ClipboardX className="h-3.5 w-3.5" />
-                                <span>Revoke License</span>
-                              </Button>
-                            </>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -383,19 +291,11 @@ export const UserManagement = () => {
               {actionType === 'clearChats' && (
                 <MessageSquareX className="h-5 w-5 text-amber-500" />
               )}
-              {actionType === 'suspendLicense' && (
-                <Key className="h-5 w-5 text-purple-500" />
-              )}
-              {actionType === 'revokeLicense' && (
-                <ClipboardX className="h-5 w-5 text-indigo-500" />
-              )}
               <span>
                 {actionType === 'warn' && 'Issue Warning'}
                 {actionType === 'suspend' && 'Suspend User'}
                 {actionType === 'activate' && `Restore full access for ${selectedUser?.username}.`}
                 {actionType === 'clearChats' && `This will permanently delete all chats for ${selectedUser?.username}. This action cannot be undone.`}
-                {actionType === 'suspendLicense' && `This will suspend the license for ${selectedUser?.username}. They will lose access to premium features.`}
-                {actionType === 'revokeLicense' && `This will completely revoke the license for ${selectedUser?.username}. The license key will be reset and can be reassigned.`}
               </span>
             </DialogTitle>
             <DialogDescription>
@@ -403,8 +303,6 @@ export const UserManagement = () => {
               {actionType === 'suspend' && 'Suspend this user\'s account. They will be unable to use the system.'}
               {actionType === 'activate' && `Restore full access for ${selectedUser?.username}.`}
               {actionType === 'clearChats' && `This will permanently delete all chats for ${selectedUser?.username}. This action cannot be undone.`}
-              {actionType === 'suspendLicense' && `This will suspend the license for ${selectedUser?.username}. They will lose access to premium features.`}
-              {actionType === 'revokeLicense' && `This will completely revoke the license for ${selectedUser?.username}. The license key will be reset and can be reassigned.`}
             </DialogDescription>
           </DialogHeader>
           
@@ -438,13 +336,11 @@ export const UserManagement = () => {
               className={
                 actionType === 'warn' 
                   ? 'bg-amber-500 hover:bg-amber-600 transition-all duration-300' 
-                  : actionType === 'suspend' || actionType === 'revokeLicense'
+                  : actionType === 'suspend'
                     ? 'bg-red-500 hover:bg-red-600 transition-all duration-300'
                     : actionType === 'activate'
                       ? 'bg-green-500 hover:bg-green-600 transition-all duration-300'
-                      : actionType === 'clearChats'
-                        ? 'bg-amber-500 hover:bg-amber-600 transition-all duration-300'
-                        : 'bg-purple-500 hover:bg-purple-600 transition-all duration-300'
+                      : 'bg-amber-500 hover:bg-amber-600 transition-all duration-300'
               }
             >
               {isProcessing ? (

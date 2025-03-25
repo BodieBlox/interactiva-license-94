@@ -124,7 +124,6 @@ export const getCompanyMembers = async (companyId: string): Promise<UserWithComp
     snapshot.forEach((childSnapshot) => {
       const user = childSnapshot.val() as User;
       if (company.members.includes(user.id)) {
-        // Create a UserWithCompany without using the 'company' property
         const memberWithRole: UserWithCompany = {
           ...user,
           companyRole: user.id === company.adminId ? 'admin' : 'member'
@@ -174,6 +173,22 @@ export const removeCompanyMember = async (companyId: string, userId: string): Pr
     
     const updatedMembers = company.members.filter(id => id !== userId);
     await updateCompany(companyId, { members: updatedMembers });
+    
+    const userRef = ref(database, `users/${userId}/customization`);
+    const userSnapshot = await get(userRef);
+    
+    if (userSnapshot.exists()) {
+      const userCustomization = userSnapshot.val();
+      if (userCustomization.companyId === companyId) {
+        await update(userRef, {
+          companyId: null,
+          companyName: null,
+          isCompanyMember: false
+        });
+      }
+    }
+    
+    console.log(`User ${userId} removed from company ${companyId}`);
   } catch (error) {
     console.error('Error removing company member:', error);
     throw error;
@@ -192,7 +207,6 @@ export const sendCompanyInvitation = async (invitationData: {
   logo?: string;
 }): Promise<void> => {
   try {
-    // Create invitation
     const invitation: CompanyInvitation = {
       id: uuidv4(),
       fromUserId: invitationData.fromUserId,
@@ -204,14 +218,12 @@ export const sendCompanyInvitation = async (invitationData: {
       timestamp: new Date().toISOString(),
       primaryColor: invitationData.primaryColor,
       logo: invitationData.logo,
-      status: 'pending' // Add the status field
+      status: 'pending'
     };
     
-    // Save the invitation
     const invitationsRef = ref(database, `companyInvitations/${invitation.id}`);
     await set(invitationsRef, invitation);
     
-    // Add the invitation to the receiver's user record
     await updateUser(invitationData.toUserId, {
       customization: {
         pendingInvitation: invitation
@@ -247,10 +259,8 @@ export const getCompanyInvitationsByUser = async (userId: string): Promise<Compa
   }
 };
 
-// Company invitation functions from the existing code
 export const acceptCompanyInvitation = async (invitationId: string, userId: string): Promise<User> => {
   try {
-    // Get the user
     const userRef = ref(database, `users/${userId}`);
     const userSnapshot = await get(userRef);
     
@@ -260,14 +270,12 @@ export const acceptCompanyInvitation = async (invitationId: string, userId: stri
     
     const user = userSnapshot.val() as User;
     
-    // Get the invitation details from the user's pending invitation
     if (!user.customization?.pendingInvitation) {
       throw new Error("No pending invitation found");
     }
     
     const invitation = user.customization.pendingInvitation;
     
-    // Update user with company details
     const updatedCustomization = {
       ...user.customization,
       companyId: invitation.companyId,
@@ -275,18 +283,16 @@ export const acceptCompanyInvitation = async (invitationId: string, userId: stri
       primaryColor: invitation.primaryColor,
       logo: invitation.logo,
       isCompanyMember: true,
-      pendingInvitation: null  // Clear the pending invitation
+      pendingInvitation: null
     };
     
     await updateUser(userId, {
       customization: updatedCustomization
     });
     
-    // Delete the invitation
     const invitationRef = ref(database, `companyInvitations/${invitationId}`);
     await set(invitationRef, null);
     
-    // Return the updated user
     const updatedUserSnapshot = await get(userRef);
     return updatedUserSnapshot.val() as User;
   } catch (error) {
@@ -297,7 +303,6 @@ export const acceptCompanyInvitation = async (invitationId: string, userId: stri
 
 export const declineCompanyInvitation = async (invitationId: string, userId: string): Promise<User> => {
   try {
-    // Get the user
     const userRef = ref(database, `users/${userId}`);
     const userSnapshot = await get(userRef);
     
@@ -307,7 +312,6 @@ export const declineCompanyInvitation = async (invitationId: string, userId: str
     
     const user = userSnapshot.val() as User;
     
-    // Update user to remove the pending invitation
     if (user.customization) {
       const updatedCustomization = {
         ...user.customization,
@@ -319,11 +323,9 @@ export const declineCompanyInvitation = async (invitationId: string, userId: str
       });
     }
     
-    // Delete the invitation
     const invitationRef = ref(database, `companyInvitations/${invitationId}`);
     await set(invitationRef, null);
     
-    // Return the updated user
     const updatedUserSnapshot = await get(userRef);
     return updatedUserSnapshot.val() as User;
   } catch (error) {
@@ -334,7 +336,6 @@ export const declineCompanyInvitation = async (invitationId: string, userId: str
 
 export const updateDashboardCustomization = async (userId: string, customization: Partial<User['customization']>): Promise<User> => {
   try {
-    // Get current user
     const userRef = ref(database, `users/${userId}`);
     const snapshot = await get(userRef);
     
@@ -344,18 +345,15 @@ export const updateDashboardCustomization = async (userId: string, customization
     
     const user = snapshot.val() as User;
     
-    // Update customization
     const updatedCustomization = {
       ...user.customization,
       ...customization
     };
     
-    // Update user
     await update(userRef, {
       customization: updatedCustomization
     });
     
-    // Return updated user
     const updatedSnapshot = await get(userRef);
     return updatedSnapshot.val() as User;
   } catch (error) {
@@ -364,19 +362,16 @@ export const updateDashboardCustomization = async (userId: string, customization
   }
 };
 
-// Generate a company invite link
 export const generateCompanyInviteLink = async (companyId: string): Promise<string> => {
   try {
-    // Generate a unique invite code
     const inviteCode = `${companyId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Store the invite code in the database
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/companyInviteLinks/${inviteCode}.json`, {
       method: 'PUT',
       body: JSON.stringify({
         companyId,
         createdAt: new Date().toISOString(),
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days expiry
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       }),
     });
 
@@ -384,7 +379,6 @@ export const generateCompanyInviteLink = async (companyId: string): Promise<stri
       throw new Error('Failed to generate invite link');
     }
     
-    // Return the full invite link
     const baseUrl = window.location.origin;
     return `${baseUrl}/join-company/${inviteCode}`;
   } catch (error) {
@@ -393,10 +387,8 @@ export const generateCompanyInviteLink = async (companyId: string): Promise<stri
   }
 };
 
-// Join a company via invite link
 export const joinCompanyViaLink = async (inviteCode: string, userId: string): Promise<boolean> => {
   try {
-    // Fetch the invite details
     const response = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/companyInviteLinks/${inviteCode}.json`);
     
     if (!response.ok) {
@@ -409,19 +401,16 @@ export const joinCompanyViaLink = async (inviteCode: string, userId: string): Pr
       throw new Error('Invalid invite code');
     }
     
-    // Check if the invite is expired
     if (new Date(inviteData.expires) < new Date()) {
       throw new Error('This invite link has expired');
     }
     
-    // Get the company data
     const company = await getCompanyById(inviteData.companyId);
     
     if (!company) {
       throw new Error('Company not found');
     }
     
-    // Add the user to the company
     const updateResponse = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/users/${userId}/customization.json`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -436,6 +425,98 @@ export const joinCompanyViaLink = async (inviteCode: string, userId: string): Pr
     return true;
   } catch (error) {
     console.error('Error joining company via invite link:', error);
+    throw error;
+  }
+};
+
+export const deleteCompany = async (companyId: string): Promise<void> => {
+  try {
+    const company = await getCompanyById(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+    
+    if (company.members && company.members.length > 0) {
+      const usersRef = ref(database, 'users');
+      const usersSnapshot = await get(usersRef);
+      
+      if (usersSnapshot.exists()) {
+        const updatePromises: Promise<void>[] = [];
+        
+        usersSnapshot.forEach((childSnapshot) => {
+          const user = childSnapshot.val() as User;
+          if (company.members?.includes(user.id)) {
+            if (user.customization?.companyId === companyId) {
+              const userRef = ref(database, `users/${user.id}/customization`);
+              updatePromises.push(update(userRef, {
+                companyId: null,
+                companyName: null,
+                isCompanyMember: false
+              }));
+            }
+          }
+        });
+        
+        await Promise.all(updatePromises);
+      }
+    }
+    
+    const companyRef = ref(database, `companies/${companyId}`);
+    await set(companyRef, null);
+    
+    console.log(`Company ${companyId} deleted successfully`);
+  } catch (error) {
+    console.error('Error deleting company:', error);
+    throw error;
+  }
+};
+
+export const createCompanyChat = async (companyId: string, message: string, senderId: string, senderName: string): Promise<any> => {
+  try {
+    const chatRef = ref(database, `companyChats/${companyId}/messages`);
+    const newChatRef = push(chatRef);
+    
+    const newChat = {
+      id: newChatRef.key,
+      senderId,
+      senderName,
+      message,
+      timestamp: new Date().toISOString()
+    };
+    
+    await set(newChatRef, newChat);
+    
+    await update(ref(database, `companyChats/${companyId}`), {
+      lastMessageAt: new Date().toISOString()
+    });
+    
+    return newChat;
+  } catch (error) {
+    console.error('Error creating company chat message:', error);
+    throw error;
+  }
+};
+
+export const getCompanyChatMessages = async (companyId: string): Promise<any[]> => {
+  try {
+    const chatRef = ref(database, `companyChats/${companyId}/messages`);
+    const snapshot = await get(chatRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const messages: any[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const message = childSnapshot.val();
+      messages.push(message);
+    });
+    
+    return messages.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  } catch (error) {
+    console.error('Error fetching company chat messages:', error);
     throw error;
   }
 };
