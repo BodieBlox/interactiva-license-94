@@ -9,7 +9,8 @@ import { LicenseActivation } from './components/auth/LicenseActivation';
 import { DashboardContent } from './components/dashboard/Dashboard';
 import { ChatInterface } from './components/dashboard/ChatInterface';
 import { UserSettings } from './components/user/UserSettings';
-import KeyGenerator from './pages/KeyGenerator';
+import CompanyGeneratorPage from './pages/CompanyGenerator';
+import CompanyManagementPage from './pages/CompanyManagement';
 import Index from './pages/Index';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
@@ -32,7 +33,6 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<LoginForm />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/key-generator" element={<KeyGenerator />} />
 
               {/* App layout wrapper for authenticated routes */}
               <Route element={<AppLayout />}>
