@@ -28,7 +28,7 @@ export default function LicenseGenerator() {
       const licenseKey = await generateLicense(
         apiLicenseType, 
         showExpiration ? expirationDays : undefined,
-        maxUsers
+        { maxUsers } // Pass maxUsers as an object parameter
       );
       
       // Set the generated license key

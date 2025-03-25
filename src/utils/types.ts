@@ -19,7 +19,14 @@ export interface User {
   passwordResetExpires?: string | null;
   profileImageUrl?: string | null;
   
-  // Modified properties - removing individual license fields
+  // Re-adding license properties to User interface for backward compatibility
+  // These will be managed at the company level but kept for existing code
+  licenseKey?: string;
+  licenseId?: string;
+  licenseActive?: boolean;
+  licenseType?: 'basic' | 'premium' | 'enterprise';
+  licenseExpiryDate?: string;
+  
   customization?: DashboardCustomization;
   isCompanyAdmin?: boolean;
   forcedLogout?: string;
@@ -55,6 +62,7 @@ export interface License {
   key: string;
   isActive: boolean;
   companyId?: string; // Changed from userId to companyId
+  userId?: string; // Adding userId back for backward compatibility
   createdAt: string;
   activatedAt?: string;
   suspendedAt?: string;
@@ -119,6 +127,8 @@ export interface LicenseRequest {
   companyId: string; // Changed from userId to companyId
   companyName: string; // Added company name
   adminName: string; // Changed from username
+  username?: string; // Keep for backward compatibility
+  userId?: string; // Adding for backward compatibility
   email: string;
   message?: string;
   status: 'pending' | 'approved' | 'rejected';

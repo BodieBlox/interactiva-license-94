@@ -470,42 +470,43 @@ export const getMessagesByChatId = async (chatId: string): Promise<ChatMessage[]
 };
 
 // License functions
-export const generateLicense = async (
-  type: 'basic' | 'premium' | 'enterprise' | 'standard', 
-  expirationDays?: number
-): Promise<License> => {
+export const generateLicense = async (type: string, expirationDays?: number, options?: { maxUsers?: number }) => {
   try {
     // Generate a unique license key
-    const licenseKey = `LIC-${type.substring(0, 3).toUpperCase()}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    
-    const licenseId = uuidv4();
-    
-    // Create expiration date if provided
-    let expiresAt: string | undefined = undefined;
-    if (expirationDays) {
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + expirationDays);
-      expiresAt = expiryDate.toISOString();
-    }
+    const licenseKey = generateRandomLicenseKey();
     
     // Create the license object
-    const license: License = {
-      id: licenseId,
+    const license: Partial<License> = {
       key: licenseKey,
       isActive: true,
-      createdAt: new Date().toISOString(),
       status: 'active',
       type: type as 'basic' | 'premium' | 'enterprise',
-      ...(expiresAt ? { expiresAt } : {})
+      createdAt: new Date().toISOString(),
+      maxUsers: options?.maxUsers || 5 // Default to 5 users if not specified
     };
     
+    // Set expiration if expirationDays is provided
+    if (expirationDays) {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + expirationDays);
+      license.expiresAt = expirationDate.toISOString();
+    }
+    
     // Save the license to the database
-    const licenseRef = ref(database, `licenses/${licenseId}`);
+    const licenseRef = push(ref(database, 'licenses'));
+    const licenseId = licenseRef.key;
+    
+    if (!licenseId) {
+      throw new Error("Failed to generate license ID");
+    }
+    
+    license.id = licenseId;
+    
     await set(licenseRef, license);
     
-    return license;
+    return license as License;
   } catch (error) {
-    console.error("Error generating license:", error);
+    console.error('Error generating license:', error);
     throw error;
   }
 };
@@ -929,3 +930,7 @@ export const approveDashboardCustomization = async (userId: string): Promise<Use
     throw error;
   }
 };
+
+function generateRandomLicenseKey() {
+  return `LIC-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+}
