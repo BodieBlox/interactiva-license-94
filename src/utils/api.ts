@@ -723,7 +723,10 @@ export const createLicenseRequest = async (userId: string, username: string, ema
       email,
       message,
       status: 'pending',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      companyId: userId,
+      companyName: username,
+      adminName: username
     };
     
     await set(newRequestRef, newRequest);
