@@ -21,7 +21,8 @@ export const AdminPanel = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Routes>
-        <Route path="companies/*" element={<CompanyManagement />} />
+        <Route path="/" element={<CompanyManagement />} />
+        <Route path="companies" element={<CompanyManagement />} />
         <Route path="company/new" element={<CompanyCreator />} />
         <Route path="company/chat/:companyId" element={<CompanyChatWrapper />} />
       </Routes>

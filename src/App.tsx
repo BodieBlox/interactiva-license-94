@@ -46,10 +46,8 @@ function App() {
                 <Route path="/chat/new" element={<div className="w-full"><ChatInterface /></div>} />
                 <Route path="/chat/:chatId" element={<div className="w-full"><ChatInterface /></div>} />
                 
-                {/* Admin routes */}
+                {/* Admin routes - use a single admin/* route pattern for nested admin routes */}
                 <Route path="/admin/*" element={<AdminPanel />} />
-                <Route path="/admin/companies" element={<CompanyManagementPage />} />
-                <Route path="/admin/company/new" element={<CompanyGeneratorPage />} />
               </Route>
 
               {/* Redirect and 404 */}

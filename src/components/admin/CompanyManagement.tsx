@@ -67,13 +67,11 @@ export const CompanyManagement = () => {
     companyName: ''
   });
 
-  // Fetch all users
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: getUsers
   });
 
-  // Extract unique companies from users
   const companies = users.reduce((acc: Company[], user) => {
     if (user.customization?.companyName && (user.isCompanyAdmin || user.role === 'admin')) {
       const companyExists = acc.find(c => c.name === user.customization.companyName);
@@ -93,7 +91,6 @@ export const CompanyManagement = () => {
     return acc;
   }, []);
 
-  // Filter users by selected company
   useEffect(() => {
     if (selectedCompany) {
       const filteredUsers = users.filter(user => 
@@ -126,10 +123,8 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Remove user from company using the API
       await removeCompanyMember(company.id, userId);
       
-      // Remove company affiliation from user
       const updatedCustomization = {
         ...user.customization,
         companyName: undefined,
@@ -139,7 +134,6 @@ export const CompanyManagement = () => {
 
       await updateDashboardCustomization(userId, updatedCustomization);
       
-      // If user was not an admin, remove enterprise license
       if (!user.isCompanyAdmin) {
         await updateUser(userId, {
           licenseActive: false,
@@ -185,7 +179,6 @@ export const CompanyManagement = () => {
       
       if (!adminUser) return;
       
-      // Update company if it exists in the database
       if (companyId) {
         await updateCompany(companyId, {
           branding: {
@@ -196,7 +189,6 @@ export const CompanyManagement = () => {
         });
       }
       
-      // Update admin's customization
       await updateDashboardCustomization(userId, {
         ...adminUser.customization,
         companyName,
@@ -204,7 +196,6 @@ export const CompanyManagement = () => {
         approved: true
       });
       
-      // Update all company members
       const memberUpdates = companyUsers
         .filter(user => user.id !== userId && user.customization?.isCompanyMember)
         .map(user => 
@@ -266,7 +257,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Create company for the first admin user
       const adminUser = users.find(user => user.role === 'admin');
       if (!adminUser) {
         toast({
@@ -277,7 +267,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Create the company
       const newCompany = await createCompany({
         name: newCompanyData.name,
         branding: {
@@ -286,7 +275,6 @@ export const CompanyManagement = () => {
         }
       }, adminUser.id);
 
-      // Update admin user
       await updateDashboardCustomization(adminUser.id, {
         companyName: newCompanyData.name,
         primaryColor: newCompanyData.primaryColor,
@@ -329,7 +317,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Find the user by email
       const targetUser = users.find(user => user.email === inviteData.email);
       if (!targetUser) {
         toast({
@@ -340,7 +327,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Get company data
       const company = await getCompanyById(inviteData.companyId);
       if (!company) {
         toast({
@@ -351,7 +337,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Find company admin
       const adminUser = users.find(user => user.id === company.adminId);
       if (!adminUser) {
         toast({
@@ -362,7 +347,6 @@ export const CompanyManagement = () => {
         return;
       }
 
-      // Send invitation with all required parameters including toUserId
       await sendCompanyInvitation({
         fromUserId: adminUser.id,
         fromUsername: adminUser.username,
@@ -478,12 +462,20 @@ export const CompanyManagement = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              asChild
+                              onClick={() => {
+                                if (company.id) {
+                                  window.open(`/admin/company/chat/${company.id}`, '_blank');
+                                } else {
+                                  toast({
+                                    title: "Error",
+                                    description: "Company ID not found",
+                                    variant: "destructive"
+                                  });
+                                }
+                              }}
                             >
-                              <Link to={`/admin/company/chat/${company.id}`}>
-                                <MessageCircle className="h-4 w-4 mr-1" />
-                                Chat
-                              </Link>
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                              Chat
                             </Button>
                             <Button 
                               variant="outline" 
@@ -653,7 +645,6 @@ export const CompanyManagement = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Company Branding Dialog */}
       <Dialog open={showEditBrandingDialog} onOpenChange={setShowEditBrandingDialog}>
         <DialogContent>
           <DialogHeader>
@@ -724,7 +715,6 @@ export const CompanyManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Company Dialog */}
       <Dialog open={showCreateCompanyDialog} onOpenChange={setShowCreateCompanyDialog}>
         <DialogContent>
           <DialogHeader>
@@ -793,7 +783,6 @@ export const CompanyManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Invite User Dialog */}
       <Dialog open={showInviteUserDialog} onOpenChange={setShowInviteUserDialog}>
         <DialogContent>
           <DialogHeader>
@@ -832,3 +821,4 @@ export const CompanyManagement = () => {
     </div>
   );
 };
+
