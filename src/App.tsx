@@ -9,6 +9,7 @@ import { LicenseActivation } from './components/auth/LicenseActivation';
 import { DashboardContent } from './components/dashboard/Dashboard';
 import { ChatInterface } from './components/dashboard/ChatInterface';
 import { UserSettings } from './components/user/UserSettings';
+import { UserManagement } from './components/admin/UserManagement';
 import CompanyGeneratorPage from './pages/CompanyGenerator';
 import CompanyManagementPage from './pages/CompanyManagement';
 import Index from './pages/Index';

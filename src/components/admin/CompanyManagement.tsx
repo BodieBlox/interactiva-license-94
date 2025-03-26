@@ -5,20 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building, Users, Edit, User, Trash2, Palette, Check, PlusCircle, MessageCircle } from 'lucide-react';
+import { Building, Users, User, Trash2, Palette, Check, PlusCircle, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { getUsers, updateDashboardCustomization, updateUser } from '@/utils/api';
 import { User as UserType } from '@/utils/types';
 import { 
   createCompany, 
-  addCompanyMember, 
   removeCompanyMember, 
   updateCompany,
   getCompanyById,
-  getCompanyMembers,
   sendCompanyInvitation,
   deleteCompany
 } from '@/utils/companyApi';
@@ -31,24 +28,6 @@ interface Company {
   id?: string;
 }
 
-interface EditCompanyData {
-  companyName: string;
-  primaryColor: string;
-  userId: string;
-  companyId?: string;
-}
-
-interface NewCompanyData {
-  name: string;
-  primaryColor: string;
-}
-
-interface InviteData {
-  email: string;
-  companyId: string;
-  companyName: string;
-}
-
 export const CompanyManagement = () => {
   const [activeTab, setActiveTab] = useState('companies');
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
@@ -56,12 +35,17 @@ export const CompanyManagement = () => {
   const [showEditBrandingDialog, setShowEditBrandingDialog] = useState(false);
   const [showCreateCompanyDialog, setShowCreateCompanyDialog] = useState(false);
   const [showInviteUserDialog, setShowInviteUserDialog] = useState(false);
-  const [editCompanyData, setEditCompanyData] = useState<EditCompanyData | null>(null);
-  const [newCompanyData, setNewCompanyData] = useState<NewCompanyData>({
+  const [editCompanyData, setEditCompanyData] = useState<{
+    companyName: string;
+    primaryColor: string;
+    userId: string;
+    companyId?: string;
+  } | null>(null);
+  const [newCompanyData, setNewCompanyData] = useState({
     name: '',
     primaryColor: '#6366f1'
   });
-  const [inviteData, setInviteData] = useState<InviteData>({
+  const [inviteData, setInviteData] = useState({
     email: '',
     companyId: '',
     companyName: ''
@@ -127,8 +111,8 @@ export const CompanyManagement = () => {
       
       const updatedCustomization = {
         ...user.customization,
-        companyName: undefined,
-        companyId: undefined,
+        companyName: null,
+        companyId: null,
         isCompanyMember: false
       };
 
@@ -137,7 +121,7 @@ export const CompanyManagement = () => {
       if (!user.isCompanyAdmin) {
         await updateUser(userId, {
           licenseActive: false,
-          licenseType: undefined
+          licenseType: null
         });
       }
 
@@ -354,8 +338,8 @@ export const CompanyManagement = () => {
         companyName: company.name,
         toUserId: targetUser.id,
         toEmail: targetUser.email,
-        primaryColor: company.branding?.primaryColor,
-        logo: company.branding?.logo
+        primaryColor: company.branding?.primaryColor || "#6366f1",
+        logo: company.branding?.logo || null
       });
 
       toast({
@@ -821,4 +805,3 @@ export const CompanyManagement = () => {
     </div>
   );
 };
-
