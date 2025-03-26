@@ -1,694 +1,830 @@
-
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building, Users, Search, Edit, Trash2, UserPlus, KeyIcon, Info, Settings, Shield, Calendar, MessageSquare } from 'lucide-react';
-import { getCompanies, getCompanyById, updateCompany, deleteCompany, getCompanyMembers, removeCompanyMember } from '@/utils/companyApi';
-import { Company, UserWithCompany } from '@/utils/companyTypes';
-import { CompanyChat } from './CompanyChat';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Building, Users, Edit, User, Trash2, Palette, Check, PlusCircle, MessageCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { getUsers, updateDashboardCustomization, updateUser } from '@/utils/api';
+import { User as UserType } from '@/utils/types';
+import { 
+  createCompany, 
+  addCompanyMember, 
+  removeCompanyMember, 
+  updateCompany,
+  getCompanyById,
+  getCompanyMembers,
+  sendCompanyInvitation,
+  deleteCompany
+} from '@/utils/companyApi';
+
+interface Company {
+  name: string;
+  adminId: string;
+  primaryColor: string;
+  memberCount: number;
+  id?: string;
+}
+
+interface EditCompanyData {
+  companyName: string;
+  primaryColor: string;
+  userId: string;
+  companyId?: string;
+}
+
+interface NewCompanyData {
+  name: string;
+  primaryColor: string;
+}
+
+interface InviteData {
+  email: string;
+  companyId: string;
+  companyName: string;
+}
 
 export const CompanyManagement = () => {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [companyMembers, setCompanyMembers] = useState<UserWithCompany[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'deleteCompany' | 'removeMember' | null>(null);
-  const [selectedMember, setSelectedMember] = useState<UserWithCompany | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('info');
-  
-  // Edit form states
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editIndustry, setEditIndustry] = useState('');
-  const [editSize, setEditSize] = useState('');
-  const [editColor, setEditColor] = useState('');
-  
-  useEffect(() => {
-    fetchCompanies();
+  const [activeTab, setActiveTab] = useState('companies');
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [companyUsers, setCompanyUsers] = useState<UserType[]>([]);
+  const [showEditBrandingDialog, setShowEditBrandingDialog] = useState(false);
+  const [showCreateCompanyDialog, setShowCreateCompanyDialog] = useState(false);
+  const [showInviteUserDialog, setShowInviteUserDialog] = useState(false);
+  const [editCompanyData, setEditCompanyData] = useState<EditCompanyData | null>(null);
+  const [newCompanyData, setNewCompanyData] = useState<NewCompanyData>({
+    name: '',
+    primaryColor: '#6366f1'
+  });
+  const [inviteData, setInviteData] = useState<InviteData>({
+    email: '',
+    companyId: '',
+    companyName: ''
+  });
+
+  // Fetch all users
+  const { data: users = [], isLoading, refetch } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers
+  });
+
+  // Extract unique companies from users
+  const companies = users.reduce((acc: Company[], user) => {
+    if (user.customization?.companyName && (user.isCompanyAdmin || user.role === 'admin')) {
+      const companyExists = acc.find(c => c.name === user.customization.companyName);
+      if (!companyExists) {
+        acc.push({
+          name: user.customization.companyName,
+          adminId: user.id,
+          primaryColor: user.customization.primaryColor || '#6366f1',
+          memberCount: users.filter(u => 
+            u.customization?.companyName === user.customization.companyName || 
+            u.customization?.isCompanyMember
+          ).length,
+          id: user.customization?.companyId
+        });
+      }
+    }
+    return acc;
   }, []);
-  
+
+  // Filter users by selected company
   useEffect(() => {
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const filtered = companies.filter(company => 
-        company.name.toLowerCase().includes(query) || 
-        company.description?.toLowerCase().includes(query) ||
-        company.industry?.toLowerCase().includes(query)
+    if (selectedCompany) {
+      const filteredUsers = users.filter(user => 
+        user.customization?.companyName === selectedCompany ||
+        (user.customization?.isCompanyMember && user.customization?.companyName === selectedCompany)
       );
-      setFilteredCompanies(filtered);
+      setCompanyUsers(filteredUsers);
     } else {
-      setFilteredCompanies(companies);
+      setCompanyUsers([]);
     }
-  }, [searchQuery, companies]);
-  
-  const fetchCompanies = async () => {
-    setIsLoading(true);
-    try {
-      const allCompanies = await getCompanies();
-      setCompanies(allCompanies);
-      setFilteredCompanies(allCompanies);
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load companies",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  }, [selectedCompany, users]);
+
+  const handleSelectCompany = (companyName: string) => {
+    setSelectedCompany(companyName);
+    setActiveTab('members');
   };
-  
-  const handleSelectCompany = async (company: Company) => {
-    setSelectedCompany(company);
-    setEditName(company.name);
-    setEditDescription(company.description || '');
-    setEditIndustry(company.industry || '');
-    setEditSize(company.size || '');
-    setEditColor(company.branding?.primaryColor || '#6366f1');
-    
-    // Load company members
-    setIsLoadingMembers(true);
+
+  const handleRemoveFromCompany = async (userId: string) => {
     try {
-      const members = await getCompanyMembers(company.id);
-      setCompanyMembers(members);
-    } catch (error) {
-      console.error('Error fetching company members:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load company members",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingMembers(false);
-    }
-  };
-  
-  const handleConfirmAction = async () => {
-    if (confirmAction === 'deleteCompany' && selectedCompany) {
-      try {
-        await deleteCompany(selectedCompany.id);
-        toast({
-          title: "Success",
-          description: `Company "${selectedCompany.name}" has been deleted`,
-        });
-        setSelectedCompany(null);
-        fetchCompanies();
-      } catch (error) {
-        console.error('Error deleting company:', error);
+      const user = users.find(u => u.id === userId);
+      if (!user || !user.customization?.companyName) return;
+      
+      const company = companies.find(c => c.name === user.customization?.companyName);
+      if (!company || !company.id) {
         toast({
           title: "Error",
-          description: `Failed to delete company: ${(error as Error).message}`,
+          description: "Company ID not found",
           variant: "destructive"
         });
+        return;
       }
-    } else if (confirmAction === 'removeMember' && selectedCompany && selectedMember) {
-      try {
-        await removeCompanyMember(selectedCompany.id, selectedMember.id);
-        toast({
-          title: "Success",
-          description: `${selectedMember.username} has been removed from "${selectedCompany.name}"`,
-        });
-        // Refresh members list
-        const updatedMembers = await getCompanyMembers(selectedCompany.id);
-        setCompanyMembers(updatedMembers);
-      } catch (error) {
-        console.error('Error removing member:', error);
-        toast({
-          title: "Error",
-          description: `Failed to remove member: ${(error as Error).message}`,
-          variant: "destructive"
+
+      // Remove user from company using the API
+      await removeCompanyMember(company.id, userId);
+      
+      // Remove company affiliation from user
+      const updatedCustomization = {
+        ...user.customization,
+        companyName: undefined,
+        companyId: undefined,
+        isCompanyMember: false
+      };
+
+      await updateDashboardCustomization(userId, updatedCustomization);
+      
+      // If user was not an admin, remove enterprise license
+      if (!user.isCompanyAdmin) {
+        await updateUser(userId, {
+          licenseActive: false,
+          licenseType: undefined
         });
       }
+
+      toast({
+        title: "User Removed",
+        description: "User has been removed from the company",
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Error removing user from company:', error);
+      toast({
+        title: "Error",
+        description: `Failed to remove user from company: ${(error as Error).message}`,
+        variant: "destructive"
+      });
     }
-    
-    setConfirmDialogOpen(false);
-    setConfirmAction(null);
-    setSelectedMember(null);
   };
-  
-  const handleUpdateCompany = async () => {
-    if (!selectedCompany) return;
+
+  const handleEditBranding = (companyName: string) => {
+    const company = companies.find(c => c.name === companyName);
+    if (!company) return;
+    
+    setEditCompanyData({
+      companyName: companyName,
+      primaryColor: company.primaryColor || '#6366f1',
+      userId: company.adminId,
+      companyId: company.id
+    });
+    setShowEditBrandingDialog(true);
+  };
+
+  const handleUpdateBranding = async () => {
+    if (!editCompanyData) return;
     
     try {
-      const updatedCompany = await updateCompany(selectedCompany.id, {
-        name: editName,
-        description: editDescription,
-        industry: editIndustry,
-        size: editSize,
+      const { userId, companyName, primaryColor, companyId } = editCompanyData;
+      const adminUser = users.find(u => u.id === userId);
+      
+      if (!adminUser) return;
+      
+      // Update company if it exists in the database
+      if (companyId) {
+        await updateCompany(companyId, {
+          branding: {
+            primaryColor,
+            approved: true
+          },
+          name: companyName
+        });
+      }
+      
+      // Update admin's customization
+      await updateDashboardCustomization(userId, {
+        ...adminUser.customization,
+        companyName,
+        primaryColor,
+        approved: true
+      });
+      
+      // Update all company members
+      const memberUpdates = companyUsers
+        .filter(user => user.id !== userId && user.customization?.isCompanyMember)
+        .map(user => 
+          updateDashboardCustomization(user.id, {
+            ...user.customization,
+            companyName,
+            primaryColor,
+            approved: true
+          })
+        );
+      
+      await Promise.all(memberUpdates);
+      
+      toast({
+        title: "Branding Updated",
+        description: "Company branding has been updated for all members",
+      });
+      
+      setShowEditBrandingDialog(false);
+      refetch();
+    } catch (error) {
+      console.error('Error updating company branding:', error);
+      toast({
+        title: "Error",
+        description: `Failed to update company branding: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMakeAdmin = async (userId: string) => {
+    try {
+      await updateUser(userId, { isCompanyAdmin: true });
+      
+      toast({
+        title: "Admin Assigned",
+        description: "User is now a company admin",
+      });
+      
+      refetch();
+    } catch (error) {
+      console.error('Error making user company admin:', error);
+      toast({
+        title: "Error",
+        description: `Failed to update user role: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateCompany = async () => {
+    try {
+      if (!newCompanyData.name.trim()) {
+        toast({
+          title: "Error",
+          description: "Company name is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create company for the first admin user
+      const adminUser = users.find(user => user.role === 'admin');
+      if (!adminUser) {
+        toast({
+          title: "Error",
+          description: "No admin user found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create the company
+      const newCompany = await createCompany({
+        name: newCompanyData.name,
         branding: {
-          ...(selectedCompany.branding || {}),
-          primaryColor: editColor
+          primaryColor: newCompanyData.primaryColor,
+          approved: true
         }
+      }, adminUser.id);
+
+      // Update admin user
+      await updateDashboardCustomization(adminUser.id, {
+        companyName: newCompanyData.name,
+        primaryColor: newCompanyData.primaryColor,
+        approved: true,
+        companyId: newCompany.id
       });
-      
-      setSelectedCompany(updatedCompany);
-      setEditDialogOpen(false);
-      
-      // Update the companies list
-      setCompanies(prev => 
-        prev.map(company => 
-          company.id === updatedCompany.id ? updatedCompany : company
-        )
-      );
-      
+
+      await updateUser(adminUser.id, { 
+        isCompanyAdmin: true,
+        licenseType: 'enterprise',
+        licenseActive: true
+      });
+
+      toast({
+        title: "Company Created",
+        description: "New company has been created successfully",
+      });
+
+      setShowCreateCompanyDialog(false);
+      setNewCompanyData({ name: '', primaryColor: '#6366f1' });
+      refetch();
+    } catch (error) {
+      console.error('Error creating company:', error);
+      toast({
+        title: "Error",
+        description: `Failed to create company: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleInviteUser = async () => {
+    try {
+      if (!inviteData.email.trim() || !inviteData.companyId) {
+        toast({
+          title: "Error",
+          description: "Email and company are required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Find the user by email
+      const targetUser = users.find(user => user.email === inviteData.email);
+      if (!targetUser) {
+        toast({
+          title: "Error",
+          description: "User not found with this email",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get company data
+      const company = await getCompanyById(inviteData.companyId);
+      if (!company) {
+        toast({
+          title: "Error",
+          description: "Company not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Find company admin
+      const adminUser = users.find(user => user.id === company.adminId);
+      if (!adminUser) {
+        toast({
+          title: "Error",
+          description: "Company admin not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Send invitation with all required parameters including toUserId
+      await sendCompanyInvitation({
+        fromUserId: adminUser.id,
+        fromUsername: adminUser.username,
+        companyId: company.id,
+        companyName: company.name,
+        toUserId: targetUser.id,
+        toEmail: targetUser.email,
+        primaryColor: company.branding?.primaryColor,
+        logo: company.branding?.logo
+      });
+
+      toast({
+        title: "Invitation Sent",
+        description: `Invitation has been sent to ${targetUser.email}`,
+      });
+
+      setShowInviteUserDialog(false);
+      setInviteData({ email: '', companyId: '', companyName: '' });
+      refetch();
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      toast({
+        title: "Error",
+        description: `Failed to invite user: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: string) => {
+    if (!companyId) return;
+    
+    try {
+      await deleteCompany(companyId);
       toast({
         title: "Success",
-        description: `Company "${updatedCompany.name}" has been updated`,
+        description: "Company has been deleted successfully"
       });
+      refetch();
     } catch (error) {
-      console.error('Error updating company:', error);
+      console.error('Error deleting company:', error);
       toast({
         title: "Error",
-        description: `Failed to update company: ${(error as Error).message}`,
+        description: "Failed to delete company",
         variant: "destructive"
       });
     }
   };
-  
-  const handleDeleteCompany = (company: Company) => {
-    setSelectedCompany(company);
-    setConfirmAction('deleteCompany');
-    setConfirmDialogOpen(true);
-  };
-  
-  const handleRemoveMember = (member: UserWithCompany) => {
-    setSelectedMember(member);
-    setConfirmAction('removeMember');
-    setConfirmDialogOpen(true);
-  };
-  
-  const formatLicenseType = (type?: string) => {
-    if (!type) return 'No License';
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
-  
-  const getLicenseStatusBadge = (company: Company) => {
-    if (!company.licenseKey) {
-      return <Badge variant="outline" className="bg-gray-100 text-gray-500">No License</Badge>;
-    }
-    
-    if (!company.licenseActive) {
-      return <Badge variant="outline" className="bg-red-100 text-red-600">Suspended</Badge>;
-    }
-    
-    return <Badge variant="outline" className="bg-green-100 text-green-600">Active</Badge>;
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="container mx-auto p-4 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Companies List */}
-        <div className="md:col-span-1">
-          <Card className="shadow-md border h-full bg-white">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Building className="h-5 w-5 text-indigo-500" />
-                  <span>Companies</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  onClick={() => window.location.href = '/company-generator'}
-                >
-                  <Building className="h-3.5 w-3.5 mr-1" />
-                  <span>New</span>
-                </Button>
-              </CardTitle>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search companies..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-primary/30 bg-white"
-                />
-              </div>
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-semibold">Companies Management</h1>
+          <TabsList>
+            <TabsTrigger value="companies">Companies</TabsTrigger>
+            <TabsTrigger value="members" disabled={!selectedCompany}>Company Members</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="companies" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => setShowCreateCompanyDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Create Company
+            </Button>
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>All Companies</CardTitle>
+              <CardDescription>View and manage company accounts</CardDescription>
             </CardHeader>
-            <CardContent className="p-0 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-              {filteredCompanies.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  No companies found
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
                 </div>
-              ) : (
-                <ul className="divide-y">
-                  {filteredCompanies.map((company) => (
-                    <li 
-                      key={company.id}
-                      className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${selectedCompany?.id === company.id ? 'bg-slate-100' : ''}`}
-                      onClick={() => handleSelectCompany(company)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border bg-slate-100">
-                            {company.branding?.logo ? (
-                              <AvatarImage src={company.branding.logo} alt={company.name} />
-                            ) : (
-                              <AvatarFallback className="bg-indigo-100 text-indigo-600">
-                                {company.name.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div>
-                            <h3 className="font-medium text-sm">{company.name}</h3>
-                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
-                              {company.industry || 'No industry specified'}
-                            </p>
+              ) : companies.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Company Name</TableHead>
+                      <TableHead>Branding Color</TableHead>
+                      <TableHead>Members</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {companies.map((company) => (
+                      <TableRow key={company.name}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                            {company.name}
                           </div>
-                        </div>
-                        {getLicenseStatusBadge(company)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="h-4 w-4 rounded-full" 
+                              style={{ backgroundColor: company.primaryColor }}
+                            />
+                            {company.primaryColor}
+                          </div>
+                        </TableCell>
+                        <TableCell>{company.memberCount}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              asChild
+                            >
+                              <Link to={`/admin/company/chat/${company.id}`}>
+                                <MessageCircle className="h-4 w-4 mr-1" />
+                                Chat
+                              </Link>
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleSelectCompany(company.name)}
+                            >
+                              <Users className="h-4 w-4 mr-1" /> 
+                              View Members
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditBranding(company.name)}
+                            >
+                              <Palette className="h-4 w-4 mr-1" /> 
+                              Edit Branding
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeleteCompany(company.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" /> 
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p>No companies found</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setShowCreateCompanyDialog(true)}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create your first company
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
-        </div>
-        
-        {/* Company Details */}
-        <div className="md:col-span-2">
-          {selectedCompany ? (
-            <Card className="shadow-md border bg-white">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Avatar className="h-8 w-8 border bg-slate-100">
-                      {selectedCompany.branding?.logo ? (
-                        <AvatarImage src={selectedCompany.branding.logo} alt={selectedCompany.name} />
-                      ) : (
-                        <AvatarFallback 
-                          className="text-white"
-                          style={{ backgroundColor: selectedCompany.branding?.primaryColor || '#6366f1' }}
-                        >
-                          {selectedCompany.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <span>{selectedCompany.name}</span>
+        </TabsContent>
+
+        <TabsContent value="members" className="space-y-4">
+          {selectedCompany && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-primary" />
+                    {selectedCompany} - Members
                   </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                      onClick={() => setEditDialogOpen(true)}
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1" />
-                      <span>Edit</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => handleDeleteCompany(selectedCompany)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      <span>Delete</span>
-                    </Button>
-                  </div>
+                  <CardDescription>Manage users in this company</CardDescription>
                 </div>
-                
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 bg-slate-100 p-1">
-                    <TabsTrigger value="info" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <Info className="h-4 w-4 mr-1" />
-                      Info
-                    </TabsTrigger>
-                    <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <Users className="h-4 w-4 mr-1" />
-                      Members
-                    </TabsTrigger>
-                    <TabsTrigger value="license" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <KeyIcon className="h-4 w-4 mr-1" />
-                      License
-                    </TabsTrigger>
-                    <TabsTrigger value="chat" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Chat
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const company = companies.find(c => c.name === selectedCompany);
+                      if (company) {
+                        setInviteData({
+                          email: '',
+                          companyId: company.id || '',
+                          companyName: company.name
+                        });
+                        setShowInviteUserDialog(true);
+                      }
+                    }}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Invite User
+                  </Button>
+                  <Button variant="outline" onClick={() => setActiveTab('companies')}>
+                    Back to Companies
+                  </Button>
+                </div>
               </CardHeader>
-              
-              <CardContent className="p-6">
-                <TabsContent value="info" className="mt-0">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                      <p className="text-sm">{selectedCompany.description || 'No description provided'}</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Industry</h3>
-                        <p className="text-sm">{selectedCompany.industry || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Size</h3>
-                        <p className="text-sm capitalize">{selectedCompany.size || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Created</h3>
-                        <p className="text-sm">
-                          {selectedCompany.createdAt 
-                            ? new Date(selectedCompany.createdAt).toLocaleDateString() 
-                            : 'Unknown'}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Primary Color</h3>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="h-4 w-4 rounded-full border"
-                            style={{ backgroundColor: selectedCompany.branding?.primaryColor || '#6366f1' }}
-                          ></div>
-                          <span className="text-sm">{selectedCompany.branding?.primaryColor || 'Default'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="members" className="mt-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-medium">
-                      Members ({companyMembers.length})
-                    </h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={() => toast({ title: "Info", description: "Member invitation functionality can be accessed from the company settings page" })}
+              <CardContent>
+                {companyUsers.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {companyUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              {user.username}
+                              {user.isCompanyAdmin && (
+                                <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            {user.isCompanyAdmin ? 'Company Admin' : 'Company Member'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {!user.isCompanyAdmin && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleMakeAdmin(user.id)}
+                                >
+                                  <Check className="h-4 w-4 mr-1" /> 
+                                  Make Admin
+                                </Button>
+                              )}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleRemoveFromCompany(user.id)}
+                                className="text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" /> 
+                                Remove
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No members found for this company</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        const company = companies.find(c => c.name === selectedCompany);
+                        if (company) {
+                          setInviteData({
+                            email: '',
+                            companyId: company.id || '',
+                            companyName: company.name
+                          });
+                          setShowInviteUserDialog(true);
+                        }
+                      }}
                     >
-                      <UserPlus className="h-3.5 w-3.5 mr-1" />
-                      <span>Invite</span>
+                      <User className="h-4 w-4 mr-2" />
+                      Invite your first member
                     </Button>
                   </div>
-                  
-                  {isLoadingMembers ? (
-                    <div className="flex justify-center py-10">
-                      <div className="h-6 w-6 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                    </div>
-                  ) : companyMembers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No members found
-                    </div>
-                  ) : (
-                    <ul className="divide-y border rounded-md">
-                      {companyMembers.map((member) => (
-                        <li key={member.id} className="p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              {member.profileImageUrl ? (
-                                <AvatarImage src={member.profileImageUrl} />
-                              ) : (
-                                <AvatarFallback className="bg-indigo-100 text-indigo-600">
-                                  {member.username?.substring(0, 2).toUpperCase() || 'U'}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{member.username}</p>
-                              <p className="text-xs text-muted-foreground">{member.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={member.companyRole === 'admin' ? 'default' : 'outline'}>
-                              {member.companyRole === 'admin' ? 'Admin' : 'Member'}
-                            </Badge>
-                            {member.companyRole !== 'admin' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleRemoveMember(member)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Remove</span>
-                              </Button>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="license" className="mt-0">
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium">License Information</h3>
-                      <Badge className="bg-indigo-100 text-indigo-600 hover:bg-indigo-200">
-                        {formatLicenseType(selectedCompany.licenseType)}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 border rounded-md p-4 bg-slate-50">
-                      <div>
-                        <h3 className="text-xs font-medium text-muted-foreground mb-1">Status</h3>
-                        <div>
-                          {getLicenseStatusBadge(selectedCompany)}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-xs font-medium text-muted-foreground mb-1">Expiration</h3>
-                        <p className="text-sm flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          {selectedCompany.licenseExpiryDate 
-                            ? new Date(selectedCompany.licenseExpiryDate).toLocaleDateString() 
-                            : 'No expiration'}
-                        </p>
-                      </div>
-                      
-                      {selectedCompany.licenseKey && (
-                        <>
-                          <div className="col-span-2">
-                            <h3 className="text-xs font-medium text-muted-foreground mb-1">License Key</h3>
-                            <div className="font-mono text-xs bg-white p-2 rounded border truncate">
-                              {selectedCompany.licenseKey}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <h3 className="text-sm font-medium mb-2">License Controls</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                          onClick={() => toast({ title: "Coming Soon", description: "License management functionality is coming soon" })}
-                        >
-                          <Shield className="h-3.5 w-3.5 mr-1" />
-                          <span>Update License</span>
-                        </Button>
-                        
-                        {selectedCompany.licenseActive ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                            onClick={() => toast({ title: "Coming Soon", description: "License suspension functionality is coming soon" })}
-                          >
-                            <Shield className="h-3.5 w-3.5 mr-1" />
-                            <span>Suspend License</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => toast({ title: "Coming Soon", description: "License activation functionality is coming soon" })}
-                          >
-                            <Shield className="h-3.5 w-3.5 mr-1" />
-                            <span>Activate License</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="chat" className="mt-0">
-                  {selectedCompany && (
-                    <CompanyChat companyId={selectedCompany.id} companyName={selectedCompany.name} />
-                  )}
-                </TabsContent>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="shadow-md border bg-white/80 h-full flex items-center justify-center">
-              <CardContent className="p-10 text-center">
-                <Building className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground">No Company Selected</h3>
-                <p className="text-sm text-muted-foreground/70 mt-1 mb-6">
-                  Select a company from the list to view details
-                </p>
-                <Button
-                  variant="outline"
-                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  onClick={() => window.location.href = '/company-generator'}
-                >
-                  <Building className="h-4 w-4 mr-2" />
-                  <span>Create New Company</span>
-                </Button>
+                )}
               </CardContent>
             </Card>
           )}
-        </div>
-      </div>
-      
-      {/* Confirmation Dialog */}
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Company Branding Dialog */}
+      <Dialog open={showEditBrandingDialog} onOpenChange={setShowEditBrandingDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {confirmAction === 'deleteCompany' 
-                ? 'Delete Company' 
-                : 'Remove Member'}
-            </DialogTitle>
+            <DialogTitle>Edit Company Branding</DialogTitle>
             <DialogDescription>
-              {confirmAction === 'deleteCompany' 
-                ? `Are you sure you want to delete "${selectedCompany?.name}"? This action cannot be undone.`
-                : `Are you sure you want to remove ${selectedMember?.username} from "${selectedCompany?.name}"?`}
+              Update the branding for this company. Changes will apply to all members.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="sm:justify-end">
-            <Button 
-              variant="outline" 
-              onClick={() => setConfirmDialogOpen(false)}
-            >
+          
+          {editCompanyData && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  value={editCompanyData.companyName}
+                  onChange={(e) => setEditCompanyData({
+                    ...editCompanyData,
+                    companyName: e.target.value
+                  })}
+                  placeholder="Enter company name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="brandColor">Brand Color</Label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    id="brandColor"
+                    value={editCompanyData.primaryColor}
+                    onChange={(e) => setEditCompanyData({
+                      ...editCompanyData,
+                      primaryColor: e.target.value
+                    })}
+                    className="w-10 h-10 rounded cursor-pointer border-0"
+                  />
+                  <Input
+                    value={editCompanyData.primaryColor}
+                    onChange={(e) => setEditCompanyData({
+                      ...editCompanyData,
+                      primaryColor: e.target.value
+                    })}
+                    placeholder="#000000"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-secondary/20 rounded-md">
+                <div className="font-medium mb-2">Preview</div>
+                <div 
+                  className="h-8 rounded-md" 
+                  style={{ backgroundColor: editCompanyData.primaryColor }}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditBrandingDialog(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleConfirmAction}
-            >
-              {confirmAction === 'deleteCompany' ? 'Delete' : 'Remove'}
+            <Button onClick={handleUpdateBranding}>
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Edit Company Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+
+      {/* Create Company Dialog */}
+      <Dialog open={showCreateCompanyDialog} onOpenChange={setShowCreateCompanyDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />
-              Edit Company
-            </DialogTitle>
+            <DialogTitle>Create New Company</DialogTitle>
+            <DialogDescription>
+              Create a new company and assign it to an admin user.
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="editName">Company Name</Label>
+              <Label htmlFor="newCompanyName">Company Name</Label>
               <Input
-                id="editName"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="bg-white"
+                id="newCompanyName"
+                value={newCompanyData.name}
+                onChange={(e) => setNewCompanyData({
+                  ...newCompanyData,
+                  name: e.target.value
+                })}
+                placeholder="Enter company name"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="editDescription">Description</Label>
-              <Textarea
-                id="editDescription"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={3}
-                className="bg-white"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editIndustry">Industry</Label>
+              <Label htmlFor="newBrandColor">Brand Color</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  id="newBrandColor"
+                  value={newCompanyData.primaryColor}
+                  onChange={(e) => setNewCompanyData({
+                    ...newCompanyData,
+                    primaryColor: e.target.value
+                  })}
+                  className="w-10 h-10 rounded cursor-pointer border-0"
+                />
                 <Input
-                  id="editIndustry"
-                  value={editIndustry}
-                  onChange={(e) => setEditIndustry(e.target.value)}
-                  className="bg-white"
+                  value={newCompanyData.primaryColor}
+                  onChange={(e) => setNewCompanyData({
+                    ...newCompanyData,
+                    primaryColor: e.target.value
+                  })}
+                  placeholder="#000000"
+                  className="flex-1"
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="editSize">Company Size</Label>
-                <Select value={editSize} onValueChange={setEditSize}>
-                  <SelectTrigger id="editSize" className="bg-white">
-                    <SelectValue placeholder="Select company size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (1-50)</SelectItem>
-                    <SelectItem value="medium">Medium (51-200)</SelectItem>
-                    <SelectItem value="large">Large (201-1000)</SelectItem>
-                    <SelectItem value="enterprise">Enterprise (1000+)</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="editColor">Brand Color</Label>
-              <div className="flex items-center gap-2">
-                <Input 
-                  id="editColor"
-                  type="color" 
-                  value={editColor} 
-                  onChange={(e) => setEditColor(e.target.value)}
-                  className="w-12 h-8 p-1"
-                />
-                <Input 
-                  type="text" 
-                  value={editColor} 
-                  onChange={(e) => setEditColor(e.target.value)}
-                  className="bg-white flex-1"
-                />
-              </div>
+
+            <div className="mt-4 p-4 bg-secondary/20 rounded-md">
+              <div className="font-medium mb-2">Preview</div>
+              <div 
+                className="h-8 rounded-md" 
+                style={{ backgroundColor: newCompanyData.primaryColor }}
+              />
             </div>
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setEditDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setShowCreateCompanyDialog(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleUpdateCompany}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              Save Changes
+            <Button onClick={handleCreateCompany}>
+              Create Company
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite User Dialog */}
+      <Dialog open={showInviteUserDialog} onOpenChange={setShowInviteUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User to Company</DialogTitle>
+            <DialogDescription>
+              Invite a user to join {inviteData.companyName}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="userEmail">User Email</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                value={inviteData.email}
+                onChange={(e) => setInviteData({
+                  ...inviteData,
+                  email: e.target.value
+                })}
+                placeholder="Enter user email"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteUserDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleInviteUser}>
+              Send Invitation
             </Button>
           </DialogFooter>
         </DialogContent>
