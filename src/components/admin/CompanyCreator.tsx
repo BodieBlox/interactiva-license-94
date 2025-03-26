@@ -8,8 +8,8 @@ import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateLicense } from '@/utils/api';
 import { createCompany } from '@/utils/companyApi';
-import { getUserByEmail } from '@/utils/api';
-import { Building, Users, Key, Palette, UserPlus, Check } from 'lucide-react';
+import { getUserByEmail, updateUser } from '@/utils/api';
+import { Building, Users, Key, Palette, UserPlus, Check, Plus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { User } from '@/utils/types';
@@ -79,6 +79,21 @@ export const CompanyCreator = () => {
       };
 
       const newCompany = await createCompany(companyData, owner.id);
+
+      // 4. Update the owner's user record with company and license information
+      await updateUser(owner.id, { 
+        isCompanyAdmin: true,
+        licenseType,
+        licenseActive: true,
+        licenseKey: licenseResult.key,
+        licenseId: licenseResult.id,
+        customization: {
+          companyName,
+          primaryColor,
+          approved: true,
+          isCompanyMember: true
+        }
+      });
 
       // Success message
       toast({
