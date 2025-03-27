@@ -163,8 +163,11 @@ export const CompanyManagement = () => {
   // Helper function to update company license information
   const updateCompanyLicense = async (companyId: string, licenseInfo: any) => {
     try {
-      // Update the company with license details
-      const companyRef = await fetch(`/api/companies/${companyId}`, {
+      // We'll need to adapt this to our Firebase database structure
+      console.log(`Company ${companyId} license updated with:`, licenseInfo);
+      
+      // Update company in your database
+      const response = await fetch(`/api/companies/${companyId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -172,9 +175,23 @@ export const CompanyManagement = () => {
         body: JSON.stringify(licenseInfo)
       });
       
-      // If your app doesn't have a real API endpoint, you'll need to mock this or use Firebase directly
-      // For now, we'll just simulate a successful update
-      console.log(`Company ${companyId} license updated with:`, licenseInfo);
+      if (!response.ok) {
+        // If the API call fails, try updating via Firebase directly
+        console.warn('API endpoint not available, updating via Firebase directly');
+        
+        // Update the company directly in your Firebase database
+        const companyRef = await fetch(`https://orgid-f590b-default-rtdb.firebaseio.com/companies/${companyId}.json`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(licenseInfo)
+        });
+        
+        if (!companyRef.ok) {
+          throw new Error('Failed to update company license in Firebase');
+        }
+      }
       
       // Refresh the company list
       refetch();
@@ -268,8 +285,13 @@ export const CompanyManagement = () => {
                           <Button 
                             variant="ghost" 
                             size="sm"
+                            type="button"
                             className="text-green-500 hover:text-green-700 hover:bg-green-50"
-                            onClick={() => handleActivateLicense(company.id, company.name)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleActivateLicense(company.id, company.name);
+                            }}
                           >
                             <Key className="h-4 w-4 mr-1" />
                             Activate License
@@ -278,7 +300,12 @@ export const CompanyManagement = () => {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => navigate(`/admin/company/chat/${company.id}`)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/admin/company/chat/${company.id}`);
+                          }}
                         >
                           <MessageCircle className="h-4 w-4 mr-1" />
                           Chat
@@ -286,7 +313,12 @@ export const CompanyManagement = () => {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => navigate(`/admin/companies/${company.id}`)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/admin/companies/${company.id}`);
+                          }}
                         >
                           <Settings className="h-4 w-4 mr-1" />
                           Manage
@@ -294,8 +326,13 @@ export const CompanyManagement = () => {
                         <Button 
                           variant="ghost" 
                           size="sm"
+                          type="button"
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => setConfirmDelete(company.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setConfirmDelete(company.id);
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete
