@@ -5,7 +5,7 @@ import { CompanyManagement } from './CompanyManagement';
 import { CompanyCreator } from './CompanyCreator';
 import { CompanyChat } from './CompanyChat';
 import { UserManagement } from './UserManagement';
-import { LicenseManager } from './LicenseManager';
+import LicenseManager from './LicenseManager'; // Fixed: Changed from named import to default import
 import { SystemSettings } from './SystemSettings';
 import { LoginLogs } from './LoginLogs';
 import { LicenseRequests } from './LicenseRequests';
