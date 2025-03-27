@@ -9,6 +9,8 @@ import { toast } from '@/components/ui/use-toast';
 import { Check, X, Upload, AlertCircle, FileUp, UserPlus, Users } from 'lucide-react';
 import { createUser } from '@/utils/api';
 import { logAdminAction } from '@/utils/auditLog';
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '@/utils/types';
 
 interface UserImportData {
   email: string;
@@ -135,14 +137,16 @@ export const BulkUserImport = () => {
         const record = updatedRecords[i];
         
         try {
-          // Create the user
+          // Create the user with required fields
           await createUser({
+            id: uuidv4(), // Generate a unique ID
             email: record.email,
             username: record.username || record.email.split('@')[0],
-            role: record.role as any || 'user',
-            licenseType: record.licenseType as any,
+            role: record.role as 'admin' | 'user' | 'staff',
+            status: 'active', // Set default status
+            licenseType: record.licenseType as 'basic' | 'premium' | 'enterprise',
             licenseActive: !!record.licenseType && record.licenseType !== 'none'
-          });
+          } as User);
           
           // Update status
           updatedRecords[i] = {

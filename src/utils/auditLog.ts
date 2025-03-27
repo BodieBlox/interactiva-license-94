@@ -3,6 +3,7 @@ import { auth, database } from './firebase';
 import { ref, push, serverTimestamp } from 'firebase/database';
 
 export interface AuditLogEntry {
+  id?: string; // Adding optional id field
   userId?: string;
   username?: string;
   action: string;
