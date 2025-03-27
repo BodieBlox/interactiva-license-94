@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCompanies, getCompanyMembers, deleteCompany } from '@/utils/companyApi';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { updateUser, getUserByEmail, generateLicense, assignLicenseToUser } from '@/utils/api';
+import { logAdminAction } from '@/utils/auditLog';
 
 export const CompanyManagement = () => {
   const navigate = useNavigate();
@@ -55,6 +56,14 @@ export const CompanyManagement = () => {
       
       // Then delete the company
       await deleteCompany(companyId);
+      
+      // Log admin action
+      await logAdminAction({
+        action: 'delete_company',
+        details: `Deleted company ID: ${companyId}`,
+        resourceId: companyId,
+        resourceType: 'company'
+      });
       
       setConfirmDelete(null);
       toast({
@@ -101,6 +110,14 @@ export const CompanyManagement = () => {
           licenseExpiryDate: licenseResult.expiresAt
         });
         
+        // Log admin action
+        await logAdminAction({
+          action: 'generate_license',
+          details: `Generated ${licenseType} license for company: ${companyName}`,
+          resourceId: companyId,
+          resourceType: 'company'
+        });
+        
         // Get company members and update their license info
         const members = await getCompanyMembers(companyId);
         for (const member of members) {
@@ -121,6 +138,14 @@ export const CompanyManagement = () => {
         if (!company.licenseActive) {
           await updateCompanyLicense(companyId, {
             licenseActive: true
+          });
+          
+          // Log admin action
+          await logAdminAction({
+            action: 'activate_license',
+            details: `Activated existing license for company: ${companyName}`,
+            resourceId: companyId,
+            resourceType: 'company'
           });
           
           // Get company members and update their license info
@@ -167,15 +192,19 @@ export const CompanyManagement = () => {
       console.log(`Company ${companyId} license updated with:`, licenseInfo);
       
       // Update company in your database
-      const response = await fetch(`/api/companies/${companyId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(licenseInfo)
-      });
-      
-      if (!response.ok) {
+      try {
+        const response = await fetch(`/api/companies/${companyId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(licenseInfo)
+        });
+        
+        if (!response.ok) {
+          throw new Error('API endpoint not available');
+        }
+      } catch (error) {
         // If the API call fails, try updating via Firebase directly
         console.warn('API endpoint not available, updating via Firebase directly');
         
@@ -201,6 +230,20 @@ export const CompanyManagement = () => {
     }
   };
 
+  const handleManageCompany = (e: React.MouseEvent, companyId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Log the navigation action
+    logAdminAction({
+      action: 'view_company',
+      details: `Viewed company details for ID: ${companyId}`,
+      resourceId: companyId,
+      resourceType: 'company'
+    });
+    // Navigate to the company management page
+    navigate(`/admin/company/${companyId}`);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -210,7 +253,16 @@ export const CompanyManagement = () => {
               <CardTitle className="text-2xl">Companies Management</CardTitle>
               <CardDescription>Manage all companies on the platform</CardDescription>
             </div>
-            <Button onClick={() => navigate('/admin/company/new')}>
+            <Button 
+              onClick={() => {
+                logAdminAction({
+                  action: 'create_company_initiated',
+                  details: 'Started company creation flow',
+                  resourceType: 'company'
+                });
+                navigate('/admin/company/new');
+              }}
+            >
               <Building className="mr-2 h-4 w-4" />
               Create Company
             </Button>
@@ -314,11 +366,7 @@ export const CompanyManagement = () => {
                           variant="ghost" 
                           size="sm"
                           type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate(`/admin/companies/${company.id}`);
-                          }}
+                          onClick={(e) => handleManageCompany(e, company.id)}
                         >
                           <Settings className="h-4 w-4 mr-1" />
                           Manage
