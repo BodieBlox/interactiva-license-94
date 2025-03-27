@@ -1,105 +1,186 @@
 
-import * as React from "react";
+import React from 'react';
 import {
   BarChart as RechartsBarChart,
+  LineChart as RechartsLineChart,
+  PieChart as RechartsPieChart,
   Bar,
+  Line,
+  Pie,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart as RechartsLineChart,
-  Line,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  ChartContainer,
-  ChartTooltipContent,
-  ChartLegendContent,
-} from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
+  Cell
+} from 'recharts';
 
 interface ChartProps {
-  data: any;
+  data: any[];
+  width?: number | string;
+  height?: number | string;
   className?: string;
 }
 
-export const BarChart = ({ data, className }: ChartProps) => {
+interface BarChartProps extends ChartProps {
+  dataKey: string;
+  nameKey?: string;
+  barSize?: number;
+  colors?: string[];
+}
+
+export const BarChart = ({
+  data,
+  dataKey,
+  nameKey = 'name',
+  width = '100%',
+  height = 300,
+  barSize = 20,
+  colors = ['#8884d8'],
+  className
+}: BarChartProps) => {
   return (
-    <ChartContainer config={{}} className={cn("w-full h-full", className)}>
-      <RechartsBarChart data={data.labels.map((label: string, i: number) => ({
-        name: label,
-        value: data.datasets[0].data[i],
-      }))}>
+    <ResponsiveContainer width={width} height={height} className={className}>
+      <RechartsBarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
+        <XAxis dataKey={nameKey} />
         <YAxis />
-        <Tooltip content={<ChartTooltipContent />} />
-        <Legend content={<ChartLegendContent />} />
-        <Bar 
-          dataKey="value" 
-          fill={data.datasets[0].backgroundColor} 
-          name={data.datasets[0].label} 
-        />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
+        <Bar dataKey={dataKey} barSize={barSize}>
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+          ))}
+        </Bar>
       </RechartsBarChart>
-    </ChartContainer>
+    </ResponsiveContainer>
   );
 };
 
-export const LineChart = ({ data, className }: ChartProps) => {
+interface LineChartProps extends ChartProps {
+  dataKey: string | string[];
+  nameKey?: string;
+  colors?: string[];
+}
+
+export const LineChart = ({
+  data,
+  dataKey,
+  nameKey = 'name',
+  width = '100%',
+  height = 300,
+  colors = ['#8884d8', '#82ca9d', '#ffc658'],
+  className
+}: LineChartProps) => {
+  const dataKeys = Array.isArray(dataKey) ? dataKey : [dataKey];
+  
   return (
-    <ChartContainer config={{}} className={cn("w-full h-full", className)}>
-      <RechartsLineChart 
-        data={data.labels.map((label: string, i: number) => ({
-          name: label,
-          value: data.datasets[0].data[i],
-        }))}
-      >
+    <ResponsiveContainer width={width} height={height} className={className}>
+      <RechartsLineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
+        <XAxis dataKey={nameKey} />
         <YAxis />
-        <Tooltip content={<ChartTooltipContent />} />
-        <Legend content={<ChartLegendContent />} />
-        <Line 
-          type="monotone" 
-          dataKey="value" 
-          stroke={data.datasets[0].borderColor} 
-          fill={data.datasets[0].backgroundColor}
-          name={data.datasets[0].label}
-        />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
+        {dataKeys.map((key, index) => (
+          <Line 
+            key={key}
+            type="monotone" 
+            dataKey={key} 
+            stroke={colors[index % colors.length]} 
+            activeDot={{ r: 8 }} 
+          />
+        ))}
       </RechartsLineChart>
-    </ChartContainer>
+    </ResponsiveContainer>
   );
 };
 
-export const PieChart = ({ data, className }: ChartProps) => {
+interface PieChartProps extends ChartProps {
+  dataKey: string;
+  nameKey?: string;
+  colors?: string[];
+  innerRadius?: number;
+  outerRadius?: number;
+}
+
+export const PieChart = ({
+  data,
+  dataKey,
+  nameKey = 'name',
+  width = '100%',
+  height = 300,
+  colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'],
+  innerRadius = 0,
+  outerRadius = 80,
+  className
+}: PieChartProps) => {
   return (
-    <ChartContainer config={{}} className={cn("w-full h-full", className)}>
-      <RechartsPieChart>
+    <ResponsiveContainer width={width} height={height} className={className}>
+      <RechartsPieChart margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <Pie
-          data={data.labels.map((label: string, i: number) => ({
-            name: label,
-            value: data.datasets[0].data[i],
-          }))}
+          data={data}
           cx="50%"
           cy="50%"
           labelLine={false}
-          outerRadius={80}
+          label={renderCustomizedLabel}
+          outerRadius={outerRadius}
+          innerRadius={innerRadius}
           fill="#8884d8"
-          dataKey="value"
-          nameKey="name"
-          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+          dataKey={dataKey}
+          nameKey={nameKey}
         >
-          {data.labels.map((_: any, index: number) => (
-            <Cell key={`cell-${index}`} fill={data.datasets[0].backgroundColor[index]} />
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
           ))}
         </Pie>
-        <Tooltip content={<ChartTooltipContent />} />
-        <Legend content={<ChartLegendContent />} />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
       </RechartsPieChart>
-    </ChartContainer>
+    </ResponsiveContainer>
+  );
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border rounded shadow-md p-2 text-sm">
+        <p className="font-medium">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={`item-${index}`} style={{ color: entry.color }}>
+            {entry.name}: {entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  
+  return null;
+};
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent
+}: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
   );
 };

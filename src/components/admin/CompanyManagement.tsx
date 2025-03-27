@@ -13,6 +13,7 @@ import { getCompanies, getCompanyMembers, deleteCompany } from '@/utils/companyA
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { updateUser, getUserByEmail, generateLicense, assignLicenseToUser } from '@/utils/api';
 import { logAdminAction } from '@/utils/auditLog';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 export const CompanyManagement = () => {
   const navigate = useNavigate();
@@ -253,19 +254,22 @@ export const CompanyManagement = () => {
               <CardTitle className="text-2xl">Companies Management</CardTitle>
               <CardDescription>Manage all companies on the platform</CardDescription>
             </div>
-            <Button 
-              onClick={() => {
-                logAdminAction({
-                  action: 'create_company_initiated',
-                  details: 'Started company creation flow',
-                  resourceType: 'company'
-                });
-                navigate('/admin/company/new');
-              }}
-            >
-              <Building className="mr-2 h-4 w-4" />
-              Create Company
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationCenter />
+              <Button 
+                onClick={() => {
+                  logAdminAction({
+                    action: 'create_company_initiated',
+                    details: 'Started company creation flow',
+                    resourceType: 'company'
+                  });
+                  navigate('/admin/company/new');
+                }}
+              >
+                <Building className="mr-2 h-4 w-4" />
+                Create Company
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
