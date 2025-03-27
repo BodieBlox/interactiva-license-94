@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from '@/components/ui/use-toast';
 import { KeyRound, MailPlus, ArrowRight, CheckCircle2, AlertCircle, Building } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { getLicenseByKey, assignLicenseToUser, createLicenseRequest } from '@/utils/api';
 
 export const LicenseActivation = () => {
   const [licenseKey, setLicenseKey] = useState('');
@@ -67,12 +68,44 @@ export const LicenseActivation = () => {
     
     setIsSubmitting(true);
     try {
+      // First check if the license is valid
+      const license = await getLicenseByKey(trimmedKey);
+      
+      if (!license) {
+        toast({
+          title: "Invalid License",
+          description: "The license key you entered does not exist",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (license.status !== 'active') {
+        toast({
+          title: "Inactive License",
+          description: `This license is ${license.status}. Please contact support.`,
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // If user already has a company, update it with the license key
       if (userCompany) {
         await updateCompanyInfo({
           licenseKey: trimmedKey,
-          licenseActive: true
+          licenseId: license.id,
+          licenseType: license.type,
+          licenseActive: true,
+          licenseExpiryDate: license.expiresAt
         });
+        
+        // Assign license to the user
+        if (user) {
+          await assignLicenseToUser(user.id, trimmedKey);
+        }
+        
         await refreshCompanyData();
         toast({
           title: "Success",
@@ -94,8 +127,16 @@ export const LicenseActivation = () => {
         await createNewCompany({
           name: companyName,
           licenseKey: trimmedKey,
-          licenseActive: true
+          licenseId: license.id,
+          licenseType: license.type,
+          licenseActive: true,
+          licenseExpiryDate: license.expiresAt
         });
+        
+        // Assign license to the user
+        if (user) {
+          await assignLicenseToUser(user.id, trimmedKey);
+        }
         
         toast({
           title: "Success",
@@ -127,6 +168,15 @@ export const LicenseActivation = () => {
       return;
     }
     
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to request a license",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       let companyId = userCompany?.id;
@@ -139,16 +189,25 @@ export const LicenseActivation = () => {
         companyId = newCompany?.id;
       }
       
-      // TODO: Implement requestCompanyLicense function in AuthContext
-      // await requestCompanyLicense(companyId, requestMessage);
-      
-      setShowRequestForm(false);
-      setRequestMessage('');
-      toast({
-        title: "License Requested",
-        description: "Your company license request has been submitted successfully",
-      });
-      navigate('/dashboard');
+      if (companyId && user) {
+        // Create a license request
+        await createLicenseRequest(
+          companyId, 
+          user.username || user.email.split('@')[0], 
+          user.email, 
+          requestMessage
+        );
+        
+        setShowRequestForm(false);
+        setRequestMessage('');
+        toast({
+          title: "License Requested",
+          description: "Your company license request has been submitted successfully",
+        });
+        navigate('/dashboard');
+      } else {
+        throw new Error("Failed to create company or user not found");
+      }
     } catch (error) {
       console.error('License request error:', error);
       toast({

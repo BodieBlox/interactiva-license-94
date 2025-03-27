@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { generateLicense } from '@/utils/api';
+import { generateLicense, assignLicenseToUser } from '@/utils/api';
 import { createCompany } from '@/utils/companyApi';
 import { getUserByEmail, updateUser } from '@/utils/api';
 import { Building, Users, Key, Palette, UserPlus, Check, Plus } from 'lucide-react';
@@ -26,6 +26,7 @@ export const CompanyCreator = () => {
   const [maxUsers, setMaxUsers] = useState(5);
   const [expirationDays, setExpirationDays] = useState(365);
   const [showExpiration, setShowExpiration] = useState(true);
+  const [createWithLicense, setCreateWithLicense] = useState(true);
 
   const handleCreate = async () => {
     if (!companyName || !ownerEmail) {
@@ -53,52 +54,69 @@ export const CompanyCreator = () => {
         return;
       }
 
-      // 2. Generate a license for the company
-      const licenseResult = await generateLicense(
-        licenseType, 
-        showExpiration ? expirationDays : undefined,
-        { maxUsers }
-      );
+      let licenseResult = null;
+      
+      // 2. Generate a license for the company if createWithLicense is true
+      if (createWithLicense) {
+        licenseResult = await generateLicense(
+          licenseType, 
+          showExpiration ? expirationDays : undefined,
+          { maxUsers }
+        );
+      }
 
       // 3. Create the company with all details
-      const companyData = {
+      const companyData: any = {
         name: companyName,
         description,
         industry,
         size,
-        licenseKey: licenseResult.key,
-        licenseId: licenseResult.id,
-        licenseType,
-        licenseActive: true,
-        licenseExpiryDate: licenseResult.expiresAt,
         branding: {
           primaryColor,
           logo: '',
           approved: true
         }
       };
+      
+      // Add license information if available
+      if (licenseResult) {
+        companyData.licenseKey = licenseResult.key;
+        companyData.licenseId = licenseResult.id;
+        companyData.licenseType = licenseType;
+        companyData.licenseActive = true;
+        companyData.licenseExpiryDate = licenseResult.expiresAt;
+      }
 
       const newCompany = await createCompany(companyData, owner.id);
 
       // 4. Update the owner's user record with company and license information
-      await updateUser(owner.id, { 
+      const userUpdates: any = { 
         isCompanyAdmin: true,
-        licenseType,
-        licenseActive: true,
-        licenseKey: licenseResult.key,
-        licenseId: licenseResult.id,
         customization: {
           companyName,
           primaryColor,
           approved: true,
           isCompanyMember: true
         }
-      });
+      };
+      
+      // Add license information to user if available
+      if (licenseResult) {
+        userUpdates.licenseType = licenseType;
+        userUpdates.licenseActive = true;
+        userUpdates.licenseKey = licenseResult.key;
+        userUpdates.licenseId = licenseResult.id;
+        
+        // Also register the license with the user
+        await assignLicenseToUser(owner.id, licenseResult.key);
+      }
+      
+      await updateUser(owner.id, userUpdates);
 
       // Success message
       toast({
         title: "Company Created",
-        description: `${companyName} has been created successfully with a ${licenseType} license`,
+        description: `${companyName} has been created successfully${createWithLicense ? ` with a ${licenseType} license` : ''}`,
       });
 
       // Reset form
@@ -198,62 +216,77 @@ export const CompanyCreator = () => {
                 License & Branding
               </h3>
               
-              <div className="space-y-2">
-                <Label htmlFor="licenseType">License Type</Label>
-                <Select
-                  value={licenseType}
-                  onValueChange={(value) => setLicenseType(value as 'basic' | 'premium' | 'enterprise')}
-                >
-                  <SelectTrigger id="licenseType" className="bg-white">
-                    <SelectValue placeholder="Select license type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="maxUsers" className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  Maximum Users
-                </Label>
-                <Input 
-                  id="maxUsers"
-                  type="number" 
-                  min="1"
-                  value={maxUsers} 
-                  onChange={(e) => setMaxUsers(parseInt(e.target.value) || 5)}
-                  className="bg-white"
-                />
-                <p className="text-xs text-muted-foreground">Maximum number of users allowed in the company</p>
-              </div>
-              
               <div className="flex items-center space-x-2 pt-2">
                 <Switch
-                  id="expiration-mode"
-                  checked={showExpiration}
-                  onCheckedChange={setShowExpiration}
+                  id="license-toggle"
+                  checked={createWithLicense}
+                  onCheckedChange={setCreateWithLicense}
                 />
-                <Label htmlFor="expiration-mode" className="text-sm">
-                  Set License Expiration Period
+                <Label htmlFor="license-toggle" className="text-sm">
+                  Create with License
                 </Label>
               </div>
               
-              {showExpiration && (
-                <div className="space-y-2">
-                  <Label htmlFor="expirationDays">Expiration Period (days)</Label>
-                  <Input 
-                    id="expirationDays"
-                    type="number" 
-                    min="1"
-                    value={expirationDays} 
-                    onChange={(e) => setExpirationDays(parseInt(e.target.value) || 365)}
-                    className="bg-white"
-                  />
-                </div>
+              {createWithLicense && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="licenseType">License Type</Label>
+                    <Select
+                      value={licenseType}
+                      onValueChange={(value) => setLicenseType(value as 'basic' | 'premium' | 'enterprise')}
+                    >
+                      <SelectTrigger id="licenseType" className="bg-white">
+                        <SelectValue placeholder="Select license type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic">Basic</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="maxUsers" className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      Maximum Users
+                    </Label>
+                    <Input 
+                      id="maxUsers"
+                      type="number" 
+                      min="1"
+                      value={maxUsers} 
+                      onChange={(e) => setMaxUsers(parseInt(e.target.value) || 5)}
+                      className="bg-white"
+                    />
+                    <p className="text-xs text-muted-foreground">Maximum number of users allowed in the company</p>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Switch
+                      id="expiration-mode"
+                      checked={showExpiration}
+                      onCheckedChange={setShowExpiration}
+                    />
+                    <Label htmlFor="expiration-mode" className="text-sm">
+                      Set License Expiration Period
+                    </Label>
+                  </div>
+                  
+                  {showExpiration && (
+                    <div className="space-y-2">
+                      <Label htmlFor="expirationDays">Expiration Period (days)</Label>
+                      <Input 
+                        id="expirationDays"
+                        type="number" 
+                        min="1"
+                        value={expirationDays} 
+                        onChange={(e) => setExpirationDays(parseInt(e.target.value) || 365)}
+                        className="bg-white"
+                      />
+                    </div>
+                  )}
+                </>
               )}
               
               <div className="space-y-2">

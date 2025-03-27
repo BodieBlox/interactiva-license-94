@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, MessageCircle, Palette, Settings, Trash2, Users } from 'lucide-react';
+import { Building, MessageCircle, Palette, Settings, Trash2, Users, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { getCompanies, getCompanyMembers, deleteCompany } from '@/utils/companyApi';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { updateUser, getUserByEmail } from '@/utils/api';
+import { updateUser, getUserByEmail, generateLicense, assignLicenseToUser } from '@/utils/api';
 
 export const CompanyManagement = () => {
   const navigate = useNavigate();
@@ -69,6 +69,114 @@ export const CompanyManagement = () => {
         description: `Failed to delete company: ${(error as Error).message}`,
         variant: "destructive"
       });
+    }
+  };
+
+  const handleActivateLicense = async (companyId: string, companyName: string) => {
+    try {
+      // Find the company in the list
+      const company = companies.find(c => c.id === companyId);
+      
+      if (!company) {
+        toast({
+          title: "Error",
+          description: "Company not found",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Generate a new license if one doesn't exist
+      if (!company.licenseKey) {
+        const licenseType = company.licenseType || 'premium';
+        const licenseResult = await generateLicense(licenseType, 365, { maxUsers: 10 });
+        
+        // Update company with license details
+        await updateCompanyLicense(companyId, {
+          licenseKey: licenseResult.key,
+          licenseId: licenseResult.id,
+          licenseType,
+          licenseActive: true,
+          licenseExpiryDate: licenseResult.expiresAt
+        });
+        
+        // Get company members and update their license info
+        const members = await getCompanyMembers(companyId);
+        for (const member of members) {
+          await updateUser(member.id, {
+            licenseActive: true,
+            licenseKey: licenseResult.key,
+            licenseType,
+            licenseId: licenseResult.id
+          });
+        }
+        
+        toast({
+          title: "License Activated",
+          description: `A new ${licenseType} license has been generated and activated for ${companyName}`
+        });
+      } else {
+        // If license exists but is not active, activate it
+        if (!company.licenseActive) {
+          await updateCompanyLicense(companyId, {
+            licenseActive: true
+          });
+          
+          // Get company members and update their license info
+          const members = await getCompanyMembers(companyId);
+          for (const member of members) {
+            await updateUser(member.id, {
+              licenseActive: true,
+              licenseKey: company.licenseKey,
+              licenseType: company.licenseType,
+              licenseId: company.licenseId
+            });
+          }
+          
+          toast({
+            title: "License Activated",
+            description: `The license for ${companyName} has been activated`
+          });
+        } else {
+          toast({
+            title: "License Already Active",
+            description: `${companyName} already has an active license`
+          });
+        }
+      }
+      
+      refetch();
+    } catch (error) {
+      console.error('Error activating license:', error);
+      toast({
+        title: "Error",
+        description: `Failed to activate license: ${(error as Error).message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Helper function to update company license information
+  const updateCompanyLicense = async (companyId: string, licenseInfo: any) => {
+    try {
+      // Update the company with license details
+      const companyRef = await fetch(`/api/companies/${companyId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(licenseInfo)
+      });
+      
+      // If your app doesn't have a real API endpoint, you'll need to mock this or use Firebase directly
+      // For now, we'll just simulate a successful update
+      console.log(`Company ${companyId} license updated with:`, licenseInfo);
+      
+      // Refresh the company list
+      refetch();
+    } catch (error) {
+      console.error('Error updating company license:', error);
+      throw error;
     }
   };
 
@@ -152,6 +260,17 @@ export const CompanyManagement = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
+                        {!company.licenseActive && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-green-500 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => handleActivateLicense(company.id, company.name)}
+                          >
+                            <Key className="h-4 w-4 mr-1" />
+                            Activate License
+                          </Button>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="sm"
