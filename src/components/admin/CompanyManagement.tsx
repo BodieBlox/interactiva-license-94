@@ -88,7 +88,8 @@ export const CompanyManagement = () => {
       
       // Generate a new license if one doesn't exist
       if (!company.licenseKey) {
-        const licenseType = company.licenseType || 'premium';
+        // TypeScript fix: Ensure licenseType is one of the allowed values
+        const licenseType = (company.licenseType || 'premium') as 'basic' | 'premium' | 'enterprise';
         const licenseResult = await generateLicense(licenseType, 365, { maxUsers: 10 });
         
         // Update company with license details
@@ -125,10 +126,13 @@ export const CompanyManagement = () => {
           // Get company members and update their license info
           const members = await getCompanyMembers(companyId);
           for (const member of members) {
+            // TypeScript fix: Ensure licenseType is one of the allowed values
+            const licenseType = (company.licenseType || 'premium') as 'basic' | 'premium' | 'enterprise';
+            
             await updateUser(member.id, {
               licenseActive: true,
               licenseKey: company.licenseKey,
-              licenseType: company.licenseType,
+              licenseType,
               licenseId: company.licenseId
             });
           }
