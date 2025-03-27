@@ -12,6 +12,9 @@ import { UserSettings } from './components/user/UserSettings';
 import { UserManagement } from './components/admin/UserManagement';
 import CompanyGeneratorPage from './pages/CompanyGenerator';
 import CompanyManagementPage from './pages/CompanyManagement';
+import BulkUserImportPage from './pages/BulkUserImportPage';
+import AuditLogPage from './pages/AuditLogPage';
+import LicenseUsageAnalyticsPage from './pages/LicenseUsageAnalyticsPage';
 import Index from './pages/Index';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
@@ -47,8 +50,11 @@ function App() {
                 <Route path="/chat/new" element={<div className="w-full"><ChatInterface /></div>} />
                 <Route path="/chat/:chatId" element={<div className="w-full"><ChatInterface /></div>} />
                 
-                {/* Admin routes - use a single admin/* route pattern for nested admin routes */}
+                {/* Admin routes */}
                 <Route path="/admin/*" element={<AdminPanel />} />
+                <Route path="/admin/bulk-import" element={<BulkUserImportPage />} />
+                <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+                <Route path="/admin/license-analytics" element={<LicenseUsageAnalyticsPage />} />
               </Route>
 
               {/* Redirect and 404 */}

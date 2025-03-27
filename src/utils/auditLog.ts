@@ -1,6 +1,6 @@
 
 import { auth, database } from './firebase';
-import { ref, push, serverTimestamp } from 'firebase/database';
+import { ref, push, serverTimestamp, get, query, orderByChild } from 'firebase/database';
 
 export interface AuditLogEntry {
   id?: string; // Adding optional id field
@@ -57,8 +57,43 @@ export const getAuditLogs = async (filters?: {
   startDate?: Date;
   endDate?: Date;
 }): Promise<AuditLogEntry[]> => {
-  // This would be implemented with Firebase queries in a real application
-  // For now, we'll just log that this was called
-  console.log('Getting audit logs with filters:', filters);
-  return [];
+  try {
+    const auditLogsRef = ref(database, 'auditLogs');
+    let auditLogsQuery;
+    
+    // If we have filters, apply them
+    if (filters) {
+      // For now, we're just ordering by timestamp
+      // In a real app, you'd implement filtering based on the filters object
+      auditLogsQuery = query(auditLogsRef, orderByChild('timestamp'));
+    } else {
+      auditLogsQuery = query(auditLogsRef, orderByChild('timestamp'));
+    }
+    
+    const snapshot = await get(auditLogsQuery);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const logs: AuditLogEntry[] = [];
+    
+    snapshot.forEach((childSnapshot) => {
+      const log = childSnapshot.val();
+      logs.push({
+        id: childSnapshot.key || undefined,
+        ...log
+      });
+    });
+    
+    // Sort by timestamp (most recent first)
+    return logs.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeB - timeA;
+    });
+  } catch (error) {
+    console.error('Error fetching audit logs:', error);
+    throw error;
+  }
 };
