@@ -38,7 +38,6 @@ const LicenseUsageAnalytics = () => {
           getAllLicenses()
         ]);
         
-        // Process data
         const companiesWithUsage = fetchedCompanies.map(company => {
           const companyUsers = fetchedUsers.filter(user => user.companyId === company.id);
           const activeUsers = companyUsers.filter(user => user.status === 'active').length;
@@ -55,19 +54,16 @@ const LicenseUsageAnalytics = () => {
           };
         });
         
-        // Sort by usage percentage (highest first)
         companiesWithUsage.sort((a, b) => b.usagePercentage - a.usagePercentage);
         
         setCompanies(companiesWithUsage);
         setUsers(fetchedUsers);
         setLicenses(fetchedLicenses);
         
-        // Calculate totals
         const activeUserCount = fetchedUsers.filter(user => user.status === 'active').length;
         setTotalActiveUsers(activeUserCount);
         setTotalLicenses(fetchedLicenses.length);
         
-        // Calculate usage by license type
         const usageByLicenseType = [
           { type: 'Basic', count: 0, color: '#3b82f6' },
           { type: 'Premium', count: 0, color: '#8b5cf6' },
@@ -123,7 +119,6 @@ const LicenseUsageAnalytics = () => {
   };
   
   const prepareUsageTrendData = () => {
-    // Generate dates for the time range
     let days: Date[] = [];
     const now = new Date();
     
@@ -138,8 +133,6 @@ const LicenseUsageAnalytics = () => {
       days = Array(daysInMonth).fill(null).map((_, i) => new Date(start.getFullYear(), start.getMonth(), i + 1));
     }
     
-    // Create random trend data for demo purposes
-    // In a real app, this would come from actual user growth over time
     const userData = days.map((_, i) => Math.floor(totalActiveUsers * (0.7 + (i/days.length) * 0.3)));
     
     const lineData = {
@@ -224,8 +217,6 @@ const LicenseUsageAnalytics = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Time range selector for trends */}
-          {/* Only show when trends tab is active */}
           <div className="hidden data-[state=active]:block" data-state={timeRange === 'trends' ? 'active' : 'inactive'}>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[180px]">
