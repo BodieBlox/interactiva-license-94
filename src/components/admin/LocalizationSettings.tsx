@@ -1,82 +1,86 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Globe, Check, Languages } from 'lucide-react';
-import { useLocalization, SupportedLocale, LocalizationSettings } from '@/utils/localization';
+import { Globe, Languages, Palette, Check } from 'lucide-react';
+import { useCompany } from '@/context/CompanyContext';
 
-export const LocalizationSettings = () => {
-  const { currentLocale, settings, supportedLocales, updateSettings, changeLocale } = useLocalization();
+export const LocalizationSettings: React.FC = () => {
+  const { userCompany, updateCompanyInfo } = useCompany();
   
-  const [localSettings, setLocalSettings] = useState<LocalizationSettings>({
-    ...settings
+  const [localizationConfig, setLocalizationConfig] = useState({
+    enabled: userCompany?.localization?.enabled || false,
+    defaultLanguage: userCompany?.localization?.defaultLanguage || 'en',
+    supportedLanguages: userCompany?.localization?.supportedLanguages || ['en'],
+    autoDetect: userCompany?.localization?.autoDetect || true,
+    translations: userCompany?.localization?.translations || {},
   });
   
-  const handleToggleChange = (field: keyof LocalizationSettings) => {
-    setLocalSettings(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+    { code: 'de', name: 'German' },
+    { code: 'it', name: 'Italian' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'ru', name: 'Russian' },
+    { code: 'zh', name: 'Chinese' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'ar', name: 'Arabic' },
+  ];
   
-  const handleDefaultLocaleChange = (value: SupportedLocale) => {
-    setLocalSettings(prev => ({
-      ...prev,
-      defaultLocale: value
-    }));
-  };
-  
-  const handleLocaleSelect = (locale: SupportedLocale) => {
-    changeLocale(locale);
-    toast({
-      title: "Language Changed",
-      description: `User interface language changed to ${getLocaleName(locale)}`,
+  const toggleLanguage = (languageCode: string) => {
+    setLocalizationConfig(prev => {
+      const supportedLanguages = [...prev.supportedLanguages];
+      
+      if (supportedLanguages.includes(languageCode)) {
+        // Don't remove the default language
+        if (languageCode === prev.defaultLanguage) {
+          toast({
+            title: "Cannot Remove Default Language",
+            description: "Please change your default language before removing this one.",
+            variant: "destructive"
+          });
+          return prev;
+        }
+        // Remove the language
+        return {
+          ...prev,
+          supportedLanguages: supportedLanguages.filter(code => code !== languageCode)
+        };
+      } else {
+        // Add the language
+        return {
+          ...prev,
+          supportedLanguages: [...supportedLanguages, languageCode]
+        };
+      }
     });
   };
   
-  const handleSaveSettings = () => {
-    updateSettings(localSettings);
-    toast({
-      title: "Settings Saved",
-      description: "Localization settings have been updated",
-    });
-  };
-  
-  const getLocaleName = (locale: SupportedLocale): string => {
-    const localeNames: Record<SupportedLocale, string> = {
-      'en-US': 'English (US)',
-      'es-ES': 'Español (España)',
-      'fr-FR': 'Français (France)',
-      'de-DE': 'Deutsch (Deutschland)',
-      'it-IT': 'Italiano (Italia)',
-      'pt-BR': 'Português (Brasil)',
-      'ru-RU': 'Русский (Россия)',
-      'zh-CN': '中文 (中国)',
-      'ja-JP': '日本語 (日本)',
-      'ko-KR': '한국어 (한국)'
-    };
-    
-    return localeNames[locale] || locale;
-  };
-  
-  const getLocaleFlag = (locale: SupportedLocale): string => {
-    const flagEmojis: Record<SupportedLocale, string> = {
-      'en-US': '🇺🇸',
-      'es-ES': '🇪🇸',
-      'fr-FR': '🇫🇷',
-      'de-DE': '🇩🇪',
-      'it-IT': '🇮🇹',
-      'pt-BR': '🇧🇷',
-      'ru-RU': '🇷🇺',
-      'zh-CN': '🇨🇳',
-      'ja-JP': '🇯🇵',
-      'ko-KR': '🇰🇷'
-    };
-    
-    return flagEmojis[locale] || '🌐';
+  const handleSaveLocalization = async () => {
+    try {
+      await updateCompanyInfo({
+        localization: localizationConfig
+      });
+      
+      toast({
+        title: "Localization Saved",
+        description: "Your localization settings have been saved successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving localization settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save localization settings. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -87,90 +91,105 @@ export const LocalizationSettings = () => {
           Localization Settings
         </CardTitle>
         <CardDescription>
-          Configure language settings and translation preferences
+          Configure language settings for your company's global presence
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="bg-muted/30 p-4 rounded-md">
-          <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
-            <Languages className="h-5 w-5 text-primary" />
-            Current Language
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {supportedLocales.map((locale) => (
-              <Button
-                key={locale}
-                variant={locale === currentLocale ? "default" : "outline"}
-                className="flex items-center justify-start gap-2"
-                onClick={() => handleLocaleSelect(locale)}
-              >
-                <span className="text-lg">{getLocaleFlag(locale)}</span>
-                <span className="text-sm truncate">{getLocaleName(locale)}</span>
-                {locale === currentLocale && <Check className="h-3 w-3 ml-auto" />}
-              </Button>
-            ))}
+      <CardContent>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="localization-enabled">Enable Localization</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow users to view the platform in their preferred language
+              </p>
+            </div>
+            <Switch
+              id="localization-enabled"
+              checked={localizationConfig.enabled}
+              onCheckedChange={(checked) => 
+                setLocalizationConfig(prev => ({ ...prev, enabled: checked }))
+              }
+            />
           </div>
-        </div>
-        
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-medium mb-4">Admin Settings</h3>
+          
+          <div className="space-y-2">
+            <Label htmlFor="default-language">Default Language</Label>
+            <Select
+              value={localizationConfig.defaultLanguage}
+              onValueChange={(value) => 
+                setLocalizationConfig(prev => ({ ...prev, defaultLanguage: value }))
+              }
+              disabled={!localizationConfig.enabled}
+            >
+              <SelectTrigger id="default-language" className="w-full">
+                <SelectValue placeholder="Select a language" />
+              </SelectTrigger>
+              <SelectContent>
+                {languages.filter(lang => 
+                  localizationConfig.supportedLanguages.includes(lang.code)
+                ).map(language => (
+                  <SelectItem key={language.code} value={language.code}>
+                    {language.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Auto-detect User Language</p>
-                <p className="text-sm text-muted-foreground">
-                  Automatically detect and use the user's browser language
-                </p>
-              </div>
-              <Switch
-                checked={localSettings.autoDetect}
-                onCheckedChange={() => handleToggleChange('autoDetect')}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Force Default Language</p>
-                <p className="text-sm text-muted-foreground">
-                  Override user browser language with the default language
-                </p>
-              </div>
-              <Switch
-                checked={localSettings.forceDefault}
-                onCheckedChange={() => handleToggleChange('forceDefault')}
-              />
-            </div>
-            
             <div>
-              <p className="font-medium mb-1">Default Language</p>
-              <Select 
-                value={localSettings.defaultLocale} 
-                onValueChange={(value) => handleDefaultLocaleChange(value as SupportedLocale)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {supportedLocales.map((locale) => (
-                    <SelectItem key={locale} value={locale}>
-                      <div className="flex items-center gap-2">
-                        <span>{getLocaleFlag(locale)}</span>
-                        <span>{getLocaleName(locale)}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Supported Languages</Label>
+              <p className="text-sm text-muted-foreground mb-4">
+                Select which languages your application will support
+              </p>
             </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {languages.map(language => (
+                <div
+                  key={language.code}
+                  className={`
+                    flex items-center justify-between p-3 rounded-md cursor-pointer
+                    ${localizationConfig.supportedLanguages.includes(language.code) 
+                      ? 'bg-primary/10 border border-primary/30' 
+                      : 'border border-border hover:bg-secondary/50'}
+                  `}
+                  onClick={() => toggleLanguage(language.code)}
+                >
+                  <span>{language.name}</span>
+                  {localizationConfig.supportedLanguages.includes(language.code) && (
+                    <Check className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="auto-detect">Auto-detect User Language</Label>
+              <p className="text-sm text-muted-foreground">
+                Automatically detect and apply the user's preferred language
+              </p>
+            </div>
+            <Switch
+              id="auto-detect"
+              checked={localizationConfig.autoDetect}
+              onCheckedChange={(checked) => 
+                setLocalizationConfig(prev => ({ ...prev, autoDetect: checked }))
+              }
+              disabled={!localizationConfig.enabled}
+            />
           </div>
         </div>
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button onClick={handleSaveSettings}>
+        <Button onClick={handleSaveLocalization} disabled={!localizationConfig.enabled}>
           Save Localization Settings
         </Button>
       </CardFooter>
     </Card>
   );
 };
+
+export default LocalizationSettings;

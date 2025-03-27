@@ -98,7 +98,9 @@ export const hasPermission = (
   // Check company role-based permissions
   const rolePermissions = user.companyRole ? permissionPresets[user.companyRole === 'admin' ? 'admin' : 'member'] : permissionPresets.guest;
   
-  return rolePermissions[permission] || false;
+  // Ensure we return boolean for permission checks
+  const value = rolePermissions[permission];
+  return typeof value === 'boolean' ? value : Boolean(value);
 };
 
 // Helper function to get a user's permission level

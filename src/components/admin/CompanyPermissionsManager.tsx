@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,13 +37,23 @@ export const CompanyPermissionsManager = () => {
   }, [userCompany]);
 
   const handlePermissionChange = (memberId: string, permission: keyof MemberPermissions, value: boolean | number) => {
-    setCustomPermissions(prev => ({
-      ...prev,
-      [memberId]: {
-        ...(prev[memberId] || {}),
-        [permission]: value
+    setCustomPermissions(prev => {
+      // Create a deep copy of the previous state
+      const newPermissions = { ...prev };
+      
+      // If this member doesn't exist yet, initialize with default permissions
+      if (!newPermissions[memberId]) {
+        newPermissions[memberId] = { ...permissionPresets.member };
       }
-    }));
+      
+      // Create a new object for this member's permissions to avoid mutation
+      newPermissions[memberId] = {
+        ...newPermissions[memberId],
+        [permission]: value
+      };
+      
+      return newPermissions;
+    });
   };
 
   const handleSavePermissions = async () => {
@@ -72,12 +81,11 @@ export const CompanyPermissionsManager = () => {
   };
 
   const applyPreset = (memberId: string, preset: PermissionLevel) => {
-    setCustomPermissions(prev => ({
-      ...prev,
-      [memberId]: {
-        ...permissionPresets[preset]
-      }
-    }));
+    setCustomPermissions(prev => {
+      const newPermissions = { ...prev };
+      newPermissions[memberId] = { ...permissionPresets[preset] };
+      return newPermissions;
+    });
   };
 
   return (
@@ -289,3 +297,5 @@ export const CompanyPermissionsManager = () => {
     </Card>
   );
 };
+
+export default CompanyPermissionsManager;

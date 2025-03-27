@@ -17,10 +17,45 @@ export interface Company {
     primaryColor?: string;
     logo?: string;
     approved?: boolean;
+    slogan?: string;
+    favicon?: string;
+    secondaryColor?: string;
+    tertiaryColor?: string;
+    fontFamily?: string;
+    customCSS?: string;
+    customJS?: string;
+    footerText?: string;
+    hideBranding?: boolean;
   };
   members?: string[];
   createdAt?: string;
   updatedAt?: string;
+  permissions?: Record<string, MemberPermissions>;
+  limits?: {
+    maxMembers?: number;
+    maxProjects?: number;
+    maxStorage?: number;
+  };
+  onboarding?: {
+    enabled?: boolean;
+    welcomeMessage?: string;
+    steps?: Array<{
+      id: string;
+      title: string;
+      description: string;
+      imageUrl?: string;
+      videoUrl?: string;
+      required: boolean;
+    }>;
+    requiredForAllMembers?: boolean;
+  };
+  localization?: {
+    enabled?: boolean;
+    defaultLanguage?: string;
+    supportedLanguages?: string[];
+    autoDetect?: boolean;
+    translations?: Record<string, Record<string, string>>;
+  };
 }
 
 export interface UserWithCompany extends User {

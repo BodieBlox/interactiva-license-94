@@ -1,6 +1,17 @@
 
 export type UserRole = 'admin' | 'user' | 'staff';
 
+export interface NotificationPreferences {
+  email: boolean;
+  browser: boolean;
+  categories: {
+    system: boolean;
+    account: boolean;
+    company: boolean;
+    content: boolean;
+  };
+}
+
 export interface User {
   id: string;
   email: string;
@@ -31,6 +42,7 @@ export interface User {
   isCompanyAdmin?: boolean;
   forcedLogout?: string;
   password?: string; // Only used during user creation, not stored
+  notificationPreferences?: NotificationPreferences;
 }
 
 export interface DashboardCustomization {
