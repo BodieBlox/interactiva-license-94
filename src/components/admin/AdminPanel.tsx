@@ -10,6 +10,12 @@ import { SystemSettings } from './SystemSettings';
 import { LoginLogs } from './LoginLogs';
 import { LicenseRequests } from './LicenseRequests';
 import { BrandingApproval } from './BrandingApproval';
+import { AuditLogs } from './AuditLogs';
+import { CompanyPermissionsManager } from './CompanyPermissionsManager';
+import { CompanyRebranding } from './CompanyRebranding';
+import { CompanyOnboarding } from './CompanyOnboarding';
+import { LocalizationSettings } from './LocalizationSettings';
+import LicenseUsageAnalytics from './LicenseUsageAnalytics';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
@@ -22,7 +28,12 @@ import {
   Key, 
   Clock, 
   Palette,
-  FileText
+  FileText,
+  Globe,
+  BookOpen,
+  Bell,
+  BarChart,
+  ClipboardList
 } from 'lucide-react';
 
 // Create a wrapper component that gets parameters from URL
@@ -44,7 +55,7 @@ export const AdminPanel = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="mb-6 p-4">
-        <div className="flex flex-wrap items-center gap-2 md:gap-4">
+        <div className="flex flex-wrap items-center gap-2 md:gap-4 overflow-x-auto pb-2">
           <NavLink 
             to="/admin/companies" 
             className={({ isActive }) => 
@@ -118,6 +129,30 @@ export const AdminPanel = () => {
           </NavLink>
 
           <NavLink 
+            to="/admin/audit-logs" 
+            className={({ isActive }) => 
+              `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'
+              }`
+            }
+          >
+            <ClipboardList size={18} />
+            <span className="hidden md:inline">Audit Logs</span>
+          </NavLink>
+
+          <NavLink 
+            to="/admin/license-analytics" 
+            className={({ isActive }) => 
+              `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'
+              }`
+            }
+          >
+            <BarChart size={18} />
+            <span className="hidden md:inline">Analytics</span>
+          </NavLink>
+
+          <NavLink 
             to="/admin/branding-approval" 
             className={({ isActive }) => 
               `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
@@ -154,6 +189,12 @@ export const AdminPanel = () => {
         <Route path="license-requests" element={<LicenseRequests />} />
         <Route path="branding-approval" element={<BrandingApproval />} />
         <Route path="settings" element={<SystemSettings />} />
+        <Route path="audit-logs" element={<AuditLogs />} />
+        <Route path="license-analytics" element={<LicenseUsageAnalytics />} />
+        <Route path="permissions" element={<CompanyPermissionsManager />} />
+        <Route path="rebranding" element={<CompanyRebranding />} />
+        <Route path="onboarding" element={<CompanyOnboarding />} />
+        <Route path="localization" element={<LocalizationSettings />} />
       </Routes>
     </div>
   );
