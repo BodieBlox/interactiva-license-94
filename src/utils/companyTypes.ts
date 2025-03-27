@@ -1,5 +1,5 @@
-
 import { User } from './types';
+import { MemberPermissions } from './companyPermissions';
 
 export interface Company {
   id: string;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,7 @@ export const CompanyOnboarding = () => {
     enabled: userCompany?.onboarding?.enabled || false,
     welcomeMessage: userCompany?.onboarding?.welcomeMessage || 'Welcome to our platform!',
     steps: userCompany?.onboarding?.steps || [] as OnboardingStep[],
-    requiredForAllMembers: userCompany?.onboarding?.requiredForAllMembers || true,
+    requiredForAllMembers: userCompany?.onboarding?.requiredForAllMembers || false,
   });
   
   const addStep = () => {

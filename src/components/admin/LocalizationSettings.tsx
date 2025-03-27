@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,14 +8,14 @@ import { toast } from '@/components/ui/use-toast';
 import { Globe, Languages, Palette, Check } from 'lucide-react';
 import { useCompany } from '@/context/CompanyContext';
 
-export const LocalizationSettings: React.FC = () => {
+export const LocalizationSettings = () => {
   const { userCompany, updateCompanyInfo } = useCompany();
   
   const [localizationConfig, setLocalizationConfig] = useState({
     enabled: userCompany?.localization?.enabled || false,
     defaultLanguage: userCompany?.localization?.defaultLanguage || 'en',
     supportedLanguages: userCompany?.localization?.supportedLanguages || ['en'],
-    autoDetect: userCompany?.localization?.autoDetect || true,
+    autoDetect: userCompany?.localization?.autoDetect || false,
     translations: userCompany?.localization?.translations || {},
   });
   
@@ -39,7 +38,6 @@ export const LocalizationSettings: React.FC = () => {
       const supportedLanguages = [...prev.supportedLanguages];
       
       if (supportedLanguages.includes(languageCode)) {
-        // Don't remove the default language
         if (languageCode === prev.defaultLanguage) {
           toast({
             title: "Cannot Remove Default Language",
@@ -48,13 +46,11 @@ export const LocalizationSettings: React.FC = () => {
           });
           return prev;
         }
-        // Remove the language
         return {
           ...prev,
           supportedLanguages: supportedLanguages.filter(code => code !== languageCode)
         };
       } else {
-        // Add the language
         return {
           ...prev,
           supportedLanguages: [...supportedLanguages, languageCode]

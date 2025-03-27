@@ -1,4 +1,3 @@
-
 import { UserWithCompany } from './companyTypes';
 
 export type PermissionLevel = 'owner' | 'admin' | 'member' | 'guest';
@@ -100,7 +99,15 @@ export const hasPermission = (
   
   // Ensure we return boolean for permission checks
   const value = rolePermissions[permission];
-  return typeof value === 'boolean' ? value : Boolean(value);
+  
+  if (typeof value === 'boolean') {
+    return value;
+  } else if (typeof value === 'number') {
+    // Convert numeric values to boolean (any non-zero value is true)
+    return value > 0;
+  }
+  
+  return false;
 };
 
 // Helper function to get a user's permission level
