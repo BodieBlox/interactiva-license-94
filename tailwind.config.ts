@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -153,6 +152,32 @@ export default {
 						transform: 'translateY(-15px)',
 						animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)'
 					}
+				},
+				'slide-in-right': {
+					from: { transform: 'translateX(100%)', opacity: '0' },
+					to: { transform: 'translateX(0)', opacity: '1' }
+				},
+				'slide-in-left': {
+					from: { transform: 'translateX(-100%)', opacity: '0' },
+					to: { transform: 'translateX(0)', opacity: '1' }
+				},
+				'slide-in-bottom': {
+					from: { transform: 'translateY(100%)', opacity: '0' },
+					to: { transform: 'translateY(0)', opacity: '1' }
+				},
+				'scale-in-spring': {
+					'0%': { transform: 'scale(0)', opacity: '0' },
+					'80%': { transform: 'scale(1.1)', opacity: '0.8' },
+					'100%': { transform: 'scale(1)', opacity: '1' }
+				},
+				'rotate-spring': {
+					'0%': { transform: 'rotate(0deg) scale(0)', opacity: '0' },
+					'80%': { transform: 'rotate(360deg) scale(1.1)', opacity: '0.8' },
+					'100%': { transform: 'rotate(360deg) scale(1)', opacity: '1' }
+				},
+				'background-shine': {
+					from: { backgroundPosition: '200% 0' },
+					to: { backgroundPosition: '-200% 0' }
 				}
 			},
 			animation: {
@@ -169,14 +194,29 @@ export default {
 				'shimmer': 'shimmer 2s infinite',
 				'ping-slow': 'ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite',
 				'spin-slow': 'spin-slow 3s linear infinite',
-				'bounce-slow': 'bounce-slow 3s infinite'
+				'bounce-slow': 'bounce-slow 3s infinite',
+				'slide-in-right': 'slide-in-right 0.3s ease-out',
+				'slide-in-left': 'slide-in-left 0.3s ease-out',
+				'slide-in-bottom': 'slide-in-bottom 0.3s ease-out',
+				'scale-in-spring': 'scale-in-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+				'rotate-spring': 'rotate-spring 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+				'background-shine': 'background-shine 8s linear infinite'
 			},
 			transitionTimingFunction: {
 				'apple': 'cubic-bezier(0.16, 1, 0.3, 1)',
 				'bounce': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
 				'bezier-1': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
 				'bezier-2': 'cubic-bezier(0.65, 0.05, 0.36, 1)',
+				'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+				'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+				'snappy': 'cubic-bezier(0.4, 1.4, 0.75, 0.95)',
 			},
+			transitionDuration: {
+				'250': '250ms',
+				'350': '350ms',
+				'400': '400ms',
+				'450': '450ms',
+			}
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

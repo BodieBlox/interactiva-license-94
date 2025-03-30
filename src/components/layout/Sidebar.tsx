@@ -1,9 +1,8 @@
-
 import { SideNav } from './SideNav';
 
 export const Sidebar = () => {
   return (
-    <div className="hidden md:block w-64 border-r bg-background">
+    <div className="hidden lg:block w-[280px] flex-shrink-0 transition-all duration-300 ease-in-out">
       <SideNav />
     </div>
   );

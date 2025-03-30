@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -16,8 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Moon, Sun, User } from 'lucide-react';
+import { Loader2, Menu, Moon, Sun, User } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 export const AppLayout = () => {
   const { user, logout } = useAuth();
@@ -57,13 +57,18 @@ export const AppLayout = () => {
     }
   }, [user, logout, navigate]);
 
-  // Don't render the main content until mounted
+  // Loading state
   if (!isMounted) {
-    return <div className="h-screen flex justify-center items-center">Loading...</div>;
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading your workspace...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-screen flex overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar />
 
@@ -73,50 +78,54 @@ export const AppLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="w-full h-14 md:h-16 flex items-center justify-between py-2 px-4 border-b">
-          <div className="flex items-center sm:hidden">
+        <header className="w-full h-16 flex items-center justify-between py-2 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-3">
             <label
               htmlFor="mobile-sidebar-drawer"
-              className="btn btn-ghost mr-2"
+              className="btn btn-ghost lg:hidden hover:bg-accent hover:text-accent-foreground rounded-full p-2 transition-colors"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h7"
-                />
-              </svg>
+              <Menu className="h-5 w-5" />
             </label>
-            <h1 className="text-xl font-semibold">
+            <h1 className="text-xl font-semibold tracking-tight">
               {userCompany?.name || 'Dashboard'}
             </h1>
           </div>
-          <div className="ml-auto flex items-center space-x-4">
+          <div className="flex items-center space-x-4">
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
-                  <Avatar className="h-8 w-8">
+                <Button 
+                  variant="ghost" 
+                  className="h-8 w-8 p-0 rounded-full ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Avatar className="h-8 w-8 transition-transform hover:scale-105">
                     <AvatarImage src={user?.profileImageUrl} alt={user?.username} />
-                    <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10">
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.username}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => navigate('/settings')}
+                  className="cursor-pointer"
+                >
                   <User className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout()}>
+                <DropdownMenuItem 
+                  onClick={() => logout()}
+                  className="cursor-pointer text-red-500 focus:text-red-500"
+                >
                   Log Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -125,8 +134,10 @@ export const AppLayout = () => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto bg-background/50 p-4">
+          <div className="mx-auto max-w-7xl">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
